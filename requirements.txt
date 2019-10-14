@@ -1,0 +1,7 @@
+aiter==0.1.2
+blspy==0.1.8
+cbor==1.0.0
+qrcode==6.1
+pyzbar==0.1.8
+-e git+git@github.com:Chia-Network/ledger_sim.git@removedwallets#egg=ledger_sim
+-e git+git@github.com:Chia-Network/clvm_tools.git#egg=clvm_tools
