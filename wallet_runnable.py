@@ -4,14 +4,14 @@ import qrcode
 from decorations import print_leaf, divider, prompt, start_list, close_list
 from pyzbar.pyzbar import decode
 from PIL import Image
-from ledger_sim.chiasim.hashable import Coin
-from ledger_sim.chiasim.clients.ledger_sim import connect_to_ledger_sim
-from ledger_sim.chiasim.wallet.deltas import additions_for_body, removals_for_body
-from ledger_sim.chiasim.hashable.Body import BodyList
+from chiasim.hashable import Coin
+from chiasim.clients.ledger_sim import connect_to_ledger_sim
+from wallet.deltas import additions_for_body, removals_for_body
+from chiasim.hashable.Body import BodyList
 from clvm_tools import binutils
-from ledger_sim.chiasim.hashable import Program, ProgramHash
+from chiasim.hashable import Program, ProgramHash
 from binascii import hexlify
-from ledger_sim.chiasim.wallet import ap_wallet_a_functions
+from wallet import ap_wallet_a_functions
 from wallet.wallet import Wallet
 
 
@@ -20,16 +20,18 @@ def view_funds(wallet):
 
 
 def add_contact(wallet):
-    name = input("What is the new contact's name? ")
+    name = input(prompt + "What is the new contact's name? ")
     # note that we should really be swapping a function here, but thisll do
-    puzzlegeneratorstring = input("What is their ChiaLisp puzzlegenerator: ")
+    puzzlegeneratorstring = input(prompt + "What is their ChiaLisp puzzlegenerator: ")
     puzzlegenerator = binutils.assemble(puzzlegeneratorstring)
     wallet.add_contact(name, puzzlegenerator, 0, None)
 
 
 def view_contacts(wallet):
+    print(start_list)
     for name, details in wallet.contacts:
         print(name)
+    print(close_list)
 
 
 def print_my_details(wallet):
@@ -221,6 +223,7 @@ async def main():
     ledger_api = await connect_to_ledger_sim("localhost", 9868)
     selection = ""
     wallet = Wallet()
+    print(divider)
     print_leaf()
     most_recent_header = None
     while selection != "q":
@@ -239,6 +242,7 @@ async def main():
         print("\u2448 q: Quit")
         print(close_list)
         selection = input(prompt)
+        print(divider)
         if selection == "1":
             view_funds(wallet)
         elif selection == "2":
