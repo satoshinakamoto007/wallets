@@ -1,5 +1,6 @@
 import asyncio
 import qrcode
+from decorations import print_leaf, divider, prompt, start_list, close_list
 from wallet.ap_wallet import APWallet
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
 from wallet.deltas import additions_for_body, removals_for_body
@@ -18,7 +19,7 @@ def view_funds(wallet):
 
 def add_contact(wallet, approved_puzhash_sig_pairs):
     choice = "c"
-    print()
+    print(divider)
     while choice == "c":
         singlestring = input("Enter contact info string: ")
         arr = singlestring.split(":")
@@ -47,6 +48,7 @@ def view_contacts(approved_puzhash_sig_pairs):
 
 
 def print_my_details(wallet):
+    print(divider)
     print("Name: " + wallet.name)
     if wallet.puzzle_generator_id == "1ea50e9399e360c85c240e9d17c5d11ccb8fbf37b0ee6e551282ddd5b5613206":
         print("Awaiting initial coin...")
@@ -78,7 +80,7 @@ def make_QR(wallet):
 
 
 def set_name(wallet):
-    selection = input("Enter a new name: ")
+    selection = input("Enter your new name: ")
     wallet.set_name(selection)
 
 
@@ -87,10 +89,11 @@ def make_payment(wallet, approved_puzhash_sig_pairs):
     if wallet.current_balance <= 0:
         print("You need some money first")
         return
+    print(start_list)
     print("Select a contact from approved list: ")
     for name in approved_puzhash_sig_pairs:
         print(" - " + name)
-
+    print(close_list)
     choice = input("Name of payee: ")
     if choice not in approved_puzhash_sig_pairs:
         print("invalid contact")
@@ -140,17 +143,18 @@ async def update_ledger(wallet, ledger_api, most_recent_header):
 
 
 def ap_settings(wallet, approved_puzhash_sig_pairs):
-    print("1: Add Authorised Payee")
-    print("2: Change initialisation settings")
+    print(divider)
+    print("\u2448 1: Add Authorised Payee")
+    print("\u2448 2: Change initialisation settings")
     print("WARNING: This is only for if you messed it up the first time.")
     print("Press 'c' to continue or any other key to return")
-    choice = input()
+    choice = input(prompt)
     if choice != "c":
         return
     print("Your pubkey is: " + pubkey_format(wallet.get_next_public_key()))
     print("Please fill in some initialisation information (this can be changed later)")
     print("Please enter initialisation string: ")
-    init_string = input()
+    init_string = input(prompt)
     arr = init_string.split(":")
     AP_puzzlehash = arr[0]
     a_pubkey = arr[1]
@@ -165,6 +169,9 @@ async def main():
     wallet = APWallet()
     approved_puzhash_sig_pairs = {}  # 'name': (puzhash, signature)
     most_recent_header = None
+    print(divider)
+    print_leaf()
+    print(divider)
     print("Welcome to AP Wallet")
     print("Your pubkey is: " +
           hexlify(wallet.get_next_public_key().serialize()).decode('ascii'))
@@ -180,20 +187,22 @@ async def main():
     wallet.set_approved_change_signature(sig)
 
     while selection != "q":
+        print(divider)
+        print(start_list)
         print("Select a function:")
-        print("1: View Funds")
-        print("2: Add Payee")
-        print("3: Make Payment")
-        print("4: View Payees")
-        print("5: Get Update")
-        print("6: *GOD MODE* Commit Block / Get Money")
-        print("7: Print my details for somebody else")
-        print("8: Set my wallet detail")
-        print("9: Make QR code")
-        print("10: AP Settings")
-
-        print("q: Quit")
-        selection = input()
+        print("\u2448 1: View Funds")
+        print("\u2448 2: Add Payee")
+        print("\u2448 3: Make Payment")
+        print("\u2448 4: View Payees")
+        print("\u2448 5: Get Update")
+        print("\u2448 6: *GOD MODE* Commit Block / Get Money")
+        print("\u2448 7: Print my details for somebody else")
+        print("\u2448 8: Set my wallet detail")
+        print("\u2448 9: Make QR code")
+        print("\u2448 10: AP Settings")
+        print("\u2448 q: Quit")
+        print(close_list)
+        selection = input(prompt)
         if selection == "1":
             view_funds(wallet)
         elif selection == "2":

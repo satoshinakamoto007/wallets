@@ -3,7 +3,7 @@ import pathlib
 import tempfile
 import random
 import math
-from chiasim.wallet import ap_wallet_a_functions
+from wallet import ap_wallet_a_functions
 from aiter import map_aiter
 from chiasim.clients import ledger_sim
 from chiasim.ledger import ledger_api
@@ -14,8 +14,8 @@ from chiasim.storage import RAM_DB
 from chiasim.utils.log import init_logging
 from chiasim.utils.server import start_unix_server_aiter
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
-from chiasim.wallet.wallet import Wallet
-from chiasim.wallet.ap_wallet import APWallet
+from wallet.wallet import Wallet
+from wallet.ap_wallet import APWallet
 
 
 async def proxy_for_unix_connection(path):
