@@ -16,6 +16,7 @@ from wallet.wallet import Wallet
 
 
 def view_funds(wallet):
+    print(divider)
     print([x.amount for x in wallet.my_utxos])
 
 
@@ -49,6 +50,7 @@ def print_my_details(wallet):
 
 
 def make_QR(wallet):
+    print(divider)
     pubkey = hexlify(wallet.get_next_public_key().serialize()).decode('ascii')
     qr = qrcode.QRCode(
         version=1,
@@ -60,7 +62,10 @@ def make_QR(wallet):
     qr.make(fit=True)
     img = qr.make_image()
     fn = input("Input file name: ")
-    img.save(fn + ".jpg")
+    if fn.endswith(".jpg"):
+        img.save(fn)
+    else:
+        img.save(fn + ".jpg")
     print("QR code created in '" + fn + ".jpg'")
 
 

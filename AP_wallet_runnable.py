@@ -11,6 +11,7 @@ from binascii import hexlify
 
 
 def view_funds(wallet):
+    print(divider)
     if wallet.temp_coin is not None:
         print(wallet.temp_coin.amount)
     else:
@@ -28,14 +29,16 @@ def add_contact(wallet, approved_puzhash_sig_pairs):
         puzhash = puzzlehash_from_string(puzzle)
         sig = arr[2]
         signature = BLSSignature_from_string(sig)
-        if name in approved_puzhash_sig_pairs:
+        while name in approved_puzhash_sig_pairs:
             print(name + " is already a contact. Would you like to add a new contact or overwrite " + name + "?")
-            print("1: Overwrite")
-            print("2: Add new contact")
-            print("q: Return to menu")
-            pick = input()
+            print("\u2448 1: Overwrite")
+            print("\u2448 2: Add new contact")
+            print("\u2448 q: Return to menu")
+            pick = input(prompt)
             if pick == "q":
                 return
+            elif pick == "1":
+                continue
             elif pick == "2":
                 name = input("Enter new name for contact: ")
         approved_puzhash_sig_pairs[name] = (puzhash, signature)
@@ -65,6 +68,7 @@ def print_my_details(wallet):
 
 
 def make_QR(wallet):
+    print(divider)
     pubkey = hexlify(wallet.get_next_public_key().serialize()).decode('ascii')
     qr = qrcode.QRCode(
         version=1,
@@ -75,8 +79,12 @@ def make_QR(wallet):
     qr.add_data(wallet.name + ":" + wallet.puzzle_generator_id + ":" + pubkey)
     qr.make(fit=True)
     img = qr.make_image()
-    img.save(pubkey + ".jpg")
-    print("QR code created in " + pubkey + ".jpg")
+    fn = input("Input file name: ")
+    if fn.endswith(".jpg"):
+        img.save(fn)
+    else:
+        img.save(fn + ".jpg")
+    print("QR code created in '" + fn + ".jpg'")
 
 
 def set_name(wallet):
