@@ -14,7 +14,7 @@ from chiasim.remote.client import request_response_proxy
 from chiasim.storage import RAM_DB
 from chiasim.utils.log import init_logging
 from chiasim.utils.server import start_unix_server_aiter
-from wallet.deltas import additions_for_body, removals_for_body
+from chiasim.wallet.deltas import additions_for_body, removals_for_body
 from wallet.wallet import Wallet
 from chiasim.hashable import Program, ProgramHash
 from binascii import hexlify

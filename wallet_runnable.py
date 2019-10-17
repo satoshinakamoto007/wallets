@@ -6,7 +6,7 @@ from pyzbar.pyzbar import decode
 from PIL import Image
 from chiasim.hashable import Coin
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
-from wallet.deltas import additions_for_body, removals_for_body
+from chiasim.wallet.deltas import additions_for_body, removals_for_body
 from chiasim.hashable.Body import BodyList
 from clvm_tools import binutils
 from chiasim.hashable import Program, ProgramHash

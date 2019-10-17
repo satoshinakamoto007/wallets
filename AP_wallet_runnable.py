@@ -3,7 +3,7 @@ import qrcode
 from decorations import print_leaf, divider, prompt, start_list, close_list
 from wallet.ap_wallet import APWallet
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
-from wallet.deltas import additions_for_body, removals_for_body
+from chiasim.wallet.deltas import additions_for_body, removals_for_body
 from chiasim.hashable import Coin
 from chiasim.hashable.Body import BodyList
 from chiasim.puzzles.puzzle_utilities import pubkey_format, puzzlehash_from_string, BLSSignature_from_string
