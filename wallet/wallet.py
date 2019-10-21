@@ -52,6 +52,7 @@ class Wallet:
         self.name = "MyChiaWallet"
         self.generator_lookups[self.puzzle_generator_id] = self.puzzle_generator
         self.temp_utxos = set()
+        self.temp_balance = 0
 
     def get_next_public_key(self):
         pubkey = self.extended_secret_key.public_child(
@@ -88,27 +89,21 @@ class Wallet:
                 return (pubkey, self.extended_secret_key.private_child(child).get_private_key())
 
     def notify(self, additions, deletions):
+        for coin in additions:
+            if self.can_generate_puzzle_hash(coin.puzzle_hash):
+                self.current_balance += coin.amount
+                self.my_utxos.add(coin)
         for coin in deletions:
             if coin in self.my_utxos:
                 self.my_utxos.remove(coin)
                 self.current_balance -= coin.amount
-        for coin in additions:
-            my_utxos_copy = self.my_utxos.copy()
-            if self.can_generate_puzzle_hash(coin.puzzle_hash):
-                self.current_balance += coin.amount
-                self.my_utxos.add(coin)
-            for mycoin in self.my_utxos:
-                if coin.parent_coin_info == mycoin.name():
-                    my_utxos_copy.remove(mycoin)
-                    self.current_balance -= mycoin.amount
-                    self.my_utxos = my_utxos_copy
 
         self.temp_utxos = self.my_utxos.copy()
+        self.temp_balance = self.current_balance
 
     def select_coins(self, amount):
-        if amount > self.current_balance:
+        if amount > self.temp_balance:
             return None
-
         used_utxos = set()
         while sum(map(lambda coin: coin.amount, used_utxos)) < amount:
             used_utxos.add(self.temp_utxos.pop())
@@ -148,6 +143,8 @@ class Wallet:
     # spends is {(primary_input, puzzle): solution}
 
     def generate_unsigned_transaction(self, amount, newpuzzlehash):
+        if self.temp_balance < amount:
+            return None  # TODO: Should we throw a proper error here, or just return None?
         utxos = self.select_coins(amount)
         spends = []
         output_id = None
@@ -164,13 +161,14 @@ class Wallet:
                     changepuzzlehash = self.get_new_puzzlehash()
                     primaries.append(
                         {'puzzlehash': changepuzzlehash, 'amount': change})
+                    # add change coin into temp_utxo set
                     self.temp_utxos.add(Coin(coin, changepuzzlehash, change))
                 solution = make_solution(primaries=primaries)
                 output_id = sha256(coin.name() + newpuzzlehash)
             else:
                 solution = make_solution()
             spends.append((puzzle, CoinSolution(coin, solution)))
-
+        self.temp_balance -= amount
         return spends
 
     def sign_transaction(self, spends: (Program, [CoinSolution])):
@@ -194,4 +192,6 @@ class Wallet:
 
     def generate_signed_transaction(self, amount, newpuzzlehash):
         transaction = self.generate_unsigned_transaction(amount, newpuzzlehash)
+        if transaction is None:
+            return None  # TODO: Should we throw a proper error here, or just return None?
         return self.sign_transaction(transaction)

@@ -87,7 +87,7 @@ def read_qr(wallet):
             return
         else:
             wallet.generator_lookups[type] = source
-    while amount > wallet.current_balance or amount <= 0:
+    while amount > wallet.temp_balance or amount <= 0:
         amount = int(input("Amount: "))
     args = binutils.assemble("(0x" + pubkey + ")")
     program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
@@ -127,7 +127,7 @@ def make_payment(wallet):
             return
         else:
             wallet.generator_lookups[type] = source
-    while amount > wallet.current_balance or amount < 0:
+    while amount > wallet.temp_balance or amount < 0:
         amount = int(input("Amount: "))
     args = binutils.assemble("(0x" + pubkey + ")")
     program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
@@ -144,7 +144,7 @@ async def select_smart_contract(wallet, ledger_api):
     print("2: Add a new smart contract")
     choice = input()
     if choice == "1":
-        if wallet.current_balance <= 0:
+        if wallet.temp_balance <= 0:
             print("You need some money first")
             return None
         # TODO: add a format checker to input here (and everywhere tbh)

@@ -96,7 +96,7 @@ class APWallet(Wallet):
 
     def ac_notify(self, additions):
         if self.my_utxos:
-            self.temp_coin = self.my_utxos.copy().pop()  # reset
+            self.temp_coin = self.my_utxos.copy().pop()  # reset temp_coin
         else:
             return  # prevent unnecessary searching
         spend_bundle_list = []
