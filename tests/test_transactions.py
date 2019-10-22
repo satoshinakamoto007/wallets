@@ -30,7 +30,8 @@ def make_client_server():
     run = asyncio.get_event_loop().run_until_complete
     path = pathlib.Path(tempfile.mkdtemp(), "port")
     server, aiter = run(start_unix_server_aiter(path))
-    rws_aiter = map_aiter(lambda rw: dict(reader=rw[0], writer=rw[1], server=server), aiter)
+    rws_aiter = map_aiter(lambda rw: dict(
+        reader=rw[0], writer=rw[1], server=server), aiter)
     initial_block_hash = bytes(([0] * 31) + [1])
     ledger = ledger_api.LedgerAPI(initial_block_hash, RAM_DB())
     server_task = asyncio.ensure_future(api_server(rws_aiter, ledger))
@@ -50,10 +51,14 @@ def commit_and_notify(remote, wallets, reward_recipient):
 
     additions = list(additions_for_body(body))
     removals = removals_for_body(body)
-    removals = [Coin.from_bin(run(remote.hash_preimage(hash=x))) for x in removals]
+    removals = [Coin.from_bin(run(remote.hash_preimage(hash=x)))
+                              for x in removals]
 
     for wallet in wallets:
-        wallet.notify(additions, removals)
+        spend_bundle = wallet.notify(additions, removals)
+        if spend_bundle is not None:
+            for bun in spend_bundle:
+                _ = run(remote.push_tx(tx=bun))
 
 
 def test_standard_spend():
@@ -69,9 +74,11 @@ def test_standard_spend():
     assert wallet_b.current_balance == 0
     assert len(wallet_b.my_utxos) == 0
     # wallet a send to wallet b
-    pubkey_puz_string = "(0x%s)" % hexlify(wallet_b.get_next_public_key().serialize()).decode('ascii')
+    pubkey_puz_string = "(0x%s)" % hexlify(
+        wallet_b.get_next_public_key().serialize()).decode('ascii')
     args = binutils.assemble(pubkey_puz_string)
-    program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(wallet_a.generator_lookups[wallet_b.puzzle_generator_id]), args))
+    program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
+        wallet_a.generator_lookups[wallet_b.puzzle_generator_id]), args))
     puzzlehash = ProgramHash(program)
 
     amount = 5000
@@ -85,9 +92,11 @@ def test_standard_spend():
     assert len(wallet_b.my_utxos) == 1
 
     # wallet b sends back to wallet a
-    pubkey_puz_string = "(0x%s)" % hexlify(wallet_a.get_next_public_key().serialize()).decode('ascii')
+    pubkey_puz_string = "(0x%s)" % hexlify(
+        wallet_a.get_next_public_key().serialize()).decode('ascii')
     args = binutils.assemble(pubkey_puz_string)
-    program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(wallet_b.generator_lookups[wallet_a.puzzle_generator_id]), args))
+    program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
+        wallet_b.generator_lookups[wallet_a.puzzle_generator_id]), args))
     puzzlehash = ProgramHash(program)
 
     amount = 5000
@@ -115,23 +124,18 @@ def test_future_utxos():
     amount = 5000
     puzzlehash = wallet_b.get_new_puzzlehash()
     spend_bundle = wallet_a.generate_signed_transaction(amount, puzzlehash)
-    #breakpoint()
     _ = run(remote.push_tx(tx=spend_bundle))
     puzzlehash = wallet_b.get_new_puzzlehash()
     spend_bundle = wallet_a.generate_signed_transaction(amount, puzzlehash)
-    #breakpoint()
     _ = run(remote.push_tx(tx=spend_bundle))
     puzzlehash = wallet_b.get_new_puzzlehash()
     spend_bundle = wallet_a.generate_signed_transaction(amount, puzzlehash)
-    #breakpoint()
     _ = run(remote.push_tx(tx=spend_bundle))
 
     assert wallet_a.current_balance == 1000000000
     assert wallet_a.temp_balance == 999985000
 
     commit_and_notify(remote, wallets, Wallet())
-    if wallet_a.current_balance != 999985000:
-        breakpoint()
     assert wallet_a.current_balance == 999985000
     assert wallet_b.current_balance == 15000
     assert len(wallet_b.my_utxos) == 3
@@ -146,9 +150,11 @@ def test_spend_failure():
     wallets = [wallet_a, wallet_b]
     amount = 5000
     # wallet a send to wallet b
-    pubkey_puz_string = "(0x%s)" % hexlify(wallet_b.get_next_public_key().serialize()).decode('ascii')
+    pubkey_puz_string = "(0x%s)" % hexlify(
+        wallet_b.get_next_public_key().serialize()).decode('ascii')
     args = binutils.assemble(pubkey_puz_string)
-    program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(wallet_a.generator_lookups[wallet_b.puzzle_generator_id]), args))
+    program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
+        wallet_a.generator_lookups[wallet_b.puzzle_generator_id]), args))
     puzzlehash = ProgramHash(program)
     spend_bundle = wallet_a.generate_signed_transaction(amount, puzzlehash)
     assert spend_bundle is None
@@ -179,7 +185,7 @@ def test_spend_failure():
     assert wallet_a.temp_balance == 1000
 
 
-"""def test_AP_spend():
+def test_AP_spend():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
     # A gives B some money, but B can only send that money to C (and generate change for itself)
@@ -214,7 +220,6 @@ def test_spend_failure():
 
     assert wallet_a.current_balance == 999995000
     assert wallet_b.current_balance == 5000
-    assert wallet_d.current_balance == 1000000000
     assert len(wallet_b.my_utxos) == 1
 
     # Wallet A sends more money into Wallet B using the aggregation coin
@@ -236,15 +241,19 @@ def test_spend_failure():
     assert wallet_d.current_balance == 999997000
     assert len(wallet_b.my_utxos) == 1
 
+    commit_and_notify(remote, wallets, Wallet())
+
+    assert wallet_b.current_balance == 13000
+
     approved_puzhashes = [
         wallet_c.get_new_puzzlehash()]
 
     signatures = [ap_wallet_a_functions.ap_sign_output_newpuzzlehash(
         approved_puzhashes[0], wallet_a, a_pubkey)]
-    ap_output = [(approved_puzhashes[0], 69)]
+    ap_output = [(approved_puzhashes[0], 4000)]
     spend_bundle = wallet_b.ap_generate_signed_transaction(
         ap_output, signatures)
-    #breakpoint()
+    breakpoint()
     _ = run(remote.push_tx(tx=spend_bundle))
     breakpoint()
     commit_and_notify(remote, wallets, Wallet())
@@ -255,4 +264,3 @@ def test_spend_failure():
     assert len(wallet_c.my_utxos) == 1
     assert wallet_d.current_balance == 999997000
     assert len(wallet_b.my_utxos) == 1
-"""

@@ -147,7 +147,7 @@ async def select_smart_contract(wallet, ledger_api):
         if wallet.temp_balance <= 0:
             print("You need some money first")
             return None
-        # TODO: add a format checker to input here (and everywhere tbh)
+        # TODO: add a strict format checker to input here (and everywhere tbh)
         # Actual puzzle lockup/spend
         a_pubkey = wallet.get_next_public_key().serialize()
         b_pubkey = input("Enter recipient's pubkey: 0x")

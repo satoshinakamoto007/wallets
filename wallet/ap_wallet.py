@@ -95,7 +95,7 @@ class APWallet(Wallet):
                     print("this coin is locked using my ID, it's output must be for me")
 
     def ac_notify(self, additions):
-        if self.my_utxos:
+        if len(self.my_utxos) >= 1:
             self.temp_coin = self.my_utxos.copy().pop()  # reset temp_coin
         else:
             return  # prevent unnecessary searching
@@ -257,10 +257,13 @@ class APWallet(Wallet):
 
     # this is for sending a recieved ap coin, not sending a new ap coin
     def ap_generate_signed_transaction(self, puzzlehash_amount_list, signatures_from_a):
-        # calculate change
+
+        # calculate amount of transaction and change
         spend_value = 0
         for puzzlehash, amount in puzzlehash_amount_list:
             spend_value += amount
+        if spend_value > self.temp_coin.amount:
+            return None
         change = self.current_balance - spend_value
         puzzlehash_amount_list.append((self.AP_puzzlehash, change))
         signatures_from_a.append(self.approved_change_signature)
