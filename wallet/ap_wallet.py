@@ -76,6 +76,7 @@ class APWallet(Wallet):
                     return (pubkey, self.extended_secret_key.private_child(child).get_private_key())
 
     def notify(self, additions, deletions):
+        # TODO: evaluate if this is the best way of doing this
         super().notify(additions, deletions)
         self.my_utxos = self.temp_utxos
         self.ap_notify(additions)
@@ -111,7 +112,6 @@ class APWallet(Wallet):
                     self.my_utxos = my_utxos_copy.copy()
                     self.temp_coin = my_utxos_copy.copy().pop()
 
-            #breakpoint()
             if ProgramHash(self.ap_make_aggregation_puzzle(self.temp_coin.puzzle_hash)) == coin.puzzle_hash:
                 self.aggregation_coins.add(coin)
                 spend_bundle = self.ap_generate_signed_aggregation_transaction()

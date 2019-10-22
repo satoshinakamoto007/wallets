@@ -262,3 +262,26 @@ def test_AP_spend():
     assert len(wallet_c.my_utxos) == 1
     assert wallet_d.current_balance == 999997000
     assert len(wallet_b.my_utxos) == 1
+
+    # Test spend above AP wallet's amount
+
+    ap_output = [(approved_puzhashes[0], 10000)]
+    spend_bundle = wallet_b.ap_generate_signed_transaction(
+        ap_output, signatures)
+    assert spend_bundle is None
+
+    ap_output = [(approved_puzhashes[0], 6000)]
+    spend_bundle = wallet_b.ap_generate_signed_transaction(
+        ap_output, signatures)
+    _ = run(remote.push_tx(tx=spend_bundle))
+
+    assert wallet_b.temp_coin.amount == 3000
+    assert wallet_b.current_balance == 9000
+
+    ap_output = [(approved_puzhashes[0], 6000)]
+    spend_bundle = wallet_b.ap_generate_signed_transaction(
+        ap_output, signatures)
+
+    assert spend_bundle is None
+    assert wallet_b.temp_coin.amount == 3000
+    assert wallet_b.current_balance == 9000
