@@ -253,9 +253,7 @@ def test_AP_spend():
     ap_output = [(approved_puzhashes[0], 4000)]
     spend_bundle = wallet_b.ap_generate_signed_transaction(
         ap_output, signatures)
-    breakpoint()
     _ = run(remote.push_tx(tx=spend_bundle))
-    breakpoint()
     commit_and_notify(remote, wallets, Wallet())
 
     assert wallet_a.current_balance == 999990000
