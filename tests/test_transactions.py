@@ -2,6 +2,7 @@ import asyncio
 import pathlib
 import tempfile
 import clvm
+import pytest
 from aiter import map_aiter
 from ..wallet.wallet import Wallet
 from ..wallet.ap_wallet import APWallet
@@ -263,7 +264,18 @@ def test_AP_spend():
     assert wallet_d.current_balance == 999997000
     assert len(wallet_b.my_utxos) == 1
 
-    # Test spend above AP wallet's amount
+    # Spend from wallet_c freely
+
+    puzzlehash = wallet_a.get_new_puzzlehash()
+    spend_bundle = wallet_c.generate_signed_transaction(2000, puzzlehash)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+
+    assert wallet_c.current_balance == 2000
+    assert len(wallet_c.my_utxos) == 1
+    assert wallet_a.current_balance == 999992000
+
+    # Test spend more money than AP wallet's amount
 
     ap_output = [(approved_puzhashes[0], 10000)]
     spend_bundle = wallet_b.ap_generate_signed_transaction(
@@ -275,6 +287,8 @@ def test_AP_spend():
         ap_output, signatures)
     _ = run(remote.push_tx(tx=spend_bundle))
 
+    # Try and over spend temp amount, but legal actual amount
+
     assert wallet_b.temp_coin.amount == 3000
     assert wallet_b.current_balance == 9000
 
@@ -285,3 +299,57 @@ def test_AP_spend():
     assert spend_bundle is None
     assert wallet_b.temp_coin.amount == 3000
     assert wallet_b.current_balance == 9000
+
+
+def test_invalid_payee():
+    # Only Wallet C is approved - now lets try to spend to Wallet D
+    remote = make_client_server()
+    run = asyncio.get_event_loop().run_until_complete
+    # A gives B some money, but B can only send that money to C (and generate change for itself)
+    wallet_a = Wallet()
+    wallet_b = APWallet()
+    wallet_c = Wallet()
+    wallet_d = Wallet()
+    wallets = [wallet_a, wallet_b, wallet_c, wallet_d]
+
+    a_pubkey = wallet_a.get_next_public_key().serialize()
+    b_pubkey = wallet_b.get_next_public_key().serialize()
+    APpuzzlehash = ap_wallet_a_functions.ap_get_new_puzzlehash(
+        a_pubkey, b_pubkey)
+    wallet_b.set_sender_values(APpuzzlehash, a_pubkey)
+    wallet_b.set_approved_change_signature(ap_wallet_a_functions.ap_sign_output_newpuzzlehash(
+        APpuzzlehash, wallet_a, a_pubkey))
+
+    commit_and_notify(remote, wallets, wallet_a)
+
+    assert wallet_a.current_balance == 1000000000
+    assert len(wallet_a.my_utxos) == 2
+    assert wallet_b.current_balance == 0
+    assert len(wallet_b.my_utxos) == 0
+
+    # Wallet A locks up the puzzle with information regarding B's pubkey
+    amount = 5000
+    spend_bundle = wallet_a.generate_signed_transaction(amount, APpuzzlehash)
+    _ = run(remote.push_tx(tx=spend_bundle))
+
+    commit_and_notify(remote, wallets, wallet_d)
+
+    assert wallet_a.current_balance == 999995000
+    assert wallet_b.current_balance == 5000
+    assert len(wallet_b.my_utxos) == 1
+
+    approved_puzhashes = [
+        wallet_c.get_new_puzzlehash()]
+    signatures = [ap_wallet_a_functions.ap_sign_output_newpuzzlehash(
+        approved_puzhashes[0], wallet_a, a_pubkey)]
+
+    ap_output = [(wallet_d.get_new_puzzlehash(), 2000)]
+
+    spend_bundle = wallet_b.ap_generate_signed_transaction(
+        ap_output, signatures)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert wallet_a.current_balance == 999995000
+    assert wallet_b.current_balance == 5000
+    assert wallet_b.temp_coin.amount == 5000
+    assert len(wallet_b.my_utxos) == 1
