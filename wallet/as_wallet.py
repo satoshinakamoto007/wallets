@@ -1,4 +1,4 @@
-from chiasim.wallet.wallet import Wallet
+from .wallet import Wallet
 import hashlib
 import clvm
 import sys
@@ -18,7 +18,7 @@ from chiasim.validation.consensus import (
 )
 from chiasim.puzzles.puzzle_utilities import pubkey_format, puzzlehash_from_string, BLSSignature_from_string
 from blspy import Signature
-from chiasim.hack.keys import build_spend_bundle, sign_f_for_keychain
+from .keys import build_spend_bundle, sign_f_for_keychain
 
 
 #ASWallet is subclass of Wallet
