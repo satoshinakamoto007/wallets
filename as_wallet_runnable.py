@@ -839,6 +839,7 @@ async def update_ledger(wallet, ledger_api, most_recent_header, as_contacts, as_
     else:
         r = await ledger_api.get_recent_blocks(most_recent_header=most_recent_header)
     update_list = BodyList.from_bin(r)
+    additions = []
     for body in update_list:
         additions = list(additions_for_body(body))
         removals = removals_for_body(body)
