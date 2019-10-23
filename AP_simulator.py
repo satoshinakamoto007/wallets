@@ -3,11 +3,13 @@ import pathlib
 import tempfile
 import random
 import math
+import clvm
 from wallet import ap_wallet_a_functions
 from aiter import map_aiter
+from clvm_tools import binutils
 from chiasim.clients import ledger_sim
 from chiasim.ledger import ledger_api
-from chiasim.hashable import Coin
+from chiasim.hashable import Coin, Program, ProgramHash
 from chiasim.remote.api_server import api_server
 from chiasim.remote.client import request_response_proxy
 from chiasim.storage import RAM_DB
@@ -16,6 +18,8 @@ from chiasim.utils.server import start_unix_server_aiter
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
 from wallet.wallet import Wallet
 from wallet.ap_wallet import APWallet
+from binascii import hexlify
+
 
 
 async def proxy_for_unix_connection(path):
@@ -85,8 +89,8 @@ async def client_test(path):
     print([[x.amount for x in wallet.my_utxos] for wallet in wallets])
 
     # Wallet A sends more money into Wallet B using the aggregation coin
-    aggregation_puzzlehash = ap_wallet_a_functions.ap_get_aggregation_puzzlehash(
-        APpuzzlehash)
+    aggregation_puzzlehash = ProgramHash(Program(clvm.eval_f(clvm.eval_f, binutils.assemble(apwallet_b.puzzle_generator), binutils.assemble("()"))))
+
     # amount = 80
     spend_bundle = apwallet_a.generate_signed_transaction(
         50, aggregation_puzzlehash)
@@ -153,21 +157,27 @@ async def client_test(path):
                                     fees_puzzle_hash=fees_puzzle_hash)
         await update_wallets(remote, r, wallets)
         print([[x.amount for x in wallet.my_utxos] for wallet in wallets])
-        #breakpoint()
-        r = await remote.all_unspents()
-        print("unspents = %s" % r.get("unspents"))
+        breakpoint()
+        #r = await remote.all_unspents()
+        #print("unspents = %s" % r.get("unspents"))
         for i in range(1):
-            receiving_wallet = wallets[random.randrange(4)]
-            puzzlehash = receiving_wallet.get_new_puzzlehash()
+            receiving_wallet = wallets[random.randrange(5)]
+            pubkey_puz_string = "(0x%s)" % hexlify(receiving_wallet.get_next_public_key().serialize()).decode('ascii')
+            args = binutils.assemble(pubkey_puz_string)
+            puzzlehash = ProgramHash(Program(clvm.eval_f(clvm.eval_f, binutils.assemble(receiving_wallet.puzzle_generator), args)))
             complete = False
             while complete is False:
-                sending_wallet = wallets[random.randrange(4)]
+                sending_wallet = wallets[random.randrange(5)]
                 if sending_wallet.current_balance > 0:
                     complete = True
             amount = math.floor(0.50 * random.random() *
                                 (sending_wallet.current_balance - 1)) + 1
-            spend_bundle = sending_wallet.generate_signed_transaction(
-                amount, puzzlehash)
+            if isinstance(sending_wallet, APWallet):
+                signatures = [ap_wallet_a_functions.ap_sign_output_newpuzzlehash(puzzlehash, apwallet_a, a_pubkey)]
+                spend_bundle = sending_wallet.ap_generate_signed_transaction([(puzzlehash, amount)], signatures)
+            else:
+                spend_bundle = sending_wallet.generate_signed_transaction(
+                    amount, puzzlehash)
             _ = await remote.push_tx(tx=spend_bundle)
 
 
