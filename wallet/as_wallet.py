@@ -45,17 +45,25 @@ class ASWallet(Wallet):
         super().notify(additions, deletions)
         puzzlehashes = []
         for swap in as_swap_list:
-            puzzlehashes.append(swap["puzzlehash"])
+            puzzlehashes.append(swap["outgoing puzzlehash"])
+            puzzlehashes.append(swap["incoming puzzlehash"])
         if puzzlehashes != []:
             self.as_notify(additions, puzzlehashes)
 
     def as_notify(self, additions, puzzlehashes):
+        counter = 0
         for coin in additions:
             for puzzlehash in puzzlehashes:
                 if hexlify(coin.puzzle_hash).decode('ascii') == puzzlehash:
                     self.current_balance += coin.amount
                     self.my_utxos.add(coin)
-                    return
+                    counter += 1
+        if counter == 1:
+            print()
+            print("{} {}".format(counter, "new atomic swap coin is available to you."))
+        elif counter > 1:
+            print()
+            print("{} {}".format(counter, "new atomic swap coins are available to you."))
 
 
     # needs to be adapted for potential future changes regarding how atomic ...
@@ -140,11 +148,11 @@ class ASWallet(Wallet):
         payout_sender = "(c (q 0x%s) (c (q 0x%s) (c (q %d) (q ()))))" % (hexlify(ConditionOpcode.CREATE_COIN).decode('ascii'), hexlify(as_payout_puzzlehash_sender).decode('ascii'), as_amount)
         aggsig_receiver = "(c (q 0x%s) (c (q %s) (c (sha256 (wrap (a))) (q ()))))" % (hexlify(ConditionOpcode.AGG_SIG).decode('ascii'), as_pubkey_receiver_cl)
         aggsig_sender = "(c (q 0x%s) (c (q %s) (c (sha256 (wrap (a))) (q ()))))" % (hexlify(ConditionOpcode.AGG_SIG).decode('ascii'), as_pubkey_sender_cl)
-        receiver_puz = ("(e (i (= (sha256 (f (r (a)))) (q %s)) (q (c " + aggsig_receiver + " (c " + payout_receiver + " (q ())))) (q (x (q 'invalid secret')))) (a)) ) ") % (as_secret_hash)
+        receiver_puz = ("((c (i (= (sha256 (f (r (a)))) (q %s)) (q (c " + aggsig_receiver + " (c " + payout_receiver + " (q ())))) (q (x (q 'invalid secret')))) (a))) ) ") % (as_secret_hash)
         timelock = "(c (q 0x%s) (c (q %d) (q ()))) " % (hexlify(ConditionOpcode.ASSERT_MIN_TIME).decode('ascii'), as_timelock_t)
         sender_puz = "(c " + aggsig_sender + " (c " + timelock + " (c " + payout_sender + " (q ()))))"
-        as_puz_sender = "(e (i (= (f (a)) (q 77777)) (q " + sender_puz + ") (q (x (q 'not a valid option'))) ) (a))"
-        as_puz = "(e (i (= (f (a)) (q 33333)) (q " + receiver_puz + " (q " + as_puz_sender + ")) (a))"
+        as_puz_sender = "((c (i (= (f (a)) (q 77777)) (q " + sender_puz + ") (q (x (q 'not a valid option'))) ) (a)))"
+        as_puz = "((c (i (= (f (a)) (q 33333)) (q " + receiver_puz + " (q " + as_puz_sender + ")) (a)))"
         return Program(binutils.assemble(as_puz))
 
         # 33333 is the receiver solution code prefix
