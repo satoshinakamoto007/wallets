@@ -14,7 +14,7 @@ from chiasim.validation.Conditions import (
 from chiasim.validation.consensus import (
     conditions_for_solution, hash_key_pairs_for_conditions_dict
 )
-from .BLSPrivateKey import BLSPrivateKey
+from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from binascii import hexlify
 
 

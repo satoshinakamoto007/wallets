@@ -6,7 +6,7 @@ from binascii import hexlify
 from chiasim.hashable.Coin import Coin
 from chiasim.hashable.CoinSolution import CoinSolutionList
 from clvm_tools import binutils
-from .BLSPrivateKey import BLSPrivateKey
+from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from blspy import PublicKey
 from chiasim.validation.Conditions import ConditionOpcode
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
