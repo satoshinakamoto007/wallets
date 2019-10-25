@@ -1,7 +1,7 @@
 import asyncio
 import clvm
 import qrcode
-from decorations import print_leaf, divider, prompt, start_list, close_list
+from decorations import print_leaf, divider, prompt, start_list, close_list, selectable, informative
 from pyzbar.pyzbar import decode
 from PIL import Image
 from chiasim.hashable import Coin
@@ -36,15 +36,15 @@ def view_contacts(wallet):
 
 
 def print_my_details(wallet):
-    print("\u2447 Name: " + wallet.name)
-    print("\u2447 Puzzle Generator: ")
-    print("\u2447 " + wallet.puzzle_generator)
+    print(informative + " Name: " + wallet.name)
+    print(informative + " Puzzle Generator: ")
+    print(informative + " " + wallet.puzzle_generator)
     pubkey = "%s" % hexlify(
         wallet.get_next_public_key().serialize()).decode('ascii')
-    print("\u2447 New pubkey: " + pubkey)
-    print("\u2447 Generator hash identifier:")
-    print("\u2447 " + wallet.puzzle_generator_id)
-    print("\u2447 Single string: " + wallet.name + ":" +
+    print(informative + " New pubkey: " + pubkey)
+    print(informative + " Generator hash identifier:")
+    print(informative + " " + wallet.puzzle_generator_id)
+    print(informative + " Single string: " + wallet.name + ":" +
           wallet.puzzle_generator_id + ":" + pubkey)
 
 
@@ -149,8 +149,8 @@ def make_payment(wallet):
 
 async def select_smart_contract(wallet, ledger_api):
     print("Select a smart contract: ")
-    print("\u2447 1: Authorised Payees")
-    print("\u2447 2: Add a new smart contract")
+    print(selectable + " 1: Authorised Payees")
+    print(selectable + " 2: Add a new smart contract")
     choice = input()
     if choice == "1":
         if wallet.temp_balance <= 0:
@@ -254,16 +254,16 @@ async def main():
         print(divider)
         print(start_list)
         print("Select a function:")
-        print("\u2448 1: View Funds")
-        print("\u2448 2: Make Payment")
-        print("\u2448 3: Get Update")
-        print("\u2448 4: *GOD MODE* Commit Block / Get Money")
-        print("\u2448 5: Print my details for somebody else")
-        print("\u2448 6: Set my wallet name")
-        print("\u2448 7: Make QR code")
-        print("\u2448 8: Make Smart Contract")
-        print("\u2448 9: Payment to QR code")
-        print("\u2448 q: Quit")
+        print(selectable + "1: View Funds")
+        print(selectable + " 2: Make Payment")
+        print(selectable + " 3: Get Update")
+        print(selectable + " 4: *GOD MODE* Commit Block / Get Money")
+        print(selectable + " 5: Print my details for somebody else")
+        print(selectable + " 6: Set my wallet name")
+        print(selectable + " 7: Make QR code")
+        print(selectable + " 8: Make Smart Contract")
+        print(selectable + " 9: Payment to QR code")
+        print(selectable + " q: Quit")
         print(close_list)
         selection = input(prompt)
         print(divider)

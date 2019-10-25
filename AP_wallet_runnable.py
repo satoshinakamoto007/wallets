@@ -1,6 +1,6 @@
 import asyncio
 import qrcode
-from decorations import print_leaf, divider, prompt, start_list, close_list
+from decorations import print_leaf, divider, prompt, start_list, close_list, selectable, informative
 from wallet.ap_wallet import APWallet
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
@@ -31,9 +31,9 @@ def add_contact(wallet, approved_puzhash_sig_pairs):
         signature = BLSSignature_from_string(sig)
         while name in approved_puzhash_sig_pairs:
             print(name + " is already a contact. Would you like to add a new contact or overwrite " + name + "?")
-            print("\u2448 1: Overwrite")
-            print("\u2448 2: Add new contact")
-            print("\u2448 q: Return to menu")
+            print(selectable + " 1: Overwrite")
+            print(selectable + " 2: Add new contact")
+            print(selectable + " q: Return to menu")
             pick = input(prompt)
             if pick == "q":
                 return
@@ -52,18 +52,17 @@ def view_contacts(approved_puzhash_sig_pairs):
 
 def print_my_details(wallet):
     print(divider)
-    print("Name: " + wallet.name)
+    print(informative + "Name: " + wallet.name)
     if wallet.puzzle_generator_id == "1ea50e9399e360c85c240e9d17c5d11ccb8fbf37b0ee6e551282ddd5b5613206":
         print("Awaiting initial coin...")
     else:
-        print("Puzzle Generator: ")
+        print(informative + "Puzzle Generator: ")
         print(wallet.puzzle_generator)
-        print("Generator hash identifier:")
+        print(informative +  "Generator hash identifier:")
         print(wallet.puzzle_generator_id)
-    print("New pubkey: ")
     pubkey = hexlify(wallet.get_next_public_key().serialize()).decode('ascii')
-    print(pubkey)
-    print("Single string: " + wallet.name + ":" +
+    print(informative + "New pubkey: " + pubkey)
+    print(informative + "Single string: " + wallet.name + ":" +
           wallet.puzzle_generator_id + ":" + pubkey)
 
 
@@ -152,8 +151,8 @@ async def update_ledger(wallet, ledger_api, most_recent_header):
 
 def ap_settings(wallet, approved_puzhash_sig_pairs):
     print(divider)
-    print("\u2448 1: Add Authorised Payee")
-    print("\u2448 2: Change initialisation settings")
+    print(selectable + " 1: Add Authorised Payee")
+    print(selectable + " 2: Change initialisation settings")
     print("WARNING: This is only for if you messed it up the first time.")
     print("Press 'c' to continue or any other key to return")
     choice = input(prompt)
@@ -198,17 +197,17 @@ async def main():
         print(divider)
         print(start_list)
         print("Select a function:")
-        print("\u2448 1: View Funds")
-        print("\u2448 2: Add Payee")
-        print("\u2448 3: Make Payment")
-        print("\u2448 4: View Payees")
-        print("\u2448 5: Get Update")
-        print("\u2448 6: *GOD MODE* Commit Block / Get Money")
-        print("\u2448 7: Print my details for somebody else")
-        print("\u2448 8: Set my wallet detail")
-        print("\u2448 9: Make QR code")
-        print("\u2448 10: AP Settings")
-        print("\u2448 q: Quit")
+        print(selectable + " 1: View Funds")
+        print(selectable + " 2: Add Payee")
+        print(selectable + " 3: Make Payment")
+        print(selectable + " 4: View Payees")
+        print(selectable + " 5: Get Update")
+        print(selectable + " 6: *GOD MODE* Commit Block / Get Money")
+        print(selectable + " 7: Print my details for somebody else")
+        print(selectable + " 8: Set my wallet detail")
+        print(selectable + " 9: Make QR code")
+        print(selectable + " 10: AP Settings")
+        print(selectable + " q: Quit")
         print(close_list)
         selection = input(prompt)
         if selection == "1":

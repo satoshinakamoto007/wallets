@@ -24,3 +24,6 @@ bullet_point = "\u29a6"
 start_list = "\u29a7"
 
 close_list = "\u29a6"
+
+selectable = "\u2448"
+informative = "\u2447"
