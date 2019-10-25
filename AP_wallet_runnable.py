@@ -106,7 +106,7 @@ def make_payment(wallet, approved_puzhash_sig_pairs):
         print("invalid contact")
         return
 
-    while amount > wallet.temp_balance or amount < 0:
+    while amount > wallet.temp_coin.amount or amount < 0:
         if amount == "q":
             return
         amount = input("Enter amount to give recipient: ")
@@ -191,7 +191,6 @@ async def main():
         print("Please enter initialisation string: ")
         init_string = input()
         try:
-        # TODO: format check all QR style strings
             arr = init_string.split(":")
             AP_puzzlehash = arr[0]
             a_pubkey = arr[1]
