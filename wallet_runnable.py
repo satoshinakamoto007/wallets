@@ -174,12 +174,12 @@ async def select_smart_contract(wallet, ledger_api):
         spend_bundle = wallet.generate_signed_transaction(amount, APpuzzlehash)
         await ledger_api.push_tx(tx=spend_bundle)
         print()
-        print("AP Puzzlehash is: " + str(APpuzzlehash))
-        print("Pubkey used is: " + hexlify(a_pubkey).decode('ascii'))
+        print(informative + "AP Puzzlehash is: " + str(APpuzzlehash))
+        print(informative + "Pubkey used is: " + hexlify(a_pubkey).decode('ascii'))
         sig = ap_wallet_a_functions.ap_sign_output_newpuzzlehash(
             APpuzzlehash, wallet, a_pubkey)
-        print("Approved change signature is: " + str(sig.sig))
-        print("Single string: " + str(APpuzzlehash) + ":" +
+        print(informative + "Approved change signature is: " + str(sig.sig))
+        print(informative + "Single string: " + str(APpuzzlehash) + ":" +
               hexlify(a_pubkey).decode('ascii') + ":" + str(sig.sig))
 
         # Authorised puzzle printout for AP Wallet
@@ -206,7 +206,7 @@ async def select_smart_contract(wallet, ledger_api):
             #print("Puzzle: " + str(puzzlehash))
             sig = wallet.sign(puzzlehash, a_pubkey)
             #print("Signature: " + str(sig.sig))
-            print("Single string for AP Wallet: " + name +
+            print(informative + "Single string for AP Wallet: " + name +
                   ":" + str(puzzlehash) + ":" + str(sig.sig))
             choice = input("Press 'c' to continue, or 'q' to quit to menu: ")
     elif choice == "2":
