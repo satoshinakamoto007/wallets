@@ -36,16 +36,15 @@ def view_contacts(wallet):
 
 
 def print_my_details(wallet):
-    print("Name: " + wallet.name)
-    print("Puzzle Generator: ")
-    print(wallet.puzzle_generator)
-    print("New pubkey: ")
+    print("\u2447 Name: " + wallet.name)
+    print("\u2447 Puzzle Generator: ")
+    print("\u2447 " + wallet.puzzle_generator)
     pubkey = "%s" % hexlify(
         wallet.get_next_public_key().serialize()).decode('ascii')
-    print(pubkey)
-    print("Generator hash identifier:")
-    print(wallet.puzzle_generator_id)
-    print("Single string: " + wallet.name + ":" +
+    print("\u2447 New pubkey: " + pubkey)
+    print("\u2447 Generator hash identifier:")
+    print("\u2447 " + wallet.puzzle_generator_id)
+    print("\u2447 Single string: " + wallet.name + ":" +
           wallet.puzzle_generator_id + ":" + pubkey)
 
 
@@ -88,7 +87,12 @@ def read_qr(wallet):
         else:
             wallet.generator_lookups[type] = source
     while amount > wallet.temp_balance or amount <= 0:
-        amount = int(input("Amount: "))
+        if amount == "q":
+            return
+        amount = input("Amount: ")
+        if not amount.isdigit():
+            amount = "-1"
+        amount = int(amount)
     args = binutils.assemble("(0x" + pubkey + ")")
     program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
         wallet.generator_lookups[type]), args))
@@ -128,7 +132,12 @@ def make_payment(wallet):
         else:
             wallet.generator_lookups[type] = source
     while amount > wallet.temp_balance or amount < 0:
-        amount = int(input("Amount: "))
+        if amount == "q":
+            return
+        amount = input("Amount: ")
+        if not amount.isdigit():
+            amount = "-1"
+        amount = int(amount)
     args = binutils.assemble("(0x" + pubkey + ")")
     program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
         wallet.generator_lookups[type]), args))
@@ -140,8 +149,8 @@ def make_payment(wallet):
 
 async def select_smart_contract(wallet, ledger_api):
     print("Select a smart contract: ")
-    print("1: Authorised Payees")
-    print("2: Add a new smart contract")
+    print("\u2447 1: Authorised Payees")
+    print("\u2447 2: Add a new smart contract")
     choice = input()
     if choice == "1":
         if wallet.temp_balance <= 0:
@@ -152,7 +161,14 @@ async def select_smart_contract(wallet, ledger_api):
         a_pubkey = wallet.get_next_public_key().serialize()
         b_pubkey = input("Enter recipient's pubkey: 0x")
         amount = input("Enter amount to give recipient: ")
-        amount = int(amount)
+        while amount > wallet.temp_balance or amount < 0:
+            if amount == "q":
+                return
+            amount = input("Amount: ")
+            if not amount.isdigit():
+                amount = "-1"
+            amount = int(amount)
+
         APpuzzlehash = ap_wallet_a_functions.ap_get_new_puzzlehash(
             a_pubkey, b_pubkey)
         spend_bundle = wallet.generate_signed_transaction(amount, APpuzzlehash)
@@ -193,6 +209,9 @@ async def select_smart_contract(wallet, ledger_api):
             print("Single string for AP Wallet: " + name +
                   ":" + str(puzzlehash) + ":" + str(sig.sig))
             choice = input("Press 'c' to continue, or 'q' to quit to menu: ")
+    elif choice == "2":
+        print("Feature TBC")
+        # TODO: take puzzle as input, then generate transaction normally
 
 
 async def new_block(wallet, ledger_api):
