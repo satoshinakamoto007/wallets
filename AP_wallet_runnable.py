@@ -107,11 +107,11 @@ def make_payment(wallet, approved_puzhash_sig_pairs):
         return
 
     while amount > wallet.temp_coin.amount or amount < 0:
-        if amount == "q":
-            return
         amount = input("Enter amount to give recipient: ")
         if not amount.isdigit():
             amount = -1
+        if amount == "q":
+            return
         amount = int(amount)
 
     puzzlehash = approved_puzhash_sig_pairs[choice][0]

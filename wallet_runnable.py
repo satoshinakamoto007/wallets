@@ -87,9 +87,9 @@ def read_qr(wallet):
         else:
             wallet.generator_lookups[type] = source
     while amount > wallet.temp_balance or amount <= 0:
+        amount = input("Amount: ")
         if amount == "q":
             return
-        amount = input("Amount: ")
         if not amount.isdigit():
             amount = -1
         amount = int(amount)
@@ -132,9 +132,9 @@ def make_payment(wallet):
         else:
             wallet.generator_lookups[type] = source
     while amount > wallet.temp_balance or amount < 0:
+        amount = input("Amount: ")
         if amount == "q":
             return
-        amount = input("Amount: ")
         if not amount.isdigit():
             amount = -1
         amount = int(amount)
@@ -162,9 +162,9 @@ async def select_smart_contract(wallet, ledger_api):
         b_pubkey = input("Enter recipient's pubkey: 0x")
         amount = -1
         while amount > wallet.temp_balance or amount < 0:
+            amount = input("Enter amount to give recipient: ")
             if amount == "q":
                 return
-            amount = input("Enter amount to give recipient: ")
             if not amount.isdigit():
                 amount = -1
             amount = int(amount)
