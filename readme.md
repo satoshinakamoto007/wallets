@@ -1,5 +1,7 @@
 # Chia Wallets
 
+To launch a Commandline Interface for a wallet run `python3 launcher.py` and select what type of wallet you would like.
+
 ### Simulators
 
 The simulators automatically generate transactions back and forth between two wallets and don't require any input once they've been set going.
