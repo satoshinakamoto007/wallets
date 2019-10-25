@@ -91,7 +91,7 @@ def read_qr(wallet):
             return
         amount = input("Amount: ")
         if not amount.isdigit():
-            amount = "-1"
+            amount = -1
         amount = int(amount)
     args = binutils.assemble("(0x" + pubkey + ")")
     program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
@@ -136,7 +136,7 @@ def make_payment(wallet):
             return
         amount = input("Amount: ")
         if not amount.isdigit():
-            amount = "-1"
+            amount = -1
         amount = int(amount)
     args = binutils.assemble("(0x" + pubkey + ")")
     program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
@@ -160,13 +160,13 @@ async def select_smart_contract(wallet, ledger_api):
         # Actual puzzle lockup/spend
         a_pubkey = wallet.get_next_public_key().serialize()
         b_pubkey = input("Enter recipient's pubkey: 0x")
-        amount = input("Enter amount to give recipient: ")
+        amount = -1
         while amount > wallet.temp_balance or amount < 0:
             if amount == "q":
                 return
-            amount = input("Amount: ")
+            amount = input("Enter amount to give recipient: ")
             if not amount.isdigit():
-                amount = "-1"
+                amount = -1
             amount = int(amount)
 
         APpuzzlehash = ap_wallet_a_functions.ap_get_new_puzzlehash(

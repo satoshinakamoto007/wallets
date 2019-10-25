@@ -106,10 +106,13 @@ def make_payment(wallet, approved_puzhash_sig_pairs):
         print("invalid contact")
         return
 
-    while amount > wallet.current_balance or amount < 0:
-        amount = int(input("Amount: "))
+    while amount > wallet.temp_balance or amount < 0:
         if amount == "q":
             return
+        amount = input("Enter amount to give recipient: ")
+        if not amount.isdigit():
+            amount = -1
+        amount = int(amount)
 
     puzzlehash = approved_puzhash_sig_pairs[choice][0]
     return wallet.ap_generate_signed_transaction([(puzzlehash, amount)], [approved_puzhash_sig_pairs[choice][1]])
@@ -183,15 +186,21 @@ async def main():
     print("Your pubkey is: " +
           hexlify(wallet.get_next_public_key().serialize()).decode('ascii'))
     print("Please fill in some initialisation information (this can be changed later)")
-    print("Please enter initialisation string: ")
-    init_string = input()
-    # TODO: format check all QR style strings
-    arr = init_string.split(":")
-    AP_puzzlehash = arr[0]
-    a_pubkey = arr[1]
-    wallet.set_sender_values(AP_puzzlehash, a_pubkey)
-    sig = BLSSignature_from_string(arr[2])
-    wallet.set_approved_change_signature(sig)
+    complete = False
+    while complete == False:
+        print("Please enter initialisation string: ")
+        init_string = input()
+        try:
+        # TODO: format check all QR style strings
+            arr = init_string.split(":")
+            AP_puzzlehash = arr[0]
+            a_pubkey = arr[1]
+            wallet.set_sender_values(AP_puzzlehash, a_pubkey)
+            sig = BLSSignature_from_string(arr[2])
+            wallet.set_approved_change_signature(sig)
+            complete = True
+        except Exception:
+            print("Invalid initialisation string. Please try again")
 
     while selection != "q":
         print(divider)
