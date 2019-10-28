@@ -16,7 +16,7 @@ from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from chiasim.validation.consensus import (
     conditions_for_solution, hash_key_pairs_for_conditions_dict
 )
-from wallet.puzzle_utilies import pubkey_format, puzzlehash_from_string, BLSSignature_from_string
+from .puzzle_utilities import pubkey_format, puzzlehash_from_string, BLSSignature_from_string
 from blspy import Signature
 from .keys import build_spend_bundle, sign_f_for_keychain
 

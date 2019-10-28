@@ -7,7 +7,7 @@ from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BL
 from chiasim.hashable.CoinSolution import CoinSolutionList
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from chiasim.puzzles.p2_conditions import puzzle_for_conditions
-from wallet.puzzle_utilies import pubkey_format
+from .puzzle_utilities import pubkey_format
 from chiasim.validation.Conditions import (
     conditions_by_opcode, make_create_coin_condition, make_assert_my_coin_id_condition, make_assert_min_time_condition
 )

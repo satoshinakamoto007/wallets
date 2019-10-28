@@ -1,7 +1,7 @@
 from chiasim.hashable import Program, ProgramHash
 from binascii import hexlify
 from clvm_tools import binutils
-from wallet.puzzle_utilies import pubkey_format
+from .puzzle_utilities import pubkey_format
 from chiasim.validation.Conditions import ConditionOpcode
 
 
