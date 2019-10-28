@@ -9,7 +9,7 @@ from chiasim.hashable.Body import BodyList
 from decorations import print_leaf, divider, prompt
 from clvm_tools import binutils
 from chiasim.hashable import Program, ProgramHash, BLSSignature
-from chiasim.puzzles.puzzle_utilities import pubkey_format, signature_from_string, puzzlehash_from_string, BLSSignature_from_string
+from wallet.puzzle_utilies import pubkey_format, signature_from_string, puzzlehash_from_string, BLSSignature_from_string
 from binascii import hexlify
 from chiasim.validation import ChainView
 

@@ -10,7 +10,7 @@ from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from blspy import PublicKey
 from chiasim.validation.Conditions import ConditionOpcode
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
-from chiasim.puzzles.puzzle_utilities import pubkey_format, puzzlehash_from_string
+from wallet.puzzle_utilies import pubkey_format, puzzlehash_from_string
 
 
 def sha256(val):
