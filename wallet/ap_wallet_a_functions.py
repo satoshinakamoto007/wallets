@@ -20,7 +20,6 @@ def ap_generate_signatures(puzhashes, oldpuzzlehash, a_wallet, a_pubkey_used):
 def merge_two_lists(list1=None, list2=None):
     if (list1 is None) or (list2 is None):
         return None
-    # ret = "((c (q ((c (f (a)) (a)))) (c (q (e (i (e (i (f (r (a))) (q (q ())) (q (q 1))) (a)) (q (f (c (f (r (r (a)))) (q ())))) (q (e (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (c (f (f (r (a)))) (f (r (r (a))))) (q ()))))))) (a))) (c " + list1 + " (c " + list2 + " (q ()))))))"
     ret = "((c (q ((c (f (a)) (a)))) (c (q ((c (i ((c (i (f (r (a))) (q (q ())) (q (q 1))) (a))) (q (f (c (f (r (r (a)))) (q ())))) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (c (f (f (r (a)))) (f (r (r (a))))) (q ())))))))) (a)))) (c " + list1 + " (c " + list2 + " (q ()))))))"
     return ret
 

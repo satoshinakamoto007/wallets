@@ -1,112 +1,57 @@
 # Chia Wallets
 
-### Simulators
+The Chia Wallets are designed to show off Chia's approach to transactions, and our new language ChiaLisp.
+At the moment this project is uses a local server which simulates the full network. This allows us to test the wallet functionality in isolation.
+
+The local server which handles transactions in Chia is called [ledger_sim](https://github.com/Chia-Network/ledger_sim).
+
+## Setup
+
+
+To install this repository, and all requirements, clone this repository and then run:
+
+```
+$ pip install -r requirements.txt
+```
+
+To use the QR codes you will also need to support [pyzbar](https://pypi.org/project/pyzbar/).
+
+On Windows this requires no extra effort.
+
+On Linux, run:
+
+```
+$ sudo apt-get install libzbar0
+$ pip install pyzbar[scripts]
+```
+
+On Mac, run:
+
+```
+$ brew install zbar
+$ pip install pyzbar[scripts]
+```
+
+## About
+
+The wallets has can be divided into 'standard wallet' functionality and 'smart wallet' functionality, which includes support for smart transactions.
+
+The Smart Transactions currently available are:
+* Atomic Swaps
+* Authorised Payees
+* Recovery Wallets
+* Multi-sig
+
+For more information about how these work check out [docs](./docs)
+
+## Simulators
 
 The simulators automatically generate transactions back and forth between two wallets and don't require any input once they've been set going.
 
-### Runnable Wallets
+## Runnable Wallets
 
-Runnable wallets use a menu with user input. They require a running an instance of [ledger_sim](https://github.com/Chia-Network/ledger_sim) for the wallets to connect to.
-
-The QR code functionality relies on [https://github.com/NaturalHistoryMuseum/pyzbar/](pyzbar)
-```bash
-brew install zbar
-```
+Runnable wallets use a menu with user input. They require a running an instance of ledger-sim for the wallets to connect to.
 
 New block commits are done on command from one of the wallets, so make sure you that you make a new block after your transaction.
 Other wallets, similarly, must request an update once it exists.
 TODO: - this is scheduled to change into neutrino filters soon.
-
-
-## Atomic Swaps
-
-### Run
-
-Run script will run ledger-sim in the background and launch atomic swap wallet in the terminal.
-
-
-``` $ sh atomic_swap.sh ```
-
-
-### Usage
-
-YouTube walkghrough
-https://www.youtube.com/watch?v=oe5kcGsdJqY
-
-#### Commands
-  - 1 Wallet Details
-  - 2 View Funds
-  - 3 View Contacts
-  - 4 Add Contacts
-  - 5 Edit Contacts
-  - 6 View Current Atomic Swaps
-  - 7 Initiate Atomic Swap
-  - 8 Add Atomic Swap
-  - 9 Redeem Atomic Swap Coin
-  - 10 Get Update
-  - 11 *GOD MODE* Farm Block / Get Money
-  - q Quit
-
-#### Atomic Swap (step by step)
-  1. **RUN**
-     - Open two terminal windows and run  ``` $ sh atomic_swap.sh ```
-
-  2. **Get Chia**
-     - In Both terminals type **"11"** and press **enter** (This will give each wallet 1 million Chia)
-  3. **Add Contact**
-     - **Terminal 1**
-       - type "**4**" and press **enter**
-       - Name the Contact:
-       - type **"Alice"** and press **enter**
-       - PubKey for that contact:
-       - Copy PubKey from **Terminal 2** and then paste it to **Terminal 1**. press **enter**.
-       - Type **"Menu"** to go back
-     - **Terminal 2**
-       - type "**4**" and press **enter**
-       - Name the Contact:
-       - type **"Bob"** and press **enter**
-       - PubKey for that contact:
-       - Copy PubKey from **Terminal 1** and then paste it to **Terminal 2**. press **enter**.
-       - Type **"Menu"** to go back
-  4. **Atomic Swap**
-     - **Terminal 1** (Initializes)
-       - type "**7**" and press **enter**
-       - type "**Alice**" and press **enter**
-       - type "**1000**" and press **enter** (Select Amount to be swapped)
-       - type "**10**" and press **enter** (Select time lock of the swap)
-       - type "**password**" and press **enter** (Sets secret that needs to be used in order to spend this coin)
-       - [Go To Terminal 2 before proceeding with instructions bellow]
-     - **Terminal 2** (Adds)
-       - type "**8**" and press **enter**
-       - type "**Bob**" and press **enter**
-       - type "**1000**" and press **enter** (Select Amount to be swapped)
-       - type "**10**" and press **enter** (Select time lock of the swap)
-       - copy the value of **"Atomic swap secret hash"** from **Terminal 1** and paste it to **Terminal 2**. Press **enter**
-       - copy the value of **"Atomic swap outgoing puzzlehash"** from **Terminal 1** and paste it to **Terminal 2**. Press **enter**.
-       - [Go back to **Terminal 1**]
-     - **Terminal 1**
-       - copy the value of **"Atomic swap outgoing puzzlehash"** from **Terminal 2** and paste it to **Terminal 1**. Press **ENTER**.
-     - **Terminal 2**
-       - Press **ENTER**
-  5. **Get Update**
-     - **Terminal 1**
-       - type "**11**" and press **enter** (Farms a new block & transaction is included in that block)
-       - type "**2**" and press **enter** (View Funds)
-     - **Terminal 2**
-       - type "**10**" and press **enter** (Updates lates block info)
-       - type "**2**" and press **enter** (View Funds)
-  6. **Spend Coins**
-     - **Terminal 1**
-       - type "**9**" and press **enter**
-       - Copy the value of "**Atomic swap incoming puzzlehash:**" from **Terminal 1** and paste it into **Terminal 1**. Press **enter**.
-       - Type "**y**" and press **enter**. (Use stored secret to spend that coin, At this moment secret is revealed publicly and **Terminal 2** can use it to spend other coin involved in swap)
-       - Type "**11**" and press **enter**. (Farms new block)
-     - **Terminal 2**
-       - type "**10**" and press **enter** (Updates lates block info)
-       - type "**9**" and press **enter**
-       - copy the value of "**Atomic swap incoming puzzlehash:**" from **Terminal 2** and paste it to **Terminal 2**.Press **enter**.
-       - Type "**y**" and press **enter**.
-       - Type "**password**" and press **enter**. (Secret was revield publicaly by spending previous coin)
-       - Type "**y**" and press **enter**.
-       - type "**11**" and press **enter** (Farms a new block & transaction is included in that block)
-       - type "**2**" and press **enter** (View Funds)
