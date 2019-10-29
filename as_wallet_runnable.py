@@ -322,7 +322,7 @@ def view_swaps(as_swap_list):
         print("Your current atomic swaps:")
         for swap in as_swap_list:
             print("\u29a7")
-            print("{} {}".format("Atomic swap partner:", wap["swap partner"]))
+            print("{} {}".format("Atomic swap partner:", swap["swap partner"]))
             print("{} {}".format("Atomic swap partner pubkey:", swap["partner pubkey"]))
             print("{} {}".format("Atomic swap amount:", swap["amount"]))
             print("{} {}".format("Atomic swap secret:", swap["secret"]))
