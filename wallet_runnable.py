@@ -254,7 +254,7 @@ async def main():
         print(divider)
         print(start_list)
         print("Select a function:")
-        print(selectable + "1: View Funds")
+        print(selectable + " 1: View Funds")
         print(selectable + " 2: Make Payment")
         print(selectable + " 3: Get Update")
         print(selectable + " 4: *GOD MODE* Commit Block / Get Money")
