@@ -32,6 +32,18 @@ $ brew install zbar
 $ pip install pyzbar[scripts]
 ```
 
+## How to launch
+In a terminal window, launch an instance of ledger-sim wih:
+```
+$ ledger-sim
+```
+
+The to start a new wallet type:
+
+```
+$ python3 wallet_runnable.py
+```
+
 ## About
 
 The wallets has can be divided into 'standard wallet' functionality and 'smart wallet' functionality, which includes support for smart transactions.
@@ -44,14 +56,21 @@ The Smart Transactions currently available are:
 
 For more information about how these work check out [docs](./docs)
 
-## Simulators
-
-The simulators automatically generate transactions back and forth between two wallets and don't require any input once they've been set going.
-
 ## Runnable Wallets
 
 Runnable wallets use a menu with user input. They require a running an instance of ledger-sim for the wallets to connect to.
 
+To launch ledger-sim type:
+
+```
+$ ledger-sim
+```
+
 New block commits are done on command from one of the wallets, so make sure you that you make a new block after your transaction.
 Other wallets, similarly, must request an update once it exists.
-TODO: - this is scheduled to change into neutrino filters soon.
+
+
+## The Default Wallet
+
+A wallet can get money in the form of a simulated coinbase reward.
+It can also send money to other wallets, and send the Authorised Payees smart transaction.

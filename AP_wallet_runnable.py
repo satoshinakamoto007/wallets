@@ -11,11 +11,12 @@ from binascii import hexlify
 
 
 def view_funds(wallet):
-    print(divider)
     if wallet.temp_coin is not None:
-        print(wallet.temp_coin.amount)
+        print("Current balance: " + str(wallet.temp_coin.amount))
+        return
     else:
-        print([x.amount for x in wallet.my_utxos])
+        print("Current balance: 0")
+        return
 
 
 def add_contact(wallet, approved_puzhash_sig_pairs):
@@ -187,7 +188,7 @@ async def main():
           hexlify(wallet.get_next_public_key().serialize()).decode('ascii'))
     print("Please fill in some initialisation information (this can be changed later)")
     complete = False
-    while complete == False:
+    while complete is False:
         print("Please enter initialisation string: ")
         init_string = input()
         try:
@@ -203,42 +204,41 @@ async def main():
 
     while selection != "q":
         print(divider)
+        view_funds(wallet)
+        print(divider)
         print(start_list)
         print("Select a function:")
-        print(selectable + " 1: View Funds")
-        print(selectable + " 2: Add Payee")
-        print(selectable + " 3: Make Payment")
-        print(selectable + " 4: View Payees")
-        print(selectable + " 5: Get Update")
-        print(selectable + " 6: *GOD MODE* Commit Block / Get Money")
-        print(selectable + " 7: Print my details for somebody else")
-        print(selectable + " 8: Set my wallet detail")
-        print(selectable + " 9: Make QR code")
-        print(selectable + " 10: AP Settings")
+        print(selectable + " 1: Add Payee")
+        print(selectable + " 2: Make Payment")
+        print(selectable + " 3: View Payees")
+        print(selectable + " 4: Get Update")
+        print(selectable + " 5: *GOD MODE* Commit Block / Get Money")
+        print(selectable + " 6: Print my details for somebody else")
+        print(selectable + " 7: Set my wallet detail")
+        print(selectable + " 8: Make QR code")
+        print(selectable + " 9: AP Settings")
         print(selectable + " q: Quit")
         print(close_list)
         selection = input(prompt)
         if selection == "1":
-            view_funds(wallet)
-        elif selection == "2":
             add_contact(wallet, approved_puzhash_sig_pairs)
-        elif selection == "3":
+        elif selection == "2":
             r = make_payment(wallet, approved_puzhash_sig_pairs)
             if r is not None:
                 await ledger_api.push_tx(tx=r)
-        elif selection == "4":
+        elif selection == "3":
             view_contacts(approved_puzhash_sig_pairs)
-        elif selection == "5":
+        elif selection == "4":
             await update_ledger(wallet, ledger_api, most_recent_header)
-        elif selection == "6":
+        elif selection == "5":
             most_recent_header = await new_block(wallet, ledger_api)
-        elif selection == "7":
+        elif selection == "6":
             print_my_details(wallet)
-        elif selection == "8":
+        elif selection == "7":
             set_name(wallet)
-        elif selection == "9":
+        elif selection == "8":
             make_QR(wallet)
-        elif selection == "10":
+        elif selection == "9":
             ap_settings(wallet, approved_puzhash_sig_pairs)
 
 

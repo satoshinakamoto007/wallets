@@ -16,13 +16,13 @@ from wallet.wallet import Wallet
 
 
 def view_funds(wallet):
-    print(divider)
-    print([x.amount for x in wallet.my_utxos])
+    print("Current balance: " + str(wallet.temp_balance))
+    print("UTXOs: ", end="")
+    print([x.amount for x in wallet.temp_utxos if x.amount > 0])
 
 
 def add_contact(wallet):
     name = input(prompt + "What is the new contact's name? ")
-    # note that we should really be swapping a function here, but thisll do
     puzzlegeneratorstring = input(prompt + "What is their ChiaLisp puzzlegenerator: ")
     puzzlegenerator = binutils.assemble(puzzlegeneratorstring)
     wallet.add_contact(name, puzzlegenerator, 0, None)
@@ -252,40 +252,38 @@ async def main():
     most_recent_header = None
     while selection != "q":
         print(divider)
+        view_funds(wallet)
+        print(divider)
         print(start_list)
         print("Select a function:")
-        print(selectable + " 1: View Funds")
-        print(selectable + " 2: Make Payment")
-        print(selectable + " 3: Get Update")
-        print(selectable + " 4: *GOD MODE* Commit Block / Get Money")
-        print(selectable + " 5: Print my details for somebody else")
-        print(selectable + " 6: Set my wallet name")
-        print(selectable + " 7: Make QR code")
-        print(selectable + " 8: Make Smart Contract")
-        print(selectable + " 9: Payment to QR code")
+        print(selectable + " 1: Make Payment")
+        print(selectable + " 2: Get Update")
+        print(selectable + " 3: *GOD MODE* Commit Block / Get Money")
+        print(selectable + " 4: Print my details for somebody else")
+        print(selectable + " 5: Set my wallet name")
+        print(selectable + " 6: Make QR code")
+        print(selectable + " 7: Make Smart Contract")
+        print(selectable + " 8: Payment to QR code")
         print(selectable + " q: Quit")
         print(close_list)
         selection = input(prompt)
-        print(divider)
         if selection == "1":
-            view_funds(wallet)
-        elif selection == "2":
             r = make_payment(wallet)
             if r is not None:
                 await ledger_api.push_tx(tx=r)
-        elif selection == "3":
+        elif selection == "2":
             await update_ledger(wallet, ledger_api, most_recent_header)
-        elif selection == "4":
+        elif selection == "3":
             most_recent_header = await new_block(wallet, ledger_api)
-        elif selection == "5":
+        elif selection == "4":
             print_my_details(wallet)
-        elif selection == "6":
+        elif selection == "5":
             set_name(wallet)
-        elif selection == "7":
+        elif selection == "6":
             make_QR(wallet)
-        elif selection == "8":
+        elif selection == "7":
             await select_smart_contract(wallet, ledger_api)
-        elif selection == "9":
+        elif selection == "8":
             r = read_qr(wallet)
             if r is not None:
                 await ledger_api.push_tx(tx=r)

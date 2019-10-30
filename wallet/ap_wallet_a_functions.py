@@ -61,7 +61,7 @@ def ap_make_puzzle(a_pubkey_serialized, b_pubkey_serialized):
 
     #puz = "(e (i (= (f (a)) (q 1)) (q " + mode_one + ") (q " + mode_two + ")) (a))"
     puz = "((c (i (= (f (a)) (q 1)) (q " + mode_one + ") (q " + mode_two + ")) (a)))"
-    print(puz)
+    #print(puz)
     return Program(binutils.assemble(puz))
 
 

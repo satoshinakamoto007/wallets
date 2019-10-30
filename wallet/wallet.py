@@ -15,7 +15,6 @@ from chiasim.validation.consensus import (
     conditions_for_solution, hash_key_pairs_for_conditions_dict
 )
 from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
-from binascii import hexlify
 
 
 def sha256(val):
