@@ -1,14 +1,45 @@
 # Atomic Swaps
 
+## Background
+
+### Overview
+
+Atomic swaps are processes by which two parties exchange coins using hashed time-locked puzzles, such that no actions by a dishonest party could cause an honest party to end up, at the end of the transaction, in control of coins of fewer value than those which they started with at the beginning of the transaction. In an atomic swap, each party creates a coin in the amount to be exchanged, and the coins are locked both by a hash _h = H(s)_ whose preimage _s_ serves as a key, and by a time limit _t_. Each coin can be spent in one of two ways: either the coin is spent to the intended recipient’s wallet if that recipient provides the secret _s_, or the coin is spent to the coin’s creator’s wallet after time _t_ has passed.
+
+### Setting up an atomic swap
+
+Alice and Bob agree to swap _X_ coins. One party must arbitrarily act as the swap initiator.
+
+Alice initiates the swap by creating a coin _C1_ whose value is _X_ Chia and whose timeout time is _B_ blocks from the current (_NOW_) block height, i.e. at block height _NOW+B_. _C1_ is Alice's "outgoing coin" and Bob's "incoming coin".
+
+Bob adds the swap to his swap list while creating a reciprocal coin _C2_ whose value is _X_ Chia and whose timeout time is _B/2_ from the current (_NOW_) block height, i.e. at block height _(NOW+B)/2_. _C2_ is Bob's "outgoing coin" and Alice's "incoming coin".
+
+_C1_ and _C2_ are committed to the blockchain when the next block is farmed.
+
+### Redeeming atomic swap coins
+
+#### Standard case
+
+In the standard case, Alice will spend her incoming coin (_C2_) to her wallet using the secret _s_, which Alice used to lock her outgoing coin (_C1_). When Alice does this and the spend is posted to the blockchain, _s_ becomes public knowledge. Bob then uses _s_ to spend his incoming coin (_C1_) to his wallet.
+
+#### Timeout case
+
+In the case that Alice fails to spend _C2_ to her wallet before _C2_'s timeout time has elapsed (i.e. when block height _(NOW+B)/2_ is reached), Bob may spend _C2_ back to his wallet. Because Bob does not have the secret _s_, he is unable to spend _C1_ to his wallet. After _C1_'s timeout time has elapsed (i.e. when block height _NOW+B_ is reached), Alice may spend _C1_ back to her wallet.
+
+
+
+
+## Usage
+
 Run script will run ledger-sim in the background and launch atomic swap wallet in the terminal.
 
 
-### Usage
+``` $ sh atomic_swap.sh ```
 
 YouTube walkthrough
 https://www.youtube.com/watch?v=oe5kcGsdJqY
 
-#### Commands
+### Commands
   - 1 Wallet Details
   - 2 View Funds
   - 3 View Contacts
@@ -22,7 +53,7 @@ https://www.youtube.com/watch?v=oe5kcGsdJqY
   - 11 *GOD MODE* Farm Block / Get Money
   - q Quit
 
-#### Atomic Swap (step by step)
+### Atomic Swap (step by step)
   1. **RUN**
      - Open two terminal windows and run  ``` $ sh atomic_swap.sh ```
 
