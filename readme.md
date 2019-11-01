@@ -54,23 +54,8 @@ The Smart Transactions currently available are:
 * Recovery Wallets
 * Multi-sig
 
-For more information about how these work check out [docs](./docs)
+For more information about how these work, check out our other [docs](./docs).
 
-## Runnable Wallets
+## Making Transactions
 
-Runnable wallets use a menu with user input. They require a running an instance of ledger-sim for the wallets to connect to.
-
-To launch ledger-sim type:
-
-```
-$ ledger-sim
-```
-
-New block commits are done on command from one of the wallets, so make sure you that you make a new block after your transaction.
-Other wallets, similarly, must request an update once it exists.
-
-
-## The Default Wallet
-
-A wallet can get money in the form of a simulated coinbase reward.
-It can also send money to other wallets, and send the Authorised Payees smart transaction.
+Transactions in Chia happen when you specify a current unspent coin

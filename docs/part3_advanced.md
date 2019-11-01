@@ -1,4 +1,4 @@
-# Guide to ChiaLisp
+# Part 3: Higher Level ChiaLisp
 
 ChiaLisp is composed of two parts - a higher level language and a lower level language.
 It is worth familiarising yourself with the basics of the lower level language [here](https://github.com/Chia-Network/clvm/blob/master/docs/clvm.org) before continuing with this guide.
@@ -9,33 +9,14 @@ To compile this higher level language in terminal. Firstly install and set up th
 
 To compile use:
 
-`$ run '(compile (*high level code*))'`
+`$ run -s2 '(mod ArgumentOrAgumentList (*high level code*))'`
 
 To run the compiled code use:
 
-`$ brun '(*compiled code*)'`
+`$ brun '(*lower level compiled code*)'`
 
 It is recommended that you have some understanding of the CLVM too, to help your understanding
 
-## Types
-
-In ChiaLisp everything is either a list or an atom.
-Lists take the form of parentheses and each entry in the list is single spaced.
-Even a program is actually just a list in [polish notation](https://en.wikipedia.org/wiki/Polish_notation).
-Atoms are either literal binary blobs or variables.
-There is no distinguishing of variable types in ChiaLisp.
-This means that (100 0x65 0x68656c6c6f) and (0x64 101 'hello') are equivalent lists.
-Internally however the blobs can be interpreted in a number of different ways, which we will cover later.
-Variables all take the form x0, x1, x2... etc.
-Variables are immutable and can only be assigned value when reduce is called.
-The value of variables are passed in as a second list when reduce is called, where the first list is the program.
-
-```
-$ run '(compile (+ x0 x1))'
-(+ (f (a)) (f (r (a))))
-$ brun '(+ (f (a)) (f (r (a))))' '(5 4)'
-9
-```
 
 ## Programs as Parameters
 

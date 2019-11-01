@@ -1,14 +1,11 @@
-### Atomic Swaps
+# Atomic Swaps
 
 Run script will run ledger-sim in the background and launch atomic swap wallet in the terminal.
 
 
-``` $ sh atomic_swap.sh ```
-
-
 ### Usage
 
-YouTube walkghrough
+YouTube walkthrough
 https://www.youtube.com/watch?v=oe5kcGsdJqY
 
 #### Commands
