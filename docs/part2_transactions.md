@@ -1,2 +1,4 @@
-# Part 2: Transactions
-TODO - Describe how a solution is a puzzle reveal and a solution passed to the puzzle and how that can return conditions
+# Part 2: Transactions and Smart Contracts
+
+This section of the guide will cover how ChiaLisp relates to transactions and coins on the Chia network and cover some techniques to create smart transactions using ChiaLisp.
+If there are any terms that you aren't sure of, be sure to check the [glossary](./glossary.md).

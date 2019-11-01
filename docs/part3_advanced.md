@@ -1,7 +1,9 @@
 # Part 3: Higher Level ChiaLisp
 
-ChiaLisp is composed of two parts - a higher level language and a lower level language.
-It is worth familiarising yourself with the basics of the lower level language [here](https://github.com/Chia-Network/clvm/blob/master/docs/clvm.org) before continuing with this guide.
+This section of the guide will cover the high level ChiaLisp language, as well as the construction of some smart contracts.
+It is important that you are familiar with the previous stages of this guide before reading this part.
+
+Firstly we will cover how to compile from the higher level language into the lower level language.
 
 ## Compilation
 
