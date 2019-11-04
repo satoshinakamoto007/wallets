@@ -209,6 +209,16 @@ $ brun '(r (a))' '("this" "is the" "solution")'
 (90 100 110)
 ```
 
+And remember lists can be nested too.
+
+```
+$ brun '(f (f (r (a))))' '((70 80) (90 100) (110 120))'
+90
+
+$ brun '(f (f (r (a))))' '((70 80) ((91 92 93 94 95) 100) (110 120))'
+(91 92 93 94 95)
+```
+
 These environment variables can be used in combination with all other operators.
 
 ```
