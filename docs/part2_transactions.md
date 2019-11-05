@@ -1,4 +1,4 @@
-# Part 2: Transactions in Chia
+# Part 2: Coins, Spends and Wallets in Chia
 
 This guide directly continues on from [part 1](./part1_basics.md) so if you haven't read that, please do so before reading this.
 
@@ -21,6 +21,16 @@ coinID == sha256(parent_ID + puzzlehash + amount)
 
 This means that a coin's puzzle and amount are intrinsic parts of it.
 You cannot change a coin's puzzle or amount, you can only spend a coin.
+
+The body of a coin is also made up of these 3 pieces of information, but instead of being hashed, they are stored in full.
+Here is the actual code that defines a coin:
+
+```python
+class Coin:
+    parent_coin_info: "CoinName"
+    puzzle_hash: ProgramHash
+    amount: uint64
+```
 
 ## Spends
 
@@ -172,20 +182,67 @@ In this situation, not only can anybody can spend the coin, they can spend it ho
 This balance of power determines a lot of how puzzles are designed in ChiaLisp.
 This exercise is intended to demonstrate the point that OpCodes can come from both the recipient's solution and from the sender's puzzle, and how that represents trust and the balance of power.
 
-In the next exercise we will put everything we know together and generate a "standard" transaction in Chia that underpins how wallets are able to send money to each other.
+In the next exercise we will put everything we know together and create the "standard" transaction in Chia that underpins how wallets are able to send money to each other.
 
 
 ### Example: Signature Locked Coin
 
-The solution to a puzzle may also be permitted to return conditions to the environment in some situations.
-This can be done by embedding a program inside the solution and including instructions to run that program in the puzzle.
+To 'send a coin to somebody' you simply create a puzzle that requires the recipients signature, but then allows them to return any other OpCodes that they like.
+This means that the coin cannot be spent by anybody else, but the outputs are entirely decided by the recipient.
 
-It is likely that you will want to ensure that the person submitting the solution is a predetermined public key if this is the case.
-We can construct the following smart transaction where AGGSIG is 0x50 and the recipient's pubkey is 0xdeadbeef.
+We can construct the following smart transaction where AGGSIG is 50 and the recipient's pubkey is 0xpubkey.
 ```
-(c (c (q 0x50) (c (q 0xdeadbeef) (c (sha256 (wrap (f (a)))) (q ())))) (e (f (a)) (f (r (a)))))
+(c (c (q 50) (c (q 0xpubkey) (c (sha256 (wrap (a))) (q ())))) (a))
 ```
-The first part of this program will return instructions requiring the environment check that the solution has been signed by the owner of the 0xdeadbeef public key.
+
+This puzzle forces the resultant evaluation to contain `(50 0xpubkey *hash_of_solution*)` but then adds on all of the conditions presented in the solution.
+
+Let's test it out in clvm_tools - for this example the recipient's pubkey will be represented as 0xdeadbeef.
+The recipient wants to spend the coin to create a new coin which is locked up with the puzzle 0xfadeddab.
+```
+$ brun '(c (c (q 50) (c (q 0xdeadbeef) (c (sha256 (wrap (a))) (q ())))) (a))' '((51 0xfadeddab 100))'
+((50 0xdeadbeef 0x34b88c869130fc1d50aafd392d8fa6797de4370b1969e5216bb076850ed3beae) (51 0xfadeddab 100))
+```
+
+Brilliant.
+
+Let's pull back and add some context here.
+
+## Wallets
+
+A wallet is some software that has several features that make it easy for a user to interact with coins.
+
+* A wallet keeps track of public and private keys
+* A wallet can generate puzzles and solutions
+* A wallet can sign things with its keys
+* A wallet can identify and remember what coins that the user 'owns'
+* A wallet can spend coins
+
+You may be wondering how a wallet is able to identify what coins that the user 'owns' if any person can attempt to spend a coin.
+This is because all wallets already know and agree on what the standard format for sending a coin to somebody is.
+They know what their own pubkeys are, so when a new coin is created a wallet can check if the puzzle inside that coin is a 'standard send puzzle' to one of their pubkeys.
+If it is, then that coin can be considered to be owned by that 'wallet' as nobody else can spend it.
+
+If the wallet that 'owns' the coin then wanted to send that coin on again to somebody else, they would generate a 'standard send puzzle' but with the new recipient's pubkey.
+They could then spend the coin that they own, destroying it, and creating a new coin that is locked up with the new recipients pubkey in the process.
+The new recipient can then identify that it 'owns' the coin and can send it on as they wish later.
+
+### Coin Aggregation and Change Making
+
+Change making is simple.
+If a wallet spends less than the total value of a coin, they can create another coin with the remaining portion of value, and lock it up with the standard puzzle for themselves again.
+You can split a coin up into as many new coins with fractions of the original value as you'd like.
+If you so desired you could turn a coin with value 100 into 100 coins with value 1, and so on.
+
+You can also do the inverse.
+You can aggregate a bunch of smaller coins together into one large coin.
+
+### Standard Transaction
+
+We can construct an even more powerful version of the signature locked coin to use as our standard transaction.
+
+(c (c (q 50) (c (q 0xpubkey) (c (sha256 (wrap (f (a)))) (q ())))) ((c (f (a)) (f (r (a))))))
+
 The second part will return the results of executing the program inside the solution.
 
 The basic solution for this would look like:
