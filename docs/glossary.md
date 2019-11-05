@@ -30,15 +30,12 @@ Unspents (UTXO set/unspent transaction output set) - This is the set of all unsp
 
 * **Op Constraints/Conditions** - Constraints are returned by the puzzle when it’s passed the solution. If all of the returned conditions are met then a transaction is valid.
 
-* **CREATE_COIN** - Creates a new output. Specifies a puzzle hash which locks up any funds associated with that id. Also specifies an amount for the new coin.
-
-* **ASSERT_MY_COIN_ID** - Specifies the id of the puzzle being run.
-
-* **INPUT** - Specifies an input id which must be spent in this transaction. It may also optionally specify a min_age which must be greater than the time since the input id was created.
-
-* **ASSERT_MIN_TIME** - Gives a block height which this transaction is not valid before.
-
-* **AGG_SIG** - Gives a public key and a value hash which must be included in the aggregated signature for this transaction.
+* **AGG_SIG - [50] - (50 0xpubkey 0xdatahash)**: This spend is only valid if the aggregated signature in this block contains a signature from the given public key of the given value hash.
+* **CREATE_COIN - [51] - (51 0xpuzzlehash amount)**: If this spend is valid then create a new coin with the given puzzlehash and amount.
+* **ASSERT_COIN_CONSUMED - [52] - (52 0xcoinID)**: This spend is only valid if the given Coin ID has also been spent in this block.
+* **ASSERT_MY_COIN_ID - [53] - (53 0xcoinID)**: This spend is only valid if the presented coin ID is exactly the same as the ID of the coin that contains this puzzle.
+* **ASSERT_MIN_TIME - [54] - (54 time)**: This spend is only valid if the given time has passed.
+* **ASSERT_BLOCK_INDEX_EXCEEDS - [55] - (55 block_index)**: The spend is only valid if the given block_index has been reached.
 
 * **Wallet** - Software written to interact with transactions. Chia uses Hierarchical Deterministic Wallets (HD Wallets). This means that they can generate many different public keys that are all valid and verifiable as unique to that wallet. A wallet contains a coin if it possesses the information necessary to unlock that coin and create a transaction which spends it.
 

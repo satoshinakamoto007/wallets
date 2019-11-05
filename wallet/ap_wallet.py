@@ -163,6 +163,7 @@ class APWallet(Wallet):
 
         puz = "((c (i (= (f (a)) (q 1)) (q " + mode_one + ") (q " + mode_two + ")) (a)))"
         # temporary - will eventually be puz
+        breakpoint()
         return Program(binutils.assemble(puz))
 
     def ap_make_aggregation_puzzle(self, wallet_puzzle):

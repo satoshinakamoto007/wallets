@@ -144,3 +144,6 @@ $ brun '((c (f (a)) (a)))' '(((c (i (= (f (r (a))) (q 1)) (q (q 1)) (q (* (f (r 
 ```
 
 This is very complex, so let's pull back and look at some more context.
+
+
+# TODO: More recursive programs, more explanations
