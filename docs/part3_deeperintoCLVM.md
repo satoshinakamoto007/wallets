@@ -33,9 +33,11 @@ $ brun '((c (i (q 1) (q (q 100)) (q (x (q "still being evaluated")))) (a)))'
 
 It is worth keeping this in mind whenever you write an `(i A B C)`.
 
+If you're wondering how this works (and how the standard transaction from [part 2](./part2_transactions.md) worked), then allow me to introduce Eval.
+
 ## Introduction to Eval
 
-In Part 1 we mentioned that a program is usually a list where the first element is an operator, and every subsequent element is a valid program.
+In [Part 1](part1_basics.md) we mentioned that a program is usually a list where the first element is an operator, and every subsequent element is a valid program.
 However a Program can also have a program as the first element. This will cause that program to be evaluated as a new puzzle.
 The solution is then every element after the first in this list.
 
