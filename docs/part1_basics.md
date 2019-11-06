@@ -207,7 +207,7 @@ $ brun '(a)' '("this" "is the" "solution")'
 $ brun '(f (a))' '(80 90 100 110)'
 80
 
-$ brun '(r (a))' '("this" "is the" "solution")'
+$ brun '(r (a))' '(80 90 100 110)'
 (90 100 110)
 ```
 
