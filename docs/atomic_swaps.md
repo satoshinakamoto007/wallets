@@ -31,10 +31,7 @@ In the case that Alice fails to spend _C2_ to her wallet before _C2_'s timeout t
 
 ## Usage
 
-Run script will run ledger-sim in the background and launch atomic swap wallet in the terminal.
-
-
-``` $ sh atomic_swap.sh ```
+Run a version of `ledger-sim` in a background terminal window.
 
 YouTube walkthrough
 https://www.youtube.com/watch?v=oe5kcGsdJqY
