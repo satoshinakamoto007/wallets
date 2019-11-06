@@ -129,13 +129,13 @@ Lists can even contain other lists, such as `("list" "list" ("sublist" "sublist"
 
 Programs are a subset of lists which can be evaluated using CLVM.
 
-**In order for a list to be a valid program:
-1. The first item in the list must be a valid operator
-2. Every item after the first must be a valid program**
+**In order for a list to be a valid program:**
+**1. The first item in the list must be a valid operator**
+**2. Every item after the first must be a valid program**
 
 This is why literal values and non-program lists *must* be quoted using `q`.
 
-Note: There is a special case where the first item in a program is also a program, which we will cover in more detail later.
+*Note: There is a special case where the first item in a program is also a program, which we will cover in more detail later.*
 
 Programs can contain non-program lists, but they also must be quoted, for example:
 
