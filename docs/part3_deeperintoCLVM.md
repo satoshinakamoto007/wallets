@@ -62,9 +62,9 @@ $ brun '((c (q (+ (f (a)) (q 5))) (q (80 90 100))))' '(20 30 40)'
 
 ```
 Notice how the original solution `(20 30 40)` does not matter for the new evaluation environment.
-In this example we are quoting both the new puzzle and the new solution to prevent them from being prematurely evaluated.
+In this example we use `q` to quote both the new puzzle and the new solution to prevent them from being prematurely evaluated.
 
-One trick that we can pull is that we can define the new solution in terms of the outer solution.
+A neat trick that we can pull is that we can define the new solution in terms of the outer solution.
 In this next example we will add the first element of the old solution to our new solution.
 
 ```
@@ -78,7 +78,7 @@ However it's not just the new solution that we can affect using this, we can als
 ## Programs as Parameters
 
 The core CLVM does not allow user defined functions.
-It does, however, allow programs to be passed as parameters to variables which has similar results.
+It does, however, allow programs to be passed as parameters, which can be used for similar results.
 
 Here is a puzzle that executes the program contained in `(f (a))` with the solution `(12)`.
 
@@ -87,7 +87,7 @@ $ brun '((c (f (a)) (q (12))))' '((* (f (a)) (q 2)))'
 24
 ```
 
-Taking this further we can make the puzzle run a new evaluation that only uses parameters from its old solution
+Taking this further we can make the puzzle run a new evaluation that only uses parameters from its old solution:
 
 ```
 $ brun '((c (f (a)) (a)))' '((* (f (r (a)) (q 2))) 10)'
@@ -97,7 +97,7 @@ $ brun '((c (f (a)) (a)))' '((* (f (r (a)) (q 2))) 10)'
 We can use this technique to implement recursive programs.
 
 
-### Recursive Programs
+## Example: Factorial
 
 Consider the recursive function for a factorial, which is written in pseudo-code below:
 ```
@@ -106,7 +106,7 @@ Consider the recursive function for a factorial, which is written in pseudo-code
 Overlooking the fact that `factorial` is not an operator, this code contains one other problem. Can you spot it?
 
 It's not using lazy evaluation.
-If you don't force lazy evaluation, your recursive programs will try to evaluate infinite leaves and crash.
+**If you don't force lazy evaluation, your recursive programs will try to evaluate infinitely and crash.**
 
 Here is the fixed pseudo-code using the `((c (i (A) (q B) (q C)) (a)))` pattern:
 
@@ -115,6 +115,7 @@ Here is the fixed pseudo-code using the `((c (i (A) (q B) (q C)) (a)))` pattern:
 ```
 
 The next step is to replace `factorial`.
+
 While we can't define a new operator, we can encode the factorial function as a parameter and evaluate it as a puzzle.
 Let's create a solution where `(f (a))` is our factorial code, and `(f (r (a)))` is the number we are operating on.
 
@@ -133,7 +134,7 @@ We can now use this smaller fragment to construct our finished factorial source 
 ```
 (((c (i (= (f (r (a))) (q 1)) (q (q 1)) (q (* (f (r (a))) ((c (f (a)) (c (f (a)) (c (- (f (r (a))) (q 1)) (q ())))))))) (a))) *num to factorial*)
 ```
-and we can call it like this, using our above **Programs as Parameters** knowledge.
+and we can call it using the puzzle `((c (f (a)) (a)))`
 
 ```
 $ brun '((c (f (a)) (a)))' '(((c (i (= (f (r (a))) (q 1)) (q (q 1)) (q (* (f (r (a))) ((c (f (a)) (c (f (a)) (c (- (f (r (a))) (q 1)) (q ())))))))) (a))) 5)'
@@ -143,7 +144,38 @@ $ brun '((c (f (a)) (a)))' '(((c (i (= (f (r (a))) (q 1)) (q (q 1)) (q (* (f (r 
 720
 ```
 
-This is very complex, so let's pull back and look at some more context.
+It works!
 
+But there is one final step. We need to encode this as part of the puzzle.
+The above example assumes we have control of the solution.
+But in the context of ChiaLisp the puzzle is securing our money, and we cannot trust solution.
 
-# TODO: More recursive programs, more explanations
+## Recursion in Puzzles
+
+We need to create a new eval environment where the program code is passed in - then call that code again as a parameter.
+Here we need to
+
+```
+((c (q ((c (f (a)) (a)))) (c (q (*program*)) (c (f (a)) (q ())))))
+```
+
+Notice that we need to run eval `((c () ()))` twice.
+Once to create an environment where the source code exists and once again to run that source code.
+If you compare that pattern with the way we constructed the factorial above, you should see the similarity.
+
+So let's finish our factorial program from above using our new pattern.
+
+```
+((c (q ((c (f (a)) (a)))) (c (q ((c (i (= (f (r (a))) (q 1)) (q (q 1)) (q (* (f (r (a))) ((c (f (a)) (c (f (a)) (c (- (f (r (a))) (q 1)) (q ())))))))) (a)))) (c (f (a)) (q ())))))
+```
+And let's test it with clvm_tools
+```
+$ brun '((c (q ((c (f (a)) (a)))) (c (q ((c (i (= (f (r (a))) (q 1)) (q (q 1)) (q (* (f (r (a))) ((c (f (a)) (c (f (a)) (c (- (f (r (a))) (q 1)) (q ())))))))) (a)))) (c (f (a)) (q ())))))' '(5)'
+120
+```
+
+We now have a design pattern that allows us to create recursive programs that can be part of smart contracts, and more complicated ChiaLisp puzzles.
+
+For some more examples of ChiaLisp programs, you can check out our [list of examples](./example_programs.md)
+
+In [part 4](part4_highlevel.md) we will look at the higher level ChiaLisp language that can be compiled into CLVM.

@@ -1,4 +1,4 @@
-# Part 2: Coins, Spends and Wallets in Chia
+# Part 2: Coins, Spends and Wallets
 
 This guide directly continues on from [part 1](./part1_basics.md) so if you haven't read that, please do so before reading this.
 
@@ -123,7 +123,7 @@ If you want to invalidate a spend then you need to raise an exception using `x`.
 Otherwise you just have a valid spend that isn't returning any OpCodes, and that would destroy our coin and be bad!
 So we need to change the fail condition to be `(x (q "wrong password"))`.
 
-If we're doing this then we should also change the `(i A B C)` to `((c (i A (q B) (q C)) (a)))`.
+If we're doing this then we should also change the `(i A B C)` pattern to `((c (i A (q B) (q C)) (a)))`.
 The reason for this is explained in [part 3](./part3_deeperintoCLVM.md). For now don't worry about why.
 
 Here is our completed password protected coin:
@@ -227,32 +227,63 @@ If the wallet that 'owns' the coin then wanted to send that coin on again to som
 They could then spend the coin that they own, destroying it, and creating a new coin that is locked up with the new recipients pubkey in the process.
 The new recipient can then identify that it 'owns' the coin and can send it on as they wish later.
 
-### Coin Aggregation and Change Making
+### Change Making
 
 Change making is simple.
 If a wallet spends less than the total value of a coin, they can create another coin with the remaining portion of value, and lock it up with the standard puzzle for themselves again.
 You can split a coin up into as many new coins with fractions of the original value as you'd like.
-If you so desired you could turn a coin with value 100 into 100 coins with value 1, and so on.
 
-You can also do the inverse.
+You cannot create two coins of the same value, with the same puzzlehash, from the same parent as this will lead to an ID collision and the spend will be rejected.
+
+
+### Coin Aggregation and Spend Bundles
+
 You can aggregate a bunch of smaller coins together into one large coin.
+To do this, you can create a SpendBundle which groups together one or more spends so that they cannot be split.
+The SpendBundle also contains an Aggregated Signature object which is how the AGGSIG condition can check if a value has been signed.
+
+You can also further tighten the link between them by using ASSERT_COIN_CONSUMED.
+Suppose you have a 20 coin and an 80 coin.
+In the 20 coin you can make it return `(CREATE_COIN 0xnewpuzhash 100)` in the spend.
+Then in the 80 coin you can make it return `(ASSERT_COIN_CONSUMED 0x20coinID)`.
+The coupling inside the SpendBundle and the 80 value asserting its relationship to the 20 means that the value from the 80 coin is channeled into the creation of the new value 100 coin.
 
 ### Standard Transaction
 
 We can construct an even more powerful version of the signature locked coin to use as our standard transaction.
 
+```
 (c (c (q 50) (c (q 0xpubkey) (c (sha256 (wrap (f (a)))) (q ())))) ((c (f (a)) (f (r (a))))))
-
-The second part will return the results of executing the program inside the solution.
-
-The basic solution for this would look like:
-```
-((q ((0x51 0xmynewpuzzlehash 50) (0x51 0xanothernewpuzzlehash 50))))
 ```
 
+The first part is mostly the same, the puzzle always returns an AGGSIG check for the recipients public key.
+However it only checks for the first element of the solution.
+This is because instead of the solution for this puzzle being a list of OpConditions to be printed out, the solution is a program/solution pair.
+This means that the recipient can run their own program as part of the solution generation, or sign a puzzle and let somebody else provide the solution.
+
+The new program and solution inside the solution are evaluated and the result of that is added to the OpCode output.
+We will cover in more detail how this works in the [next part](part3_deeperintoCLVM.md) of this guide.
+
+A basic solution for this standard transaction might look like:
+
+```
+((q ((0x51 0xmynewpuzzlehash 50) (0x51 0xanothernewpuzzlehash 50))) (q ()))
+```
+
+Running that in the clvm_tools looks like this:
+
+```
+$ brun '(c (c (q 50) (c (q 0xfadeddab) (c (sha256 (wrap (f (a)))) (q ())))) ((c (f (a)) (f (r (a))))))' '((q ((0x51 0xdeadbeef 50) (0x51 0xf00dbabe 50))) (q ()))'
+
+((50 0xfadeddab 0x1f82d4d4c6a32459143cf8f8d27ca04be337a59f07238f1f2c31aaf0cd51d153) (81 0xdeadbeef 50) (81 0xf00dbabe 50))
+```
 
 ### Conclusions
 
-Coin ownership simply refers to the concept of creating a coin with a puzzle that means it can only be spent when signed by the private key of the coin's "owner".
+Coin ownership refers to the concept of creating a coin with a puzzle that means it can only be spent when signed by the private key of the coin's "owner".
 The goal of wallet software is to generate, interpret and manage these kinds of coins and puzzles.
-We will look into how this is done in more detail later.
+
+The next part of this guide will go further in depth in ChiaLisp, and cover how to write more complex puzzles.
+If any of the material in this part of the guide has got you confused, try returning to it after the next part.
+
+[Part 3: Deeper into CLVM](./part3_deeperintoCLVM.md)

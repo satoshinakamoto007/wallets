@@ -14,7 +14,9 @@ Unspents (UTXO set/unspent transaction output set) - This is the set of all unsp
 
 * **Primary Input** - When a coin is created the coin that was used as input in the transaction is designated as the primary input. This is used to create the coin ID. If more that one coin is used up as an input in a transaction then one of the coins is designated the primary input, and the others simply reinforce the transaction.
 
-* **Transaction** - A transaction in Chia contains a list of IDs of input coins which must be currently unspent, reveals of how their own primary inputs, puzzle hashes, and amounts, reveals of their puzzles, solutions to those puzzles, and an aggregated signature.
+* **Spend** - A spend is a reveal of a coin's ID, along with the full puzzle code, and a solution to be ran with the puzzle. The result of a spend is determined by the returned Op Constraints after running the puzzle with the solution.
+
+* **Spend Bundle** - A spend bundle is a collection of spends grouped together with an aggregated signature to be sent to the network. 
 
 * **ChiaLisp (Bitcoin Script)** - ChiaLisp is the Turing-complete functional language which the puzzles for spending coin are programmed in. For more information see our [CLVM Guide](./part1_basics.md)
 
