@@ -9,7 +9,7 @@ from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from chiasim.puzzles.p2_conditions import puzzle_for_conditions
 from .puzzle_utilities import pubkey_format
 from chiasim.validation.Conditions import (
-    conditions_by_opcode, make_create_coin_condition, make_assert_my_coin_id_condition, make_assert_min_time_condition
+    conditions_by_opcode, make_create_coin_condition, make_assert_my_coin_id_condition, make_assert_min_time_condition, make_assert_coin_consumed_condition
 )
 from chiasim.validation.consensus import (
     conditions_for_solution, hash_key_pairs_for_conditions_dict
@@ -21,11 +21,13 @@ def sha256(val):
     return hashlib.sha256(val).digest()
 
 
-def make_solution(primaries=[], min_time=0, me={}):
+def make_solution(primaries=[], min_time=0, me={}, consumed=[]):
     ret = []
     for primary in primaries:
         ret.append(make_create_coin_condition(
             primary['puzzlehash'], primary['amount']))
+    for coin in consumed:
+        ret.append(make_assert_coin_consumed_condition(coin))
     if min_time > 0:
         ret.append(make_assert_min_time_condition(min_time))
     if me:
@@ -165,7 +167,7 @@ class Wallet:
                 solution = make_solution(primaries=primaries)
                 output_id = sha256(coin.name() + newpuzzlehash)
             else:
-                solution = make_solution()
+                solution = make_solution(consumed=[coin.name()])
             spends.append((puzzle, CoinSolution(coin, solution)))
         self.temp_balance -= amount
         return spends

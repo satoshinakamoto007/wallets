@@ -139,6 +139,14 @@ def test_future_utxos():
     assert len(wallet_b.my_utxos) == 3
     assert wallet_b.my_utxos.copy().pop().amount == 5000
 
+    # test wallet spend multiple coins in one spendbundle
+    puzzlehash = wallet_a.get_new_puzzlehash()
+    spend_bundle = wallet_b.generate_signed_transaction(15000, puzzlehash)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert wallet_a.current_balance == 1000000000
+    assert wallet_b.current_balance == 0
+
 
 def test_spend_failure():
     remote = make_client_server()
