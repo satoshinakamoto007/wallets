@@ -278,7 +278,7 @@ $ brun '(c (c (q 50) (c (q 0xfadeddab) (c (sha256 (wrap (f (a)))) (q ())))) ((c 
 ((50 0xfadeddab 0x1f82d4d4c6a32459143cf8f8d27ca04be337a59f07238f1f2c31aaf0cd51d153) (81 0xdeadbeef 50) (81 0xf00dbabe 50))
 ```
 
-### Conclusions
+## Conclusions
 
 Coin ownership refers to the concept of creating a coin with a puzzle that means it can only be spent when signed by the private key of the coin's "owner".
 The goal of wallet software is to generate, interpret and manage these kinds of coins and puzzles.
