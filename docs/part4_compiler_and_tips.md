@@ -1,4 +1,4 @@
-# Part 4: Tips and Tricks
+# Part 4: The Compiler and Other Useful Information
 
 In this part of the guide we will cover the compiler, some more examples, and some high level tips for creating programs in ChiaLisp.
 
@@ -93,3 +93,30 @@ $ brun '((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q (+ (f (f (r (a))))
 
 $ brun '((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q (+ (f (f (r (a)))) ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (q ()))))))) (q (q ()))) (a)))) (c (f (a)) (q ())))))' '((100 100 100 100 100 100))'
 600
+```
+
+## Puzzle Generators and Off-Chain Communication
+
+We have previously looked at the format for a standard transaction for wallets in Chia, however it is important that the wallets support non-standard transactions and also agree what the 'standard' is anyway.
+
+ChiaLisp is very good at creating programs that create programs. We can use this to create Puzzle Generators for the wallets to communicate with.
+
+The puzzle for a standard transaction remains the same except for the public key, so the we can create a program that generates standard puzzles which takes the public key as part of it's solution.
+
+```
+$ brun '(c (q 5) (c (c (q 5) (c (q (q 50)) (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((c (sha256 (wrap (f (a)))) (q ())))))) (q ())))) (q (((c (f (a)) (f (r (a)))))))))' '("0xpubkey")'
+(c (c (q 50) (c (q "0xpubkey") (c (sha256 (wrap (f (a)))) (q ())))) ((c (f (a)) (f (r (a))))))
+```
+
+This means that wallets can define themselves in terms of what their puzzle generator is.
+We don't even need to store or communicate the whole generator!
+Because most wallets will be of only a few different types, and wallets will reuse their generator, we can optimise this further by having wallets communicate just the hash of their generator.
+We call this the Puzzle Generator ID.
+
+This means that the communication between two wallets during a spend will look like this.
+
+1. Wallet A requests Wallet B's Puzzle Generator ID and a solution which contains their pubkey.
+2. Wallet B returns the hash of its puzzle generator and their public key.
+3. Wallet A looks up the puzzle generator ID and uses the puzzle generator to generate the puzzlehash
+4. Wallet A spends one of their coins to generate a new coin which is locked up with the generated puzzlehash
+5. Wallet B detects this new coin and adds it to their list of 'owned' coins

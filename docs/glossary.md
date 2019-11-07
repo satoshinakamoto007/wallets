@@ -16,7 +16,7 @@ Unspents (UTXO set/unspent transaction output set) - This is the set of all unsp
 
 * **Spend** - A spend is a reveal of a coin's ID, along with the full puzzle code, and a solution to be ran with the puzzle. The result of a spend is determined by the returned Op Constraints after running the puzzle with the solution.
 
-* **Spend Bundle** - A spend bundle is a collection of spends grouped together with an aggregated signature to be sent to the network. 
+* **Spend Bundle** - A spend bundle is a collection of spends grouped together with an aggregated signature to be sent to the network.
 
 * **ChiaLisp (Bitcoin Script)** - ChiaLisp is the Turing-complete functional language which the puzzles for spending coin are programmed in. For more information see our [CLVM Guide](./part1_basics.md)
 
@@ -26,7 +26,7 @@ Unspents (UTXO set/unspent transaction output set) - This is the set of all unsp
 
 * **CLVM** - The CLVM is the ChiaLisp Virtual Machine which is the sandboxed environment that puzzles and solutions are run in. The CLVM only runs the compiled minimal version of ChiaLisp, though compilers will eventually exist to convert higher level ChiaLisp to the compiled minimal version.
 
-* **Aggregated Signature/AggSig** - Aggregated Signatures allow us to condense multiple signatures into a single aggregated signature, such that if we know a pubkey and value we can verify if it exists inside of the single aggregate. This uses BLS non-interactive aggregation.
+* **Aggregated Signature/AggSig** - Aggregated Signatures allow us to condense multiple signatures into a single aggregated signature, such that if we know a public key and value we can verify if it exists inside of the single aggregate. This uses BLS non-interactive aggregation.
 
 * **Prepend Signature** - Prepend signatures are used so that we can retain metadata about the structure of an aggregated signature. TODO: Expand
 
@@ -41,4 +41,12 @@ Unspents (UTXO set/unspent transaction output set) - This is the set of all unsp
 
 * **Wallet** - Software written to interact with transactions. Chia uses Hierarchical Deterministic Wallets (HD Wallets). This means that they can generate many different public keys that are all valid and verifiable as unique to that wallet. A wallet contains a coin if it possesses the information necessary to unlock that coin and create a transaction which spends it.
 
-* **Covenants** - The ability for a coin to impose rules about its future uses.
+* **Runnable Wallet** - The runnable wallets are a wrapper around the Wallet classes that allows it to be controlled through a command-line interface.
+
+* **Puzzle Generator** - A wallet will use a Puzzle Generator to define how it wants to receive transactions. Most wallets will want to generate the standard transaction, however by storing a ChiaLisp program that generate a puzzle, all a Sending Wallet needs to do is ask the Recipient Wallet what its Program Generator is and then run that to create the puzzle to lock the coin up with.
+
+* **Puzzle Generator ID** - This is the hash of a wallet's puzzle generator. A wallet can do a hash-lookup and see if it already knows the source code for that puzzle generator. If not, it will request the full source code and store that information in its lookup table.
+
+* **Authorized Payees** - Authorized Payees is a smart contract that means that Wallet A can give Wallet B some money, but Wallet B is only allowed to spend that money in ways that Wallet A has explicitly signed off on.
+
+* **Single String/QR String** - This is a colon-separated string that contains information that is important for the off-chain communication between wallets. This can be printed out either as a string that can be copy-pasted between wallets, or as a QR code that can be scanned to retrieve the same information.
