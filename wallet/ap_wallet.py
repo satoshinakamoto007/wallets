@@ -236,13 +236,13 @@ class APWallet(Wallet):
                 solution.coin.puzzle_hash, self.a_pubkey)
             secretkey = BLSPrivateKey(secretkey)
             signature = secretkey.sign(
-                ProgramHash(Program(solution.solution.code)))
+                ProgramHash(Program(solution.solution)))
             sigs.append(signature)
         for s in signatures_from_a:
             sigs.append(s)
         aggsig = BLSSignature.aggregate(sigs)
         solution_list = CoinSolutionList(
-            [CoinSolution(coin_solution.coin, clvm.to_sexp_f([puzzle.code, coin_solution.solution.code])) for
+            [CoinSolution(coin_solution.coin, clvm.to_sexp_f([puzzle, coin_solution.solution])) for
              (puzzle, coin_solution) in spends])
         spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle
@@ -282,7 +282,7 @@ class APWallet(Wallet):
                                                 consolidating_coin.puzzle_hash, consolidating_coin.amount, self.temp_coin.parent_coin_info, self.temp_coin.amount)
         signature = BLSPrivateKey(secretkey).sign(ProgramHash(solution))
         list_of_coinsolutions.append(CoinSolution(
-            self.temp_coin, clvm.to_sexp_f([puzzle.code, solution.code])))
+            self.temp_coin, clvm.to_sexp_f([puzzle, solution])))
 
         # Spend consolidating coin
         #puzzle = Program(clvm.eval_f(clvm.eval_f, binutils.assmeble(self.puzzle_generator), binutils.assemble("(0x" + self.AP_puzzlehash + ")")))
@@ -290,14 +290,14 @@ class APWallet(Wallet):
         solution = self.ac_make_aggregation_solution(consolidating_coin.name(
         ), self.temp_coin.parent_coin_info, self.temp_coin.amount)
         list_of_coinsolutions.append(CoinSolution(
-            consolidating_coin, clvm.to_sexp_f([puzzle.code, solution.code])))
+            consolidating_coin, clvm.to_sexp_f([puzzle, solution])))
         # Spend lock
         puzstring = "(r (c (q 0x" + hexlify(consolidating_coin.name()
                                             ).decode('ascii') + ") (q ())))"
         puzzle = Program(binutils.assemble(puzstring))
         solution = Program(binutils.assemble("()"))
         list_of_coinsolutions.append(CoinSolution(Coin(self.temp_coin, ProgramHash(
-            puzzle), 0), clvm.to_sexp_f([puzzle.code, solution.code])))
+            puzzle), 0), clvm.to_sexp_f([puzzle, solution])))
 
         self.temp_coin = Coin(self.temp_coin, self.temp_coin.puzzle_hash,
                               self.temp_coin.amount + consolidating_coin.amount)

@@ -960,11 +960,11 @@ async def update_ledger(wallet, ledger_api, most_recent_header, as_contacts, as_
         r = await ledger_api.get_all_blocks()
     else:
         r = await ledger_api.get_recent_blocks(most_recent_header=most_recent_header)
-    update_list = BodyList.from_bin(r)
+    update_list = BodyList.from_bytes(r)
     for body in update_list:
         additions = list(additions_for_body(body))
         removals = removals_for_body(body)
-        removals = [Coin.from_bin(await ledger_api.hash_preimage(hash=x)) for x in removals]
+        removals = [Coin.from_bytes(await ledger_api.hash_preimage(hash=x)) for x in removals]
         remove_swap_instances(wallet, as_contacts, as_swap_list, removals)
         wallet.notify(additions, removals, as_swap_list)
     print()
@@ -985,7 +985,7 @@ async def farm_block(wallet, ledger_api, as_contacts, as_swap_list):
     most_recent_header = r['header']
     additions = list(additions_for_body(body))
     removals = removals_for_body(body)
-    removals = [Coin.from_bin(await ledger_api.hash_preimage(hash=x)) for x in removals]
+    removals = [Coin.from_bytes(await ledger_api.hash_preimage(hash=x)) for x in removals]
     remove_swap_instances(wallet, as_contacts, as_swap_list, removals)
     wallet.notify(additions, removals, as_swap_list)
     del wallet.overlook[:]

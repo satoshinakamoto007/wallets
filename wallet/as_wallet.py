@@ -204,7 +204,7 @@ class ASWallet(Wallet):
                 solution = self.as_make_solution_sender()
             elif who == "receiver":
                 solution = self.as_make_solution_receiver(as_sec_to_try)
-            pair = solution.code.to([puzzle.code, solution.code])
+            pair = solution.to([puzzle, solution])
             signer = self.make_signer()
             spend_bundle = build_spend_bundle(coin, Program(pair), sign_f=signer)
             spends.append(spend_bundle)

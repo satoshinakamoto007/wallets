@@ -224,7 +224,7 @@ async def new_block(wallet, ledger_api):
     # breakpoint()
     additions = list(additions_for_body(body))
     removals = removals_for_body(body)
-    removals = [Coin.from_bin(await ledger_api.hash_preimage(hash=x)) for x in removals]
+    removals = [Coin.from_bytes(await ledger_api.hash_preimage(hash=x)) for x in removals]
     wallet.notify(additions, removals)
     return most_recent_header
 
@@ -234,12 +234,12 @@ async def update_ledger(wallet, ledger_api, most_recent_header):
         r = await ledger_api.get_all_blocks()
     else:
         r = await ledger_api.get_recent_blocks(most_recent_header=most_recent_header)
-    update_list = BodyList.from_bin(r)
+    update_list = BodyList.from_bytes(r)
     for body in update_list:
         additions = list(additions_for_body(body))
         print(additions)
         removals = removals_for_body(body)
-        removals = [Coin.from_bin(await ledger_api.hash_preimage(hash=x)) for x in removals]
+        removals = [Coin.from_bytes(await ledger_api.hash_preimage(hash=x)) for x in removals]
         wallet.notify(additions, removals)
 
 
