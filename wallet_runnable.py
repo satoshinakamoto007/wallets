@@ -150,7 +150,7 @@ def make_payment(wallet):
 async def select_smart_contract(wallet, ledger_api):
     print("Select a smart contract: ")
     print(selectable + " 1: Authorised Payees")
-    print(selectable + " 2: Add a new smart contract")
+    print(selectable + " 2: Other ChiaLisp Puzzle")
     choice = input()
     if choice == "1":
         if wallet.temp_balance <= 0:
@@ -210,8 +210,17 @@ async def select_smart_contract(wallet, ledger_api):
                   ":" + str(puzzlehash) + ":" + str(sig.sig))
             choice = input("Press 'c' to continue, or 'q' to quit to menu: ")
     elif choice == "2":
-        print("Feature TBC")
-        # TODO: take puzzle as input, then generate transaction normally
+        puzzle_source = input("Enter a ChiaLisp puzzle to lock a coin up with: ")
+        if puzzle_source == "q":
+            return
+        try:
+            puzhash = ProgramHash(Program(binutils.assemble(puzzle_source)))
+            amount = input("Enter amount for new coin: ")
+            amount = int(amount)
+            spend_bundle = wallet.generate_signed_transaction(amount, puzhash)
+            await ledger_api.push_tx(tx=spend_bundle)
+        except Exception as err:
+            print(err)
 
 
 async def new_block(wallet, ledger_api):

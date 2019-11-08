@@ -27,8 +27,6 @@ In the standard case, Alice will spend her incoming coin (_C2_) to her wallet us
 In the case that Alice fails to spend _C2_ to her wallet before _C2_'s timeout time has elapsed (i.e. when block height _(NOW+B)/2_ is reached), Bob may spend _C2_ back to his wallet. Because Bob does not have the secret _s_, he is unable to spend _C1_ to his wallet. After _C1_'s timeout time has elapsed (i.e. when block height _NOW+B_ is reached), Alice may spend _C1_ back to her wallet.
 
 
-
-
 ## Usage
 
 Run a version of `ledger-sim` in a background terminal window.

@@ -32,8 +32,11 @@ $ brew install zbar
 $ pip install pyzbar[scripts]
 ```
 
-## How to launch
-In a terminal window, launch an instance of ledger-sim wih:
+## Using the Command-line Interface
+
+### How to launch
+
+In a terminal window, launch an instance of ledger-sim with:
 ```
 $ ledger-sim
 ```
@@ -44,9 +47,22 @@ The to start a new wallet type:
 $ python3 wallet_runnable.py
 ```
 
-## About
+Feel free to run more than one instance of the wallet to test sending money between them.
 
-The wallets has can be divided into 'standard wallet' functionality and 'smart wallet' functionality, which includes support for smart transactions.
+### The Menu
+
+The options available in a standard wallet are:
+* Make Payment - This will take ask you for an amount to send, and a string of wallet information to generate the address.
+* Get Update - This will poll the ledger_sim network and find out if there have been any new transactions that concern your wallet.
+* Commit Block / Get Money - This will create a new block, therefore committing all the pending transactions and also giving your wallet 1000000000 Chia.
+* Print my details - This will output a string of information that another wallet can use to send money to you.
+* Set Wallet Name - This will change how your wallet self-identifies when communicating with other wallets.
+* Make QR code - This will create a QR code image in the installed folder.
+* Make Smart Contract - This will allow you to communicate with the Authorised Payees wallet, and send a coin that can only be spent in approved ways. For more information read the [documentation here](./docs/authorised_payees.md).
+* Payment to QR code - This acts the same way as 'Make Payment' but instead of a string storing the information, it reads in a QR image.
+* Quit - Closes the program.
+
+## Smart Wallets
 
 The Smart Transactions currently available are:
 * Atomic Swaps
@@ -54,8 +70,4 @@ The Smart Transactions currently available are:
 * Recovery Wallets
 * Multi-sig
 
-For more information about how these work, check out our other [docs](./docs).
-
-## Making Transactions
-
-Transactions in Chia happen when you specify a current unspent coin
+For more information about the smart wallets, check out our **[docs](./docs).**
