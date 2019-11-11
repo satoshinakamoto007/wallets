@@ -21,34 +21,33 @@ As always, make sure you have a version of ledger-sim running before trying to u
 One of the unique qualities of the Authorised Payees smart contract is that it is started by a standard wallet, and uses a special wallet to manage the Authorised Payee coin.
 You will need to run a standard wallet for setup, as well as an authorised payee wallet for receiving and managing the coin.
 
-### Setup
 
-Upon launching your authorised payees wallet, your public key will be shown, and you will be asked for some setup information.
+1. Launch your authorised payees wallet. Your public key will be shown, and you will be asked for some setup information.
 
-1. On your standard wallet, first make sure you have some money.
+2. On your standard wallet, first make sure you have some money.
 Then from the menu, select `7: Make Smart Contract`, followed by `1: Authorised Payees`.
 Paste the AP wallet's public key into the terminal and enter an amount of Chia to send to the AP wallet.
 You should then see the initialization string for the Authorised Payee wallet.
 
-2. Paste the initialization string into the AP wallet, and you'll be asked to add an authorised payee as an approved contact.
+3. Paste the initialization string into the AP wallet, and you'll be asked to add an authorised payee as an approved contact.
 You can cancel this and do it letter by pressing `q`. Otherwise, we're going to need a 3rd runnable wallet.
 
-3. Start a second standard wallet and from the main menu press `5: Set My Name`, and enter a new name for the wallet.
+4. Start a second standard wallet and from the main menu press `5: Set My Name`, and enter a new name for the wallet.
 Then from the menu press `4: Print My Details`.
 This should print out some information about the wallet, including a single string, which is used for receiving payments.
 
-4. Paste this single string into the first standard wallet, which we used to create the smart contract.
+5. Paste this single string into the first standard wallet, which we used to create the smart contract.
 It should return a `Single string for AP Wallet`. Copy this and paste it into the AP Wallet.
 
-* You can repeat steps 3 and 4 for multiple recipients, but for now we will move on.
+* You can repeat steps 4 and 5 for multiple recipients, but for now we will move on.
 
-5. In one of the wallets you must select `Commit Block` to commit the send to the AP Wallet to the chain.
+6. In one of the wallets you must select `Commit Block` to commit the send to the AP Wallet to the chain.
 If you didn't do this from the AP Wallet, then select `4: Get Update` from the AP Wallet's menu.
 
-6. From the main menu in the Authorised Payee wallet, select `2: Make Payment`.
+7. From the main menu in the Authorised Payee wallet, select `2: Make Payment`.
 You should see a list of authorised recipients. Enter the name of the recipient you would like to send to.
 Then enter the amount you would like to send.
 
-7. Select `Commit Block` from one of the wallets.
+8. Select `Commit Block` from one of the wallets.
 If you didn't do this from the recipient wallet you must then select `2: Get Update` from the recipient wallet's menu.
 Your new funds should now appear in the recipient wallet's UTXO set.
