@@ -2,6 +2,7 @@ import asyncio
 import qrcode
 from decorations import print_leaf, divider, prompt, start_list, close_list, selectable, informative
 from wallet.ap_wallet import APWallet
+from wallet.wallet import Wallet
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
 from chiasim.hashable import Coin
@@ -23,27 +24,33 @@ def add_contact(wallet, approved_puzhash_sig_pairs):
     choice = "c"
     print(divider)
     while choice == "c":
-        singlestring = input("Enter contact info string: ")
-        arr = singlestring.split(":")
-        name = arr[0]
-        puzzle = arr[1]
-        puzhash = puzzlehash_from_string(puzzle)
-        sig = arr[2]
-        signature = BLSSignature_from_string(sig)
-        while name in approved_puzhash_sig_pairs:
-            print(name + " is already a contact. Would you like to add a new contact or overwrite " + name + "?")
-            print(selectable + " 1: Overwrite")
-            print(selectable + " 2: Add new contact")
-            print(selectable + " q: Return to menu")
-            pick = input(prompt)
-            if pick == "q":
-                return
-            elif pick == "1":
-                continue
-            elif pick == "2":
-                name = input("Enter new name for contact: ")
-        approved_puzhash_sig_pairs[name] = (puzhash, signature)
-        choice = input("Press 'c' to add another, or 'q' to return to menu: ")
+        singlestring = input("Enter payee string from authoriser: ")
+        if singlestring == "q":
+            return
+        try:
+            arr = singlestring.split(":")
+            name = arr[0]
+            puzzle = arr[1]
+            puzhash = puzzlehash_from_string(puzzle)
+            sig = arr[2]
+            signature = BLSSignature_from_string(sig)
+            while name in approved_puzhash_sig_pairs:
+                print(name + " is already a contact. Would you like to add a new contact or overwrite " + name + "?")
+                print(selectable + " 1: Overwrite")
+                print(selectable + " 2: Add new contact")
+                print(selectable + " q: Return to menu")
+                pick = input(prompt)
+                if pick == "q":
+                    return
+                elif pick == "1":
+                    continue
+                elif pick == "2":
+                    name = input("Enter new name for contact: ")
+            approved_puzhash_sig_pairs[name] = (puzhash, signature)
+            choice = input("Press 'c' to add another, or 'q' to return to menu: ")
+        except Exception as err:
+            print(err)
+            return
 
 
 def view_contacts(approved_puzhash_sig_pairs):
@@ -120,8 +127,8 @@ def make_payment(wallet, approved_puzhash_sig_pairs):
 
 
 async def new_block(wallet, ledger_api):
-    coinbase_puzzle_hash = wallet.get_new_puzzlehash()
-    fees_puzzle_hash = wallet.get_new_puzzlehash()
+    coinbase_puzzle_hash = Wallet().get_new_puzzlehash()
+    fees_puzzle_hash = Wallet().get_new_puzzlehash()
     r = await ledger_api.next_block(coinbase_puzzle_hash=coinbase_puzzle_hash, fees_puzzle_hash=fees_puzzle_hash)
     body = r["body"]
     breakpoint()
@@ -201,7 +208,7 @@ async def main():
             complete = True
         except Exception:
             print("Invalid initialisation string. Please try again")
-
+    add_contact(wallet, approved_puzhash_sig_pairs)
     while selection != "q":
         print(divider)
         view_funds(wallet)
@@ -212,7 +219,7 @@ async def main():
         print(selectable + " 2: Make Payment")
         print(selectable + " 3: View Payees")
         print(selectable + " 4: Get Update")
-        print(selectable + " 5: *GOD MODE* Commit Block / Get Money")
+        print(selectable + " 5: *GOD MODE* Commit Block")
         print(selectable + " 6: Print my details for somebody else")
         print(selectable + " 7: Set my wallet detail")
         print(selectable + " 8: Make QR code")

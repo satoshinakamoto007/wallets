@@ -68,12 +68,6 @@ class Wallet:
     #    else:
     #        self.contacts[name] = [puzzlegenerator, last, extradata]
 
-    # def get_contact(self, name):
-    #    return self.contacts[name]
-
-    # def get_contact_names(self):
-    #    return [*self.contacts]  # returns list of names
-
     def set_name(self, name):
         self.name = name
 
@@ -126,22 +120,11 @@ class Wallet:
         puzzlehash = ProgramHash(puzzle)
         return puzzlehash
 
-    # def get_puzzle_for_contact(self, contact_name):
-    #    puzzle = self.contacts[contact_name][0](self.contacts[contact_name][1])
-    #    self.contacts[contact_name][1] += 1
-    #    return puzzle
-
-    # def get_puzzlehash_for_contact(self, contact_name):
-    #    return ProgramHash(self.get_puzzle_for_contact(contact_name))
-
     def sign(self, value, pubkey):
         privatekey = self.extended_secret_key.private_child(
             self.pubkey_num_lookup[pubkey]).get_private_key()
         blskey = BLSPrivateKey(privatekey)
         return blskey.sign(value)
-
-    # returns {'spends' spends, 'signature': None}
-    # spends is {(primary_input, puzzle): solution}
 
     def generate_unsigned_transaction(self, amount, newpuzzlehash):
         if self.temp_balance < amount:

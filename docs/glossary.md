@@ -14,7 +14,7 @@ Unspents (UTXO set/unspent transaction output set) - This is the set of all unsp
 
 * **Primary Input** - When a coin is created the coin that was used as input in the transaction is designated as the primary input. This is used to create the coin ID. If more that one coin is used up as an input in a transaction then one of the coins is designated the primary input, and the others simply reinforce the transaction.
 
-* **Spend** - A spend is a reveal of a coin's ID, along with the full puzzle code, and a solution to be ran with the puzzle. The result of a spend is determined by the returned Op Constraints after running the puzzle with the solution.
+* **Spend/CoinSolution** - A spend is a reveal of a coin's ID, along with the full puzzle code, and a solution to be ran with the puzzle. The result of a spend is determined by the returned Op Constraints after running the puzzle with the solution.
 
 * **Spend Bundle** - A spend bundle is a collection of spends grouped together with an aggregated signature to be sent to the network.
 

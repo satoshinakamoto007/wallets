@@ -18,7 +18,7 @@ from wallet.wallet import Wallet
 def view_funds(wallet):
     print("Current balance: " + str(wallet.temp_balance))
     print("UTXOs: ", end="")
-    print([x.amount for x in wallet.temp_utxos if x.amount > 0])
+    print([x.amount for x in wallet.temp_utxos])
 
 
 def add_contact(wallet):
@@ -179,13 +179,14 @@ async def select_smart_contract(wallet, ledger_api):
         sig = ap_wallet_a_functions.ap_sign_output_newpuzzlehash(
             APpuzzlehash, wallet, a_pubkey)
         print(informative + "Approved change signature is: " + str(sig.sig))
+        print()
         print(informative + "Single string: " + str(APpuzzlehash) + ":" +
               hexlify(a_pubkey).decode('ascii') + ":" + str(sig.sig))
 
         # Authorised puzzle printout for AP Wallet
-        print("Enter pubkeys of authorised recipients, press 'q' to finish")
+        print("Enter single string of authorised recipients, press 'q' to finish")
         while choice != "q":
-            singlestr = input("Enter recipient QR string: ")
+            singlestr = input("Enter recipient contact's single string: ")
             if singlestr == "q":
                 return
             name, type, pubkey = QR_string_parser(singlestr)
@@ -206,7 +207,7 @@ async def select_smart_contract(wallet, ledger_api):
             #print("Puzzle: " + str(puzzlehash))
             sig = wallet.sign(puzzlehash, a_pubkey)
             #print("Signature: " + str(sig.sig))
-            print(informative + "Single string for AP Wallet: " + name +
+            print(informative + "Initialization string for AP Wallet: " + name +
                   ":" + str(puzzlehash) + ":" + str(sig.sig))
             choice = input("Press 'c' to continue, or 'q' to quit to menu: ")
     elif choice == "2":
@@ -218,6 +219,12 @@ async def select_smart_contract(wallet, ledger_api):
             amount = input("Enter amount for new coin: ")
             amount = int(amount)
             spend_bundle = wallet.generate_signed_transaction(amount, puzhash)
+
+            #print("The coin ID for new coin will be: ")
+            #for coinsolution in spend_bundle.coin_solutions:
+            #    print(Coin(coinsolution.coin.name(), puzhash, amount).name())
+            #    continue
+
             await ledger_api.push_tx(tx=spend_bundle)
         except Exception as err:
             print(err)
