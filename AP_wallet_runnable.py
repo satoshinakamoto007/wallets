@@ -131,9 +131,7 @@ async def new_block(wallet, ledger_api):
     fees_puzzle_hash = Wallet().get_new_puzzlehash()
     r = await ledger_api.next_block(coinbase_puzzle_hash=coinbase_puzzle_hash, fees_puzzle_hash=fees_puzzle_hash)
     body = r["body"]
-    breakpoint()
     most_recent_header = r['header']
-    # breakpoint()
     additions = list(additions_for_body(body))
     removals = removals_for_body(body)
     removals = [Coin.from_bytes(await ledger_api.hash_preimage(hash=x)) for x in removals]
