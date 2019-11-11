@@ -40,7 +40,7 @@ This should print out some information about the wallet, including a single stri
 4. Paste this single string into the first standard wallet, which we used to create the smart contract.
 It should return a `Single string for AP Wallet`. Copy this and paste it into the AP Wallet.
 
-You can repeat steps 3 and 4 for multiple recipients, but for now we will move on.
+* You can repeat steps 3 and 4 for multiple recipients, but for now we will move on.
 
 5. In one of the wallets you must select `Commit Block` to commit the send to the AP Wallet to the chain.
 If you didn't do this from the AP Wallet, then select `4: Get Update` from the AP Wallet's menu.
