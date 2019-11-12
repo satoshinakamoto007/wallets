@@ -134,11 +134,11 @@ class RLWallet(Wallet):
                 solution.coin.puzzle_hash)
             secretkey = BLSPrivateKey(secretkey)
             signature = secretkey.sign(
-                ProgramHash(Program(solution.solution.code)))
+                ProgramHash(Program(solution.solution)))
             sigs.append(signature)
         aggsig = BLSSignature.aggregate(sigs)
         solution_list = CoinSolutionList(
-            [CoinSolution(coin_solution.coin, clvm.to_sexp_f([puzzle.code, coin_solution.solution.code])) for
+            [CoinSolution(coin_solution.coin, clvm.to_sexp_f([puzzle, coin_solution.solution])) for
              (puzzle, coin_solution) in spends])
         spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle
