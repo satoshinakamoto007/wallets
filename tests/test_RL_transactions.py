@@ -43,9 +43,8 @@ def commit_and_notify(remote, wallets, reward_recipient):
     r = run(remote.next_block(coinbase_puzzle_hash=coinbase_puzzle_hash,
                               fees_puzzle_hash=fees_puzzle_hash))
     body = r.get("body")
-    print ("\n ", body.coinbase_coin.parent_coin_info , " \n")
+
     additions = list(additions_for_body(body))
-    #breakpoint()
     removals = removals_for_body(body)
     removals = [Coin.from_bytes(run(remote.hash_preimage(hash=x)))
                 for x in removals]

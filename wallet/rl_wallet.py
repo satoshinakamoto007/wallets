@@ -34,7 +34,6 @@ class RLWallet(Wallet):
 
     def notify(self, additions, deletions):
         for coin in additions:
-            print(coin)
             if self.can_generate_puzzle_hash(coin.puzzle_hash):
                 self.current_balance += coin.amount
                 self.my_utxos.add(coin)
