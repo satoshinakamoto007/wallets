@@ -21,7 +21,7 @@ from chiasim.validation.consensus import (
 from .puzzle_utilities import pubkey_format, puzzlehash_from_string, BLSSignature_from_string
 from blspy import Signature
 from .keys import build_spend_bundle, sign_f_for_keychain
-
+import math
 
 # ASWallet is subclass of Wallet
 class RLWallet(Wallet):
@@ -77,15 +77,15 @@ class RLWallet(Wallet):
         AGGSIG_ENTIRE_SOLUTION = f"(c (q 0x{opcode_aggsig}) (c (q 0x{hex_pk}) (c (sha256 (wrap (a))) (q ()))))"
         CREATE_NEW_COIN = f"(c (q 0x{opcode_create}) (c (f (r (r (r (a))))) (c (f (r (r (r (r (a)))))) (q ()))))"
 
-        WHOLE_PUZZLE = f"(c {CREATE_CHANGE} (c {AGGSIG_ENTIRE_SOLUTION} (c {TEMPLATE_MY_ID} (c {CREATE_NEW_COIN} (q ())))))"
-        WHOLE_PUZZLE1 = f"(c {TEMPLATE_BLOCK_AGE} (c {CREATE_CHANGE} (c {AGGSIG_ENTIRE_SOLUTION} (c {TEMPLATE_MY_ID} (c {CREATE_NEW_COIN} (q ()))))))"
-        print("\nWHOLE_PUZZLE with block age: ", WHOLE_PUZZLE1)
-        return Program(binutils.assemble(WHOLE_PUZZLE1))
+        #WHOLE_PUZZLE = f"(c {CREATE_CHANGE} (c {AGGSIG_ENTIRE_SOLUTION} (c {TEMPLATE_MY_ID} (c {CREATE_NEW_COIN} (q ())))))"
+        WHOLE_PUZZLE = f"(c {TEMPLATE_BLOCK_AGE} (c {CREATE_CHANGE} (c {AGGSIG_ENTIRE_SOLUTION} (c {TEMPLATE_MY_ID} (c {CREATE_NEW_COIN} (q ()))))))"
+        return Program(binutils.assemble(WHOLE_PUZZLE))
 
     # Solution to this puzzle needs (self_coin_id, self_puzzlehash, self_amount, (new_puzzle_hash, amount))
-    # min block time = (new_amount * self.interval) / self.rate
-    def solution_for_rl(self, my_coin_id, my_puzzlehash, my_amount, new_puzzlehash, new_amount, min_block_height):
-        solution = f"(0x{my_coin_id} 0x{my_puzzlehash} {my_amount} 0x{new_puzzlehash} {new_amount} {min_block_height})"
+    # min block time = (new_amount * self.interval) / self.limit
+    def solution_for_rl(self, my_coin_id, my_puzzlehash, my_amount, new_puzzlehash, new_amount):
+        min_block_count = math.ceil((new_amount  * self.interval) / self.limit) + 1
+        solution = f"(0x{my_coin_id} 0x{my_puzzlehash} {my_amount} 0x{new_puzzlehash} {new_amount} {min_block_count})"
         print("\nSolution: ", solution)
         return Program(binutils.assemble(solution))
 
@@ -106,7 +106,7 @@ class RLWallet(Wallet):
 
         pubkey, secretkey = self.get_keys(puzzle_hash)
         puzzle = self.rl_puzzle_for_pk(pubkey.serialize(), self.limit, self.interval)
-        solution = self.solution_for_rl(coin.parent_coin_info, puzzle_hash, coin.amount, to_puzzlehash, amount, 500)
+        solution = self.solution_for_rl(coin.parent_coin_info, puzzle_hash, coin.amount, to_puzzlehash, amount)
 
         spends.append((puzzle, CoinSolution(coin, solution)))
         return spends
