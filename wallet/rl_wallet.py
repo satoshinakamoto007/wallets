@@ -71,7 +71,7 @@ class RLWallet(Wallet):
         # ASSERT_COIN_BLOCK_AGE_EXCEEDS min_block_age
         #TODO add TEMPLATE_BLOCK_AGE to WHOLE_PUZZLE once ASSERT_COIN_BLOCK_AGE_EXCEEDS becomes available
 
-        TEMPLATE_BLOCK_AGE = f"(i (= (* (f (r (r (r (r (r (a))))))) (q {interval_time})) (* (f (r (r (r (r (a)))))) (q {rate_amount}))) (c (q 0x{opcode_coin_block_age}) (c (f (r (r (r (r (r (a))))))) (q ()))) (q (x (q \"wrong min block time\"))))"
+        TEMPLATE_BLOCK_AGE = f"(i (> (* (f (r (r (r (r (r (a))))))) (q {interval_time})) (* (f (r (r (r (r (a)))))) (q {rate_amount}))) (c (q 0x{opcode_coin_block_age}) (c (f (r (r (r (r (r (a))))))) (q ()))) (q (x (q \"wrong min block time\"))))"
         TEMPLATE_MY_ID = f"(c (q 0x{opcode_myid}) (c (sha256 (f (a)) (f (r (a))) (uint64 (f (r (r (a)))))) (q ())))"
         CREATE_CHANGE = f"(c (q 0x{opcode_create}) (c (f (r (a))) (c (- (f (r (r (a)))) (f (r (r (r (r (a))))))) (q ()))))"
         AGGSIG_ENTIRE_SOLUTION = f"(c (q 0x{opcode_aggsig}) (c (q 0x{hex_pk}) (c (sha256 (wrap (a))) (q ()))))"
