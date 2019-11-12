@@ -58,7 +58,7 @@ class RLWallet(Wallet):
         hex_pk = hexbytes(pubkey)
         opcode_aggsig = hexlify(ConditionOpcode.AGG_SIG).decode('ascii')
         #opcode_coin_block_age = hexlify(ConditionOpcode.ASSERT_BLOCK_AGE).decode('ascii')
-        opcode_coin_block_age = hexlify(bytes([56])).decode('ascii')
+        opcode_coin_block_age = hexlify(ConditionOpcode.ASSERT_BLOCK_INDEX_EXCEEDS).decode('ascii')
         opcode_create = hexlify(ConditionOpcode.CREATE_COIN).decode('ascii')
         opcode_myid = hexlify(ConditionOpcode.ASSERT_MY_COIN_ID).decode('ascii')
 
@@ -78,20 +78,23 @@ class RLWallet(Wallet):
         CREATE_NEW_COIN = f"(c (q 0x{opcode_create}) (c (f (r (r (r (a))))) (c (f (r (r (r (r (a)))))) (q ()))))"
 
         WHOLE_PUZZLE = f"(c {CREATE_CHANGE} (c {AGGSIG_ENTIRE_SOLUTION} (c {TEMPLATE_MY_ID} (c {CREATE_NEW_COIN} (q ())))))"
-
-        return Program(binutils.assemble(WHOLE_PUZZLE))
+        WHOLE_PUZZLE1 = f"(c {TEMPLATE_BLOCK_AGE} (c {CREATE_CHANGE} (c {AGGSIG_ENTIRE_SOLUTION} (c {TEMPLATE_MY_ID} (c {CREATE_NEW_COIN} (q ()))))))"
+        print("\nWHOLE_PUZZLE with block age: ", WHOLE_PUZZLE1)
+        return Program(binutils.assemble(WHOLE_PUZZLE1))
 
     # Solution to this puzzle needs (self_coin_id, self_puzzlehash, self_amount, (new_puzzle_hash, amount))
     # min block time = (new_amount * self.interval) / self.rate
     def solution_for_rl(self, my_coin_id, my_puzzlehash, my_amount, new_puzzlehash, new_amount, min_block_height):
         solution = f"(0x{my_coin_id} 0x{my_puzzlehash} {my_amount} 0x{new_puzzlehash} {new_amount} {min_block_height})"
+        print("\nSolution: ", solution)
         return Program(binutils.assemble(solution))
 
     def get_keys(self, hash):
+        print("\nHASH: ", hash)
         for child in reversed(range(self.next_address)):
             pubkey = self.extended_secret_key.public_child(
                 child).get_public_key()
-            if hash == ProgramHash(self.rl_puzzle_for_pk(pubkey.serialize())):
+            if hash == ProgramHash(self.rl_puzzle_for_pk(pubkey.serialize(), self.limit, self.interval)):
                 return pubkey, self.extended_secret_key.private_child(child).get_private_key()
 
     # This is for sending a received RL coin, not creating a new RL coin
@@ -103,7 +106,7 @@ class RLWallet(Wallet):
 
         pubkey, secretkey = self.get_keys(puzzle_hash)
         puzzle = self.rl_puzzle_for_pk(pubkey.serialize(), self.limit, self.interval)
-        solution = self.solution_for_rl(coin.parent_coin_info, puzzle_hash, coin.amount, to_puzzlehash, amount, 100)
+        solution = self.solution_for_rl(coin.parent_coin_info, puzzle_hash, coin.amount, to_puzzlehash, amount, 500)
 
         spends.append((puzzle, CoinSolution(coin, solution)))
         return spends
@@ -114,8 +117,7 @@ class RLWallet(Wallet):
             return None
 
         change = self.rl_coin.amount - amount
-        transaction = self.rl_generate_unsigned_transaction(
-            to_puzzle_hash, amount)
+        transaction = self.rl_generate_unsigned_transaction(to_puzzle_hash, amount)
         self.temp_coin = Coin(self.rl_coin, self.rl_coin.puzzle_hash,
                               change)
         return self.rl_sign_transaction(transaction)
