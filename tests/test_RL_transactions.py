@@ -47,7 +47,7 @@ def commit_and_notify(remote, wallets, reward_recipient):
     additions = list(additions_for_body(body))
     #breakpoint()
     removals = removals_for_body(body)
-    removals = [Coin.from_bin(run(remote.hash_preimage(hash=x)))
+    removals = [Coin.from_bytes(run(remote.hash_preimage(hash=x)))
                 for x in removals]
 
     for wallet in wallets:
