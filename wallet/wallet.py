@@ -15,6 +15,9 @@ from chiasim.validation.consensus import (
     conditions_for_solution, hash_key_pairs_for_conditions_dict
 )
 from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
+from binascii import hexlify
+from chiasim.validation.Conditions import ConditionOpcode
+
 
 
 def sha256(val):
@@ -39,7 +42,7 @@ class Wallet:
     seed = b'seed'
     next_address = 0
     pubkey_num_lookup = {}
-    puzzle_generator = "(c (q 5) (c (c (q 5) (c (q (q 50)) (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((c (sha256 (wrap (f (a)))) (q ())))))) (q ())))) (q (((c (f (a)) (f (r (a)))))))))"
+    puzzle_generator = f"(c (q 5) (c (c (q 5) (c (q (q 0x{hexlify(ConditionOpcode.AGG_SIG).decode('ascii')})) (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((c (sha256 (wrap (f (a)))) (q ())))))) (q ())))) (q (((c (f (a)) (f (r (a)))))))))"
     puzzle_generator_id = str(ProgramHash(
         Program(binutils.assemble(puzzle_generator))))
 
@@ -105,7 +108,7 @@ class Wallet:
         return used_utxos
 
     def puzzle_for_pk(self, pubkey):
-        args = "(" + pubkey_format(pubkey) + ")"
+        args = f"({pubkey_format(pubkey)})"
         puzzle = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
             self.puzzle_generator), binutils.assemble(args)))
         return puzzle

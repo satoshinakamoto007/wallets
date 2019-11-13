@@ -16,14 +16,13 @@ from wallet.wallet import Wallet
 
 
 def view_funds(wallet):
-    print("Current balance: " + str(wallet.temp_balance))
-    print("UTXOs: ", end="")
-    print([x.amount for x in wallet.temp_utxos])
+    print(f"Current balance: {str(wallet.temp_balance)}")
+    print(f"UTXOs: {[x.amount for x in wallet.temp_utxos]})"
 
 
 def add_contact(wallet):
-    name = input(prompt + "What is the new contact's name? ")
-    puzzlegeneratorstring = input(prompt + "What is their ChiaLisp puzzlegenerator: ")
+    name = input(f"{prompt} What is the new contact's name? ")
+    puzzlegeneratorstring = input(f"{prompt} What is their ChiaLisp puzzlegenerator: ")
     puzzlegenerator = binutils.assemble(puzzlegeneratorstring)
     wallet.add_contact(name, puzzlegenerator, 0, None)
 
@@ -36,16 +35,12 @@ def view_contacts(wallet):
 
 
 def print_my_details(wallet):
-    print(informative + " Name: " + wallet.name)
-    print(informative + " Puzzle Generator: ")
-    print(informative + " " + wallet.puzzle_generator)
-    pubkey = "%s" % hexlify(
-        wallet.get_next_public_key().serialize()).decode('ascii')
-    print(informative + " New pubkey: " + pubkey)
-    print(informative + " Generator hash identifier:")
-    print(informative + " " + wallet.puzzle_generator_id)
-    print(informative + " Single string: " + wallet.name + ":" +
-          wallet.puzzle_generator_id + ":" + pubkey)
+    print(f"{informative} Name: {wallet.name}")
+    print(f"{informative} Puzzle Generator: {wallet.puzzle_generator}")
+    pubkey = f"{hexlify(wallet.get_next_public_key().serialize()).decode('ascii')}"
+    print(f"{informative} New pubkey: {pubkey})
+    print(f"{informative} Generator hash identifier: {wallet.puzzle_generator_id}")
+    print(f"{informative} Single string: {wallet.name}:{wallet.puzzle_generator_id}:{pubkey})
 
 
 def make_QR(wallet):
@@ -57,15 +52,15 @@ def make_QR(wallet):
         box_size=10,
         border=4,
     )
-    qr.add_data(wallet.name + ":" + wallet.puzzle_generator_id + ":" + pubkey)
+    qr.add_data(f"{wallet.name}:{wallet.puzzle_generator_id}:{pubkey}")
     qr.make(fit=True)
     img = qr.make_image()
     fn = input("Input file name: ")
     if fn.endswith(".jpg"):
         img.save(fn)
     else:
-        img.save(fn + ".jpg")
-    print("QR code created in '" + fn + ".jpg'")
+        img.save(f"{fn}.jpg")
+    print(f"QR code created in '{fn}.jpg'")
 
 
 def read_qr(wallet):
@@ -80,7 +75,7 @@ def read_qr(wallet):
     if type not in wallet.generator_lookups:
         print("Unknown generator - please input the source.")
         source = input("Source: ")
-        if str(ProgramHash(Program(binutils.assemble(source)))) != "0x" + type:
+        if str(ProgramHash(Program(binutils.assemble(source)))) != f"0x{type}":
             print("source not equal to ID")
             breakpoint()
             return
@@ -93,7 +88,7 @@ def read_qr(wallet):
         if not amount.isdigit():
             amount = -1
         amount = int(amount)
-    args = binutils.assemble("(0x" + pubkey + ")")
+    args = binutils.assemble(f"(0x{pubkey})")
     program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
         wallet.generator_lookups[type]), args))
     puzzlehash = ProgramHash(program)
@@ -138,7 +133,7 @@ def make_payment(wallet):
         if not amount.isdigit():
             amount = -1
         amount = int(amount)
-    args = binutils.assemble("(0x" + pubkey + ")")
+    args = binutils.assemble(f"(0x{pubkey})")
     program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
         wallet.generator_lookups[type]), args))
     puzzlehash = ProgramHash(program)
@@ -149,8 +144,8 @@ def make_payment(wallet):
 
 async def select_smart_contract(wallet, ledger_api):
     print("Select a smart contract: ")
-    print(selectable + " 1: Authorised Payees")
-    print(selectable + " 2: Other ChiaLisp Puzzle")
+    print(f"{selectable} 1: Authorised Payees")
+    print(f"{selectable} 2: Other ChiaLisp Puzzle")
     choice = input()
     if choice == "1":
         if wallet.temp_balance <= 0:
@@ -174,14 +169,13 @@ async def select_smart_contract(wallet, ledger_api):
         spend_bundle = wallet.generate_signed_transaction(amount, APpuzzlehash)
         await ledger_api.push_tx(tx=spend_bundle)
         print()
-        print(informative + "AP Puzzlehash is: " + str(APpuzzlehash))
-        print(informative + "Pubkey used is: " + hexlify(a_pubkey).decode('ascii'))
-        sig = ap_wallet_a_functions.ap_sign_output_newpuzzlehash(
-            APpuzzlehash, wallet, a_pubkey)
-        print(informative + "Approved change signature is: " + str(sig.sig))
+        print(f"{informative} AP Puzzlehash is: {str(APpuzzlehash)}")
+        print(f"{informative} Pubkey used is: {hexlify(a_pubkey).decode('ascii')}")
+        sig = str(ap_wallet_a_functions.ap_sign_output_newpuzzlehash(
+            APpuzzlehash, wallet, a_pubkey).sig)
+        print(f"{informative} Approved change signature is: {sig}")
         print()
-        print(informative + "Single string: " + str(APpuzzlehash) + ":" +
-              hexlify(a_pubkey).decode('ascii') + ":" + str(sig.sig))
+        print(f"{informative} Single string: {str(APpuzzlehash)}:{hexlify(a_pubkey).decode('ascii')}:{sig}")
 
         # Authorised puzzle printout for AP Wallet
         print("Enter single string of authorised recipients, press 'q' to finish")
@@ -207,8 +201,7 @@ async def select_smart_contract(wallet, ledger_api):
             #print("Puzzle: " + str(puzzlehash))
             sig = wallet.sign(puzzlehash, a_pubkey)
             #print("Signature: " + str(sig.sig))
-            print(informative + "Initialization string for AP Wallet: " + name +
-                  ":" + str(puzzlehash) + ":" + str(sig.sig))
+            print(f"{informative} Initialization string for AP Wallet: {name}:{str(puzzlehash)}:{str(sig.sig)}")
             choice = input("Press 'c' to continue, or 'q' to quit to menu: ")
     elif choice == "2":
         puzzle_source = input("Enter a ChiaLisp puzzle to lock a coin up with: ")
@@ -272,15 +265,15 @@ async def main():
         print(divider)
         print(start_list)
         print("Select a function:")
-        print(selectable + " 1: Make Payment")
-        print(selectable + " 2: Get Update")
-        print(selectable + " 3: *GOD MODE* Commit Block / Get Money")
-        print(selectable + " 4: Print my details for somebody else")
-        print(selectable + " 5: Set my wallet name")
-        print(selectable + " 6: Make QR code")
-        print(selectable + " 7: Make Smart Contract")
-        print(selectable + " 8: Payment to QR code")
-        print(selectable + " q: Quit")
+        print(f"{selectable} 1: Make Payment")
+        print(f"{selectable} 2: Get Update")
+        print(f"{selectable} 3: *GOD MODE* Commit Block / Get Money")
+        print(f"{selectable} 4: Print my details for somebody else")
+        print(f"{selectable} 5: Set my wallet name")
+        print(f"{selectable} 6: Make QR code")
+        print(f"{selectable} 7: Make Smart Contract")
+        print(f"{selectable} 8: Payment to QR code")
+        print(f"{selectable} q: Quit")
         print(close_list)
         selection = input(prompt)
         if selection == "1":

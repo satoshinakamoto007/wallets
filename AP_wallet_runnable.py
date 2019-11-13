@@ -13,7 +13,7 @@ from binascii import hexlify
 
 def view_funds(wallet):
     if wallet.temp_coin is not None:
-        print("Current balance: " + str(wallet.temp_coin.amount))
+        print(f"Current balance: {str(wallet.temp_coin.amount)}")
         return
     else:
         print("Current balance: 0")
@@ -35,10 +35,10 @@ def add_contact(wallet, approved_puzhash_sig_pairs):
             sig = arr[2]
             signature = BLSSignature_from_string(sig)
             while name in approved_puzhash_sig_pairs:
-                print(name + " is already a contact. Would you like to add a new contact or overwrite " + name + "?")
-                print(selectable + " 1: Overwrite")
-                print(selectable + " 2: Add new contact")
-                print(selectable + " q: Return to menu")
+                print(f"{name} is already a contact. Would you like to add a new contact or overwrite {name}?")
+                print(f"{selectable} 1: Overwrite")
+                print(f"{selectable} 2: Add new contact")
+                print(f"{selectable} q: Return to menu")
                 pick = input(prompt)
                 if pick == "q":
                     return
@@ -55,23 +55,20 @@ def add_contact(wallet, approved_puzhash_sig_pairs):
 
 def view_contacts(approved_puzhash_sig_pairs):
     for name in approved_puzhash_sig_pairs:
-        print(" - " + name)
+        print(f" - {name}")
 
 
 def print_my_details(wallet):
     print(divider)
-    print(informative + "Name: " + wallet.name)
+    print(f"{informative} Name: {wallet.name}")
     if wallet.puzzle_generator_id == "1ea50e9399e360c85c240e9d17c5d11ccb8fbf37b0ee6e551282ddd5b5613206":
         print("Awaiting initial coin...")
     else:
-        print(informative + "Puzzle Generator: ")
-        print(wallet.puzzle_generator)
-        print(informative +  "Generator hash identifier:")
-        print(wallet.puzzle_generator_id)
+        print(f"{informative} Puzzle Generator: {wallet.puzzle_generator}")
+        print(f"{informative} Generator hash identifier: {wallet.puzzle_generator_id}")
     pubkey = hexlify(wallet.get_next_public_key().serialize()).decode('ascii')
-    print(informative + "New pubkey: " + pubkey)
-    print(informative + "Single string: " + wallet.name + ":" +
-          wallet.puzzle_generator_id + ":" + pubkey)
+    print(f"{informative} New pubkey: {pubkey}")
+    print(f"{informative} Single string: {wallet.name}:{wallet.puzzle_generator_id}:{pubkey}")
 
 
 def make_QR(wallet):
@@ -83,15 +80,15 @@ def make_QR(wallet):
         box_size=10,
         border=4,
     )
-    qr.add_data(wallet.name + ":" + wallet.puzzle_generator_id + ":" + pubkey)
+    qr.add_data(f"{wallet.name}:{wallet.puzzle_generator_id}:{pubkey}")
     qr.make(fit=True)
     img = qr.make_image()
     fn = input("Input file name: ")
     if fn.endswith(".jpg"):
         img.save(fn)
     else:
-        img.save(fn + ".jpg")
-    print("QR code created in '" + fn + ".jpg'")
+        img.save(f"{fn}.jpg")
+    print(f"QR code created in '{fn}.jpg'")
 
 
 def set_name(wallet):
@@ -107,7 +104,7 @@ def make_payment(wallet, approved_puzhash_sig_pairs):
     print(start_list)
     print("Select a contact from approved list: ")
     for name in approved_puzhash_sig_pairs:
-        print(" - " + name)
+        print(f" - {name}")
     print(close_list)
     choice = input("Name of payee: ")
     if choice not in approved_puzhash_sig_pairs:
@@ -160,14 +157,14 @@ async def update_ledger(wallet, ledger_api, most_recent_header):
 
 def ap_settings(wallet, approved_puzhash_sig_pairs):
     print(divider)
-    print(selectable + " 1: Add Authorised Payee")
-    print(selectable + " 2: Change initialisation settings")
+    print(f"{selectable} 1: Add Authorised Payee")
+    print(f"{selectable} 2: Change initialisation settings")
     print("WARNING: This is only for if you messed it up the first time.")
     print("Press 'c' to continue or any other key to return")
     choice = input(prompt)
     if choice != "c":
         return
-    print("Your pubkey is: " + pubkey_format(wallet.get_next_public_key()))
+    print(f"Your pubkey is: {pubkey_format(wallet.get_next_public_key())}")
     print("Please fill in some initialisation information (this can be changed later)")
     print("Please enter initialisation string: ")
     init_string = input(prompt)
@@ -189,8 +186,7 @@ async def main():
     print_leaf()
     print(divider)
     print("Welcome to AP Wallet")
-    print("Your pubkey is: " +
-          hexlify(wallet.get_next_public_key().serialize()).decode('ascii'))
+    print(f"Your pubkey is: {hexlify(wallet.get_next_public_key().serialize()).decode('ascii')}")
     print("Please fill in some initialisation information (this can be changed later)")
     complete = False
     while complete is False:
@@ -213,16 +209,16 @@ async def main():
         print(divider)
         print(start_list)
         print("Select a function:")
-        print(selectable + " 1: Add Payee")
-        print(selectable + " 2: Make Payment")
-        print(selectable + " 3: View Payees")
-        print(selectable + " 4: Get Update")
-        print(selectable + " 5: *GOD MODE* Commit Block")
-        print(selectable + " 6: Print my details for somebody else")
-        print(selectable + " 7: Set my wallet detail")
-        print(selectable + " 8: Make QR code")
-        print(selectable + " 9: AP Settings")
-        print(selectable + " q: Quit")
+        print(f"{selectable} 1: Add Payee")
+        print(f"{selectable} 2: Make Payment")
+        print(f"{selectable} 3: View Payees")
+        print(f"{selectable} 4: Get Update")
+        print(f"{selectable} 5: *GOD MODE* Commit Block")
+        print(f"{selectable} 6: Print my details for somebody else")
+        print(f"{selectable} 7: Set my wallet detail")
+        print(f"{selectable} 8: Make QR code")
+        print(f"{selectable} 9: AP Settings")
+        print(f"{selectable} q: Quit")
         print(close_list)
         selection = input(prompt)
         if selection == "1":
