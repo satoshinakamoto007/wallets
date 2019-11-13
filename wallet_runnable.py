@@ -17,30 +17,30 @@ from wallet.wallet import Wallet
 
 def view_funds(wallet):
     print(f"Current balance: {str(wallet.temp_balance)}")
-    print(f"UTXOs: {[x.amount for x in wallet.temp_utxos]})"
+    print(f"UTXOs: {[x.amount for x in wallet.temp_utxos]}")
 
 
-def add_contact(wallet):
-    name = input(f"{prompt} What is the new contact's name? ")
-    puzzlegeneratorstring = input(f"{prompt} What is their ChiaLisp puzzlegenerator: ")
-    puzzlegenerator = binutils.assemble(puzzlegeneratorstring)
-    wallet.add_contact(name, puzzlegenerator, 0, None)
+# def add_contact(wallet):
+#     name = input(f"{prompt} What is the new contact's name? ")
+#     puzzlegeneratorstring = input(f"{prompt} What is their ChiaLisp puzzlegenerator: ")
+#     puzzlegenerator = binutils.assemble(puzzlegeneratorstring)
+#     wallet.add_contact(name, puzzlegenerator, 0, None)
 
 
-def view_contacts(wallet):
-    print(start_list)
-    for name, details in wallet.contacts:
-        print(name)
-    print(close_list)
+# def view_contacts(wallet):
+#     print(start_list)
+#     for name, details in wallet.contacts:
+#         print(name)
+#     print(close_list)
 
 
 def print_my_details(wallet):
     print(f"{informative} Name: {wallet.name}")
     print(f"{informative} Puzzle Generator: {wallet.puzzle_generator}")
     pubkey = f"{hexlify(wallet.get_next_public_key().serialize()).decode('ascii')}"
-    print(f"{informative} New pubkey: {pubkey})
+    print(f"{informative} New pubkey: {pubkey}")
     print(f"{informative} Generator hash identifier: {wallet.puzzle_generator_id}")
-    print(f"{informative} Single string: {wallet.name}:{wallet.puzzle_generator_id}:{pubkey})
+    print(f"{informative} Single string: {wallet.name}:{wallet.puzzle_generator_id}:{pubkey}")
 
 
 def make_QR(wallet):
@@ -201,7 +201,7 @@ async def select_smart_contract(wallet, ledger_api):
             #print("Puzzle: " + str(puzzlehash))
             sig = wallet.sign(puzzlehash, a_pubkey)
             #print("Signature: " + str(sig.sig))
-            print(f"{informative} Initialization string for AP Wallet: {name}:{str(puzzlehash)}:{str(sig.sig)}")
+            print(f"{informative} Payee string for AP Wallet: {name}:{str(puzzlehash)}:{str(sig.sig)}")
             choice = input("Press 'c' to continue, or 'q' to quit to menu: ")
     elif choice == "2":
         puzzle_source = input("Enter a ChiaLisp puzzle to lock a coin up with: ")
