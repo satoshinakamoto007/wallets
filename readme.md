@@ -65,9 +65,9 @@ The options available in a standard wallet are:
 ## Smart Wallets
 
 The Smart Transactions currently available are:
-* Atomic Swaps
-* Authorised Payees
-* Recovery Wallets
-* Multi-sig
+* **Atomic Swaps** - `$ python3 as_wallet_runnable.py`
+* **Authorised Payees** - `$ python3 AP_wallet_runnable.py`
+* **Recovery Wallets**
+* **Multi-sig Wallet**
 
 For more information about the smart wallets, check out our **[docs](./docs).**
