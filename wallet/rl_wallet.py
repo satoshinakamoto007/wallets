@@ -57,8 +57,7 @@ class RLWallet(Wallet):
 
         hex_pk = hexbytes(pubkey)
         opcode_aggsig = hexlify(ConditionOpcode.AGG_SIG).decode('ascii')
-        #opcode_coin_block_age = hexlify(ConditionOpcode.ASSERT_BLOCK_AGE).decode('ascii')
-        opcode_coin_block_age = hexlify(ConditionOpcode.ASSERT_BLOCK_INDEX_EXCEEDS).decode('ascii')
+        opcode_coin_block_age = hexlify(ConditionOpcode.ASSERT_BLOCK_AGE_EXCEEDS).decode('ascii')
         opcode_create = hexlify(ConditionOpcode.CREATE_COIN).decode('ascii')
         opcode_myid = hexlify(ConditionOpcode.ASSERT_MY_COIN_ID).decode('ascii')
 
@@ -69,28 +68,25 @@ class RLWallet(Wallet):
         # if not (min_block_age * M = 1000 * N) do X (raise)
         # improve once > operator becomes available
         # ASSERT_COIN_BLOCK_AGE_EXCEEDS min_block_age
-        #TODO add TEMPLATE_BLOCK_AGE to WHOLE_PUZZLE once ASSERT_COIN_BLOCK_AGE_EXCEEDS becomes available
 
-        TEMPLATE_BLOCK_AGE = f"(i (> (* (f (r (r (r (r (r (a))))))) (q {interval_time})) (* (f (r (r (r (r (a)))))) (q {rate_amount}))) (c (q 0x{opcode_coin_block_age}) (c (f (r (r (r (r (r (a))))))) (q ()))) (q (x (q \"wrong min block time\"))))"
+        TEMPLATE_BLOCK_AGE = f"((c (i (i (= (* (f (r (r (r (r (r (a))))))) (q {rate_amount})) (* (f (r (r (r (r (a)))))) (q {interval_time}))) (q 1) (> (* (f (r (r (r (r (r (a))))))) (q {rate_amount})) (* (f (r (r (r (r (a)))))) (q {interval_time})))) (q (c (q 0x{opcode_coin_block_age}) (c (f (r (r (r (r (r (a))))))) (q ())))) (q (x (q \"wrong min block time\")))) (a) ))"
         TEMPLATE_MY_ID = f"(c (q 0x{opcode_myid}) (c (sha256 (f (a)) (f (r (a))) (uint64 (f (r (r (a)))))) (q ())))"
         CREATE_CHANGE = f"(c (q 0x{opcode_create}) (c (f (r (a))) (c (- (f (r (r (a)))) (f (r (r (r (r (a))))))) (q ()))))"
         AGGSIG_ENTIRE_SOLUTION = f"(c (q 0x{opcode_aggsig}) (c (q 0x{hex_pk}) (c (sha256 (wrap (a))) (q ()))))"
         CREATE_NEW_COIN = f"(c (q 0x{opcode_create}) (c (f (r (r (r (a))))) (c (f (r (r (r (r (a)))))) (q ()))))"
 
-        #WHOLE_PUZZLE = f"(c {CREATE_CHANGE} (c {AGGSIG_ENTIRE_SOLUTION} (c {TEMPLATE_MY_ID} (c {CREATE_NEW_COIN} (q ())))))"
         WHOLE_PUZZLE = f"(c {TEMPLATE_BLOCK_AGE} (c {CREATE_CHANGE} (c {AGGSIG_ENTIRE_SOLUTION} (c {TEMPLATE_MY_ID} (c {CREATE_NEW_COIN} (q ()))))))"
+
         return Program(binutils.assemble(WHOLE_PUZZLE))
 
     # Solution to this puzzle needs (self_coin_id, self_puzzlehash, self_amount, (new_puzzle_hash, amount))
     # min block time = (new_amount * self.interval) / self.limit
     def solution_for_rl(self, my_coin_id, my_puzzlehash, my_amount, new_puzzlehash, new_amount):
-        min_block_count = math.ceil((new_amount  * self.interval) / self.limit) + 1
+        min_block_count = math.ceil((new_amount * self.interval) / self.limit)
         solution = f"(0x{my_coin_id} 0x{my_puzzlehash} {my_amount} 0x{new_puzzlehash} {new_amount} {min_block_count})"
-        print("\nSolution: ", solution)
         return Program(binutils.assemble(solution))
 
     def get_keys(self, hash):
-        print("\nHASH: ", hash)
         for child in reversed(range(self.next_address)):
             pubkey = self.extended_secret_key.public_child(
                 child).get_public_key()

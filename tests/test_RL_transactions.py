@@ -72,9 +72,9 @@ def test_RL_spend():
     assert wallet_a.current_balance == 1000000000
 
     #wallet A is normal wallet, it sends coin that's rate limited to wallet B
-    rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, 5, 10)
-    wallet_b.limit = 5
-    wallet_b.interval = 10
+    rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, 10, 1)
+    wallet_b.limit = 10
+    wallet_b.interval = 1
     rl_puzzlehash = ProgramHash(rl_puzzle)
 
     amount = 5000
@@ -82,7 +82,7 @@ def test_RL_spend():
     _ = run(remote.push_tx(tx=spend_bundle))
 
     commit_and_notify(remote, wallets, Wallet())
-
+    commit_and_notify(remote, wallets, Wallet())
     #wallet a should have 999995000
     #wallet b should have 5000
     #wallet c hsould have 0
@@ -92,8 +92,10 @@ def test_RL_spend():
     assert wallet_c.current_balance == 0
 
     #Now send some coins from b to c
+    #commit_and_notify(remote, wallets, Wallet())
+    #commit_and_notify(remote, wallets, Wallet())
 
-    amount = 1000
+    amount = 10
     wallet_c_puzzlehash = wallet_c.get_new_puzzlehash()
     spend_bundle = wallet_b.rl_generate_signed_transaction(wallet_c_puzzlehash, amount)
     _ = run(remote.push_tx(tx=spend_bundle))
@@ -101,21 +103,6 @@ def test_RL_spend():
     commit_and_notify(remote, wallets, Wallet())
 
     assert wallet_a.current_balance == 999995000
-    assert wallet_b.current_balance == 4000
-    assert wallet_c.current_balance == 1000
+    assert wallet_b.current_balance == 4990
+    assert wallet_c.current_balance == 10
 
-    #Send some more
-
-    amount = 1000
-    wallet_c_puzzlehash = wallet_c.get_new_puzzlehash()
-    spend_bundle = wallet_b.rl_generate_signed_transaction(wallet_c_puzzlehash, amount)
-    _ = run(remote.push_tx(tx=spend_bundle))
-
-    commit_and_notify(remote, wallets, Wallet())
-
-    assert wallet_a.current_balance == 999995000
-    assert wallet_b.current_balance == 3000
-    assert wallet_c.current_balance == 2000
-
-    #TODO write more cases to actually test rate limit
-    #TODO ASSERT_COIN_BLOCK_AGE_EXCEEDS
