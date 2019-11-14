@@ -4,7 +4,8 @@ The Chia Wallets are designed to show off Chia's approach to transactions, and o
 At the moment this project is uses a local server which simulates the full network. This allows us to test the wallet functionality in isolation.
 
 The local server which handles transactions in Chia is called [ledger_sim](https://github.com/Chia-Network/ledger_sim).
-We have a tutorial, and extensive documentation available [here](./docs).
+
+We have a tutorial for writing smart transactions, and other documentation available [here](./docs).
 
 ## Setup
 
