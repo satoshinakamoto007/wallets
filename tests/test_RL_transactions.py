@@ -64,8 +64,8 @@ def test_RL_spend():
     wallet_b = RLWallet()
     wallet_c = Wallet()
     wallets = [wallet_a, wallet_b, wallet_c]
-
     wallet_b_pk = wallet_b.get_next_public_key().serialize()
+
 
     #give coinbase reward to  wallet_a (1000000000)
     commit_and_notify(remote, wallets, wallet_a)
@@ -83,17 +83,14 @@ def test_RL_spend():
 
     commit_and_notify(remote, wallets, Wallet())
     commit_and_notify(remote, wallets, Wallet())
-    #wallet a should have 999995000
-    #wallet b should have 5000
-    #wallet c hsould have 0
 
     assert wallet_a.current_balance == 999995000
     assert wallet_b.current_balance == 5000
     assert wallet_c.current_balance == 0
 
     #Now send some coins from b to c
-    #commit_and_notify(remote, wallets, Wallet())
-    #commit_and_notify(remote, wallets, Wallet())
+    commit_and_notify(remote, wallets, Wallet())
+    commit_and_notify(remote, wallets, Wallet())
 
     amount = 10
     wallet_c_puzzlehash = wallet_c.get_new_puzzlehash()
@@ -101,8 +98,26 @@ def test_RL_spend():
     _ = run(remote.push_tx(tx=spend_bundle))
 
     commit_and_notify(remote, wallets, Wallet())
+    commit_and_notify(remote, wallets, Wallet())
 
     assert wallet_a.current_balance == 999995000
     assert wallet_b.current_balance == 4990
     assert wallet_c.current_balance == 10
+
+    #Test Aggregation
+    #A wants to send more chia to same rate limited wallet
+    aggregation_puzzlehash = wallet_b.rl_get_aggregation_puzzlehash(rl_puzzlehash)
+    spend_bundle = wallet_a.generate_signed_transaction(5000, aggregation_puzzlehash)
+    _ = run(remote.push_tx(tx=spend_bundle))
+
+    #First commit sends coin to aggregation puzzle
+    commit_and_notify(remote, wallets, Wallet())
+    #Second consolidates aggregation coin and RL Coin
+    commit_and_notify(remote, wallets, Wallet())
+
+    assert wallet_a.current_balance == 999990000
+    assert wallet_b.current_balance == 9990
+    assert wallet_c.current_balance == 10
+
+
 
