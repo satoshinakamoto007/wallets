@@ -103,6 +103,9 @@ class RLWallet(Wallet):
         # ASSERT_COIN_BLOCK_AGE_EXCEEDS min_block_age
 
         #TODO confirm parent has same puzzle hash as me or it's origin
+        #TODO Assert MY id() (sha256 my_parent_id, my_puzzlehash, my_amount)
+        #TODO (= my_parent_id (sha256 (my_parent_parent_id, my_puzzlehash, parent_amount)
+        #TODO or (= my_parentid origin_id)
 
         AGGSIG_ENTIRE_SOLUTION = f"(c (q 0x{opcode_aggsig}) (c (q 0x{hex_pk}) (c (sha256 (wrap (a))) (q ()))))"
 
@@ -122,6 +125,20 @@ class RLWallet(Wallet):
         #print("\n Whole puzzle : ", WHOLE_PUZZLE)
         return Program(binutils.assemble(WHOLE_PUZZLE))
 
+    # Solution is (1 my_parent_id, my_puzzlehash, my_amount, outgoing_puzzle_hash, outgoing_amount, min_block_time)
+    # min block time = Math.ceil((new_amount * self.interval) / self.limit)
+    def solution_for_rl(self, my_parent_id, my_puzzlehash, my_amount, out_puzzlehash, out_amount):
+        min_block_count = math.ceil((out_amount * self.interval) / self.limit)
+        solution = f"(1 0x{my_parent_id} 0x{my_puzzlehash} {my_amount} 0x{out_puzzlehash} {out_amount} {min_block_count})"
+        return Program(binutils.assemble(solution))
+
+    def rl_make_solution_mode_2(self, my_puzzle_hash, consolidating_primary_input, consolidating_coin_puzzle_hash, outgoing_amount, my_primary_input, incoming_amount):
+        my_puzzle_hash = hexlify(my_puzzle_hash).decode('ascii')
+        consolidating_primary_input = hexlify(consolidating_primary_input).decode('ascii')
+        consolidating_coin_puzzle_hash = hexlify(consolidating_coin_puzzle_hash).decode('ascii')
+        primary_input = hexlify(my_primary_input).decode('ascii')
+        sol = f"(2 0x{my_puzzle_hash} 0x{consolidating_primary_input} 0x{consolidating_coin_puzzle_hash} {outgoing_amount} 0x{primary_input} {incoming_amount})"
+        return Program(binutils.assemble(sol))
 
     def rl_make_aggregation_puzzle(self, wallet_puzzle):
         # If Wallet A wants to send further funds to Wallet B then they can lock them up using this code
@@ -140,25 +157,9 @@ class RLWallet(Wallet):
         #print("\nAggregations puzzle: ", puz)
         return Program(binutils.assemble(puz))
 
-
-    # Solution to this puzzle needs (self_coin_id, self_puzzlehash, self_amount, (new_puzzle_hash, amount))
-    # min block time = Math.ceil((new_amount * self.interval) / self.limit)
-    def solution_for_rl(self, my_coin_id, my_puzzlehash, my_amount, new_puzzlehash, new_amount):
-        min_block_count = math.ceil((new_amount * self.interval) / self.limit)
-        solution = f"(1 0x{my_coin_id} 0x{my_puzzlehash} {my_amount} 0x{new_puzzlehash} {new_amount} {min_block_count})"
-        return Program(binutils.assemble(solution))
-
     def rl_make_aggregation_solution(self, myid, wallet_coin_primary_input, wallet_coin_amount):
         sol = "(0x%s 0x%s %d)" % (hexlify(myid).decode('ascii'), hexlify(
             wallet_coin_primary_input).decode('ascii'), wallet_coin_amount)
-        return Program(binutils.assemble(sol))
-
-    def rl_make_solution_mode_2(self, wallet_puzzle_hash, consolidating_primary_input, consolidating_coin_puzzle_hash, outgoing_amount, my_primary_input, incoming_amount):
-        wallet_puzzle_hash = hexlify(wallet_puzzle_hash).decode('ascii')
-        consolidating_primary_input = hexlify(consolidating_primary_input).decode('ascii')
-        consolidating_coin_puzzle_hash = hexlify(consolidating_coin_puzzle_hash).decode('ascii')
-        primary_input = hexlify(my_primary_input).decode('ascii')
-        sol = f"(2 0x{wallet_puzzle_hash} 0x{consolidating_primary_input} 0x{consolidating_coin_puzzle_hash} {outgoing_amount} 0x{primary_input} {incoming_amount})"
         return Program(binutils.assemble(sol))
 
     def get_keys(self, hash):
