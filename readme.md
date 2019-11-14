@@ -4,6 +4,7 @@ The Chia Wallets are designed to show off Chia's approach to transactions, and o
 At the moment this project is uses a local server which simulates the full network. This allows us to test the wallet functionality in isolation.
 
 The local server which handles transactions in Chia is called [ledger_sim](https://github.com/Chia-Network/ledger_sim).
+We have a tutorial, and extensive documentation available [here](./docs).
 
 ## Setup
 
@@ -31,6 +32,11 @@ On Mac, run:
 $ brew install zbar
 $ pip install pyzbar[scripts]
 ```
+
+# The Standard Wallet
+
+The standard command-line wallet contains the default functionality for a wallet. 
+It can send and receive transactions as well as generate QR codes and a few other 'smart' features.
 
 ## Using the Command-line Interface
 
@@ -62,7 +68,7 @@ The options available in a standard wallet are:
 * **Payment to QR code** - This acts the same way as 'Make Payment' but instead of a string storing the information, it reads in a QR image.
 * **Quit** - Closes the wallet program.
 
-## Smart Wallets
+# Smart Wallets
 
 The Smart Transactions currently available are:
 * **Atomic Swaps** - `$ python3 as_wallet_runnable.py`
