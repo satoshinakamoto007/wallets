@@ -71,8 +71,13 @@ def test_RL_spend():
     commit_and_notify(remote, wallets, wallet_a)
     assert wallet_a.current_balance == 1000000000
 
+    wallet_a_coinbase_coin = wallet_a.my_utxos.copy().pop()
+    wallet_a_coinbase_coin = wallet_a.my_utxos.copy().pop()
+
+    wacc_name = wallet_a_coinbase_coin.name()
     #wallet A is normal wallet, it sends coin that's rate limited to wallet B
-    rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, 10, 1)
+    rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, 10, 1, wacc_name)
+    wallet_b.setOrigin(wallet_a_coinbase_coin)
     wallet_b.limit = 10
     wallet_b.interval = 1
     rl_puzzlehash = ProgramHash(rl_puzzle)
@@ -104,6 +109,18 @@ def test_RL_spend():
     assert wallet_b.current_balance == 4990
     assert wallet_c.current_balance == 10
 
+    amount = 10
+    wallet_c_puzzlehash = wallet_c.get_new_puzzlehash()
+    spend_bundle = wallet_b.rl_generate_signed_transaction(wallet_c_puzzlehash, amount)
+    _ = run(remote.push_tx(tx=spend_bundle))
+
+    commit_and_notify(remote, wallets, Wallet())
+    commit_and_notify(remote, wallets, Wallet())
+
+    assert wallet_a.current_balance == 999995000
+    assert wallet_b.current_balance == 4980
+    assert wallet_c.current_balance == 20
+
     #Test Aggregation
     #A wants to send more chia to same rate limited wallet
     aggregation_puzzlehash = wallet_b.rl_get_aggregation_puzzlehash(rl_puzzlehash)
@@ -116,8 +133,21 @@ def test_RL_spend():
     commit_and_notify(remote, wallets, Wallet())
 
     assert wallet_a.current_balance == 999990000
-    assert wallet_b.current_balance == 9990
-    assert wallet_c.current_balance == 10
+    assert wallet_b.current_balance == 9980
+    assert wallet_c.current_balance == 20
+
+    commit_and_notify(remote, wallets, Wallet())
+    amount = 10
+    wallet_c_puzzlehash = wallet_c.get_new_puzzlehash()
+    spend_bundle = wallet_b.rl_generate_signed_transaction(wallet_c_puzzlehash, amount)
+    _ = run(remote.push_tx(tx=spend_bundle))
+
+    commit_and_notify(remote, wallets, Wallet())
+    commit_and_notify(remote, wallets, Wallet())
+
+    assert wallet_a.current_balance == 999990000
+    assert wallet_b.current_balance == 9970
+    assert wallet_c.current_balance == 30
 
 
 
