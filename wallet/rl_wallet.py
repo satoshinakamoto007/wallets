@@ -34,6 +34,7 @@ class RLWallet(Wallet):
         self.limit = 0
         self.rl_origin = None
         self.rl_origin_amount = 0
+        self.pubkey_orig = None
         super().__init__()
         return
 
@@ -190,7 +191,6 @@ class RLWallet(Wallet):
         return spends
 
     def rl_generate_signed_transaction(self, to_puzzle_hash, amount):
-
         if amount > self.rl_coin.amount:
             return None
         transaction = self.rl_generate_unsigned_transaction(to_puzzle_hash, amount)
