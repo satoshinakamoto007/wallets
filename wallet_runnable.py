@@ -204,23 +204,7 @@ async def select_smart_contract(wallet, ledger_api):
             print(f"{informative} Payee string for AP Wallet: {name}:{str(puzzlehash)}:{str(sig.sig)}")
             choice = input("Press 'c' to continue, or 'q' to quit to menu: ")
     elif choice == "2":
-        puzzle_source = input("Enter a ChiaLisp puzzle to lock a coin up with: ")
-        if puzzle_source == "q":
-            return
-        try:
-            puzhash = ProgramHash(Program(binutils.assemble(puzzle_source)))
-            amount = input("Enter amount for new coin: ")
-            amount = int(amount)
-            spend_bundle = wallet.generate_signed_transaction(amount, puzhash)
-
-            #print("The coin ID for new coin will be: ")
-            #for coinsolution in spend_bundle.coin_solutions:
-            #    print(Coin(coinsolution.coin.name(), puzhash, amount).name())
-            #    continue
-
-            await ledger_api.push_tx(tx=spend_bundle)
-        except Exception as err:
-            print(err)
+        print("Feature n/a")
 
 
 async def new_block(wallet, ledger_api):
