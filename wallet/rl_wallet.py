@@ -35,6 +35,9 @@ class RLWallet(Wallet):
         self.rl_origin = None
         self.rl_origin_amount = 0
         self.pubkey_orig = None
+        self.current_rl_balance = 0
+        self.temp_rl_balance = 0
+        self.rl_utxos = set()
         super().__init__()
         return
 
@@ -43,26 +46,27 @@ class RLWallet(Wallet):
         self.rl_parent = origin
 
     def notify(self, additions, deletions):
+        super().notify(additions, deletions)
         for coin in additions:
-            if self.can_generate_puzzle_hash(coin.puzzle_hash):
-                self.current_balance += coin.amount
-                self.my_utxos.add(coin)
+            if self.can_generate_rl_puzzle_hash(coin.puzzle_hash):
+                self.current_rl_balance += coin.amount
+                self.rl_utxos.add(coin)
                 if self.rl_coin:
                     self.rl_parent = self.rl_coin
                 self.rl_coin = coin
                 print("\nNOTIFY COIN: ",coin)
         for coin in deletions:
-            if coin in self.my_utxos:
-                self.my_utxos.remove(coin),
-                self.current_balance -= coin.amount
+            if coin in self.rl_utxos:
+                print("\nNOTIFY COIN DELETION: ", coin)
+                self.rl_utxos.remove(coin),
+                self.current_rl_balance -= coin.amount
 
-        self.temp_utxos = self.my_utxos.copy()
-        self.temp_balance = self.current_balance
+        self.temp_rl_balance = self.current_rl_balance
         spend_bundle_list = self.ac_notify(additions)
         return spend_bundle_list
 
     def ac_notify(self, additions):
-        if len(self.my_utxos) == 0:
+        if len(self.rl_utxos) == 0 or self.rl_coin is None:
             return # prevent unnecessary searching
 
         spend_bundle_list = []
@@ -79,7 +83,8 @@ class RLWallet(Wallet):
             return None
 
 
-    def can_generate_puzzle_hash(self, hash):
+    def can_generate_rl_puzzle_hash(self, hash):
+        #breakpoint()
         if self.rl_origin is None:
             return None
         return any(map(lambda child: hash == ProgramHash(self.rl_puzzle_for_pk(
@@ -169,6 +174,9 @@ class RLWallet(Wallet):
         return Program(binutils.assemble(sol))
 
     def get_keys(self, hash):
+        s = super().get_keys(hash)
+        if s is not None:
+            return s
         for child in reversed(range(self.next_address)):
             pubkey = self.extended_secret_key.public_child(
                 child).get_public_key()
@@ -190,7 +198,7 @@ class RLWallet(Wallet):
         spends.append((puzzle, CoinSolution(coin, solution)))
         return spends
 
-    def rl_generate_signed_transaction(self, to_puzzle_hash, amount):
+    def rl_generate_signed_transaction(self, amount, to_puzzle_hash):
         if amount > self.rl_coin.amount:
             return None
         transaction = self.rl_generate_unsigned_transaction(to_puzzle_hash, amount)
