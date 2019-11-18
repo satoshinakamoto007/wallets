@@ -14,7 +14,7 @@ from wallet.puzzle_utilities import pubkey_format, signature_from_string, puzzle
 from binascii import hexlify
 from chiasim.validation import ChainView
 from chiasim.ledger.ledger_api import LedgerAPI
-from chiasim.validation.chainview import name_puzzle_conditions_list, as_solution_list
+from chiasim.validation.chainview import name_puzzle_conditions_list
 
 
 def print_my_details(wallet):
@@ -1001,7 +1001,7 @@ def pull_preimage(wallet, as_swap_list, body, removals):
     for coin in removals:
         for swap in as_swap_list:
             if hexlify(coin.puzzle_hash).decode('ascii') == swap["outgoing puzzlehash"]:
-                l = [(puzzle_hash, puzzle_solution_program) for (coin_name, puzzle_hash, conditions_dict, puzzle_solution_program) in as_solution_list(body.solution_program)]
+                l = [(puzzle_hash, puzzle_solution_program) for (puzzle_hash, puzzle_solution_program) in wallet.as_solution_list(body.solution_program)]
                 for x in l:
                     if hexlify(x[0]).decode('ascii') == hexlify(coin.puzzle_hash).decode('ascii'):
                         pre1 = binutils.disassemble(x[1])
