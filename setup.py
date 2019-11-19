@@ -5,7 +5,7 @@ dependencies = ['aiter', 'blspy', 'cbor', 'qrcode', 'pyzbar', 'Pillow']
 setuptools.setup(
    name='wallets',
    version='1.0',
-   description='Wallet programs that interact with ledger-sim',
+   description='Chis wallets that interact with ledger-sim',
    author='Chia Network',
    packages=['standard_wallet', 'utilities', 'authorised_payees', 'atomic_swaps'],
    license='Apache License',
