@@ -121,7 +121,7 @@ class RLWallet(Wallet):
         RATE_LIMIT_PUZZLE = f"(c {TEMPLATE_SINGLETON_RL} (c {TEMPLATE_BLOCK_AGE} (c {CREATE_CHANGE} (c {TEMPLATE_MY_ID} (c {CREATE_NEW_COIN} (q ()))))))"
 
         TEMPLATE_MY_PARENT_ID_2 = "(sha256 (f (r (r (r (r (r (r (r (r (a)))))))))) (f (r (a))) (uint64 (f (r (r (r (r (r (r (r (a)))))))))))"
-        TEMPLATE_SINGLETON_RL_2 = f"((c (i (i (= {TEMPLATE_MY_PARENT_ID_2} (f (r (r (r (r (r (a)))))))) (q 1) (= (f (r (a))) (q 0x{origin_id}))) (q (c (q 1) (q ()))) (q (x (q \"Parent doesnt satisfy RL conditions\")))) (a)))"
+        TEMPLATE_SINGLETON_RL_2 = f"((c (i (i (= {TEMPLATE_MY_PARENT_ID_2} (f (r (r (r (r (r (a)))))))) (q 1) (= (f (r (r (r (r (r (a))))))) (q 0x{origin_id}))) (q (c (q 1) (q ()))) (q (x (q \"Parent doesnt satisfy RL conditions\")))) (a)))"
         CREATE_CONSOLIDATED = f"(c (q 0x{opcode_create}) (c (f (r (a))) (c (+ (f (r (r (r (r (a)))))) (f (r (r (r (r (r (r (a))))))))) (q ()))))"
         MODE_TWO_ME_STRING = f"(c (q 0x{opcode_myid}) (c (sha256 (f (r (r (r (r (r (a))))))) (f (r (a))) (uint64 (f (r (r (r (r (r (r (a)))))))))) (q ())))"
         CREATE_LOCK = f"(c (q 0x{opcode_create}) (c (sha256 (wrap (c (q 7) (c (c (q 5) (c (c (q 1) (c (sha256 (f (r (r (a)))) (f (r (r (r (a))))) (uint64 (f (r (r (r (r (a)))))))) (q ()))) (c (q (q ())) (q ())))) (q ()))))) (c (uint64 (q 0)) (q ()))))"
