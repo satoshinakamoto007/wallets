@@ -14,6 +14,8 @@ from binascii import hexlify
 from chiasim.validation import ChainView
 from chiasim.ledger.ledger_api import LedgerAPI
 from blspy import PublicKey
+from chiasim.atoms import hash_pointer
+from chiasim.hashable.Hash import std_hash
 
 def print_my_details(wallet):
     print()
@@ -26,8 +28,9 @@ def print_my_details(wallet):
 
 
 def view_funds(wallet):
-    print("Current balance: " + str(wallet.current_balance))
-    print("Current rate limited balance: " + str(wallet.current_rl_balance))
+    print(f"Current balance: {wallet.current_balance}")
+    print(f"Current rate limited balance: {wallet.current_rl_balance}")
+    print(f"Available RL Balance: {wallet.rl_available_balance()}")
     print("UTXOs: ")
     print([x.amount for x in wallet.temp_utxos if x.amount > 0])
     if wallet.rl_coin is not None:
@@ -39,14 +42,14 @@ def receive_rl_coin(wallet):
     coin_string = input(prompt)
     arr = coin_string.split(":")
     ph = ProgramHash(bytes.fromhex(arr[1]))
-
-    origin = Coin(arr[0], ph, int(arr[2]))
-    limit = arr[3]
-    interval = arr[4]
-    wallet.setOrigin(origin)
-    wallet.limit = limit
-    wallet.interval = interval
-    #puzzlehash = wallet.rl_puzzle_for_pk(wallet.pubkey_orig, limit, interval, origin.name())
+    print(ph)
+    origin = {"parent_coin_info": arr[0], "puzzle_hash": ph, "amount": arr[2], "name": arr[3]}
+    limit = arr[4]
+    interval = arr[5]
+    print(origin)
+    wallet.set_origin(origin)
+    wallet.limit = int(limit)
+    wallet.interval = int(interval)
     print("Rate limited coin is ready to be received")
 
 
@@ -70,7 +73,7 @@ async def create_rl_coin(wallet, ledger_api):
     print("Enter amount to give recipient:")
     send_amount = int(input(prompt))
     print(f"Initialization string: {origin.parent_coin_info}:{origin.puzzle_hash}:"
-          f"{origin.amount}:{rate}:{interval}")
+          f"{origin.amount}:{origin.name()}:{rate}:{interval}")
     print("\nPaste Initialization string to the receiver")
     print("\nPress Enter to continue:")
     input(prompt)
@@ -80,8 +83,21 @@ async def create_rl_coin(wallet, ledger_api):
     spend_bundle = wallet.generate_signed_transaction(send_amount, rl_puzzlehash)
     _ = await ledger_api.push_tx(tx=spend_bundle)
 
+async def spend_rl_coin(wallet, ledger_api):
+    receiver_pubkey = input("Enter receiver's pubkey: 0x")
+    receiver_pubkey = PublicKey.from_bytes(bytes.fromhex(receiver_pubkey)).serialize()
+    amount = -1
+    while amount > wallet.current_rl_balance or amount < 0:
+        amount = input("Enter amount to give recipient: ")
+        if amount == "q":
+            return
+        if not amount.isdigit():
+            amount = -1
+        amount = int(amount)
 
-
+    puzzlehash = wallet.get_new_puzzlehash_for_pk(receiver_pubkey)
+    spend_bundle = wallet.rl_generate_signed_transaction(amount, puzzlehash)
+    _ = await ledger_api.push_tx(tx=spend_bundle)
 
 
 async def update_ledger(wallet, ledger_api, most_recent_header):
@@ -90,34 +106,32 @@ async def update_ledger(wallet, ledger_api, most_recent_header):
     else:
         r = await ledger_api.get_recent_blocks(most_recent_header=most_recent_header)
     update_list = BodyList.from_bytes(r)
+    tip = await ledger_api.get_tip()
+    index = int(tip["tip_index"])
     for body in update_list:
         additions = list(additions_for_body(body))
-        print(additions)
         removals = removals_for_body(body)
         removals = [Coin.from_bytes(await ledger_api.hash_preimage(hash=x)) for x in removals]
-        spend_bundle_list = wallet.notify(additions, removals)
-        #breakpoint()
+        spend_bundle_list = wallet.notify(additions, removals, index)
         if spend_bundle_list is not None:
             for spend_bundle in spend_bundle_list:
-                #breakpoint()
                 _ = await ledger_api.push_tx(tx=spend_bundle)
 
+    return most_recent_header
 
-async def farm_block(wallet, ledger_api):
-    print()
-    print(divider)
-    print(" \u2447 Commit Block \u2447")
-    print()
-    print("You have received a block reward.")
+
+async def new_block(wallet, ledger_api):
     coinbase_puzzle_hash = wallet.get_new_puzzlehash()
     fees_puzzle_hash = wallet.get_new_puzzlehash()
     r = await ledger_api.next_block(coinbase_puzzle_hash=coinbase_puzzle_hash, fees_puzzle_hash=fees_puzzle_hash)
     body = r["body"]
+    tip = await  ledger_api.get_tip()
+    index = tip["tip_index"]
     most_recent_header = r['header']
     additions = list(additions_for_body(body))
     removals = removals_for_body(body)
-    removals = [Coin.from_bin(await ledger_api.hash_preimage(hash=x)) for x in removals]
-    wallet.notify(additions, removals)
+    removals = [Coin.from_bytes(await ledger_api.hash_preimage(hash=x)) for x in removals]
+    wallet.notify(additions, removals, index)
     return most_recent_header
 
 
@@ -125,8 +139,6 @@ async def main():
     ledger_api = await connect_to_ledger_sim("localhost", 9868)
     selection = ""
     wallet = RLWallet()
-    as_contacts = {}  # 'name': (puzhash)
-    as_swap_list = []
     most_recent_header = None
     print_leaf()
     print()
@@ -159,18 +171,18 @@ async def main():
         selection = input(prompt)
         if selection == "1":
             print_my_details(wallet)
-        if selection == "2":
+        elif selection == "2":
             view_funds(wallet)
         elif selection == "3":
-            await update_ledger(wallet, ledger_api, most_recent_header)
+            most_recent_header = await update_ledger(wallet, ledger_api, most_recent_header)
         elif selection == "4":
-            most_recent_header = await farm_block(wallet, ledger_api)
+            most_recent_header = await new_block(wallet, ledger_api)
         elif selection == "5":
             receive_rl_coin(wallet)
         elif selection == "6":
             await create_rl_coin(wallet, ledger_api)
         elif selection == "7":
-            await create_rl_coin(wallet, ledger_api)
+            await spend_rl_coin(wallet, ledger_api)
 
 
 run = asyncio.get_event_loop().run_until_complete
