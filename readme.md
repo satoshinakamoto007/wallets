@@ -84,7 +84,13 @@ For more information about the smart wallets, check out our **[docs](./docs).**
 
 # Tests
 
-You can run our tests with
+Firstly, make sure pytest is installed with
+
+```
+$ pip install pytest
+```
+
+Then you can run our tests with
 
 ```
 $ python3 -m pytest tests

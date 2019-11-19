@@ -50,7 +50,7 @@ https://www.youtube.com/watch?v=oe5kcGsdJqY
 
 ### Atomic Swap (step by step)
   1. **RUN**
-     - Open two terminal windows and run  ``` $ sh atomic_swap.sh ```
+     - Open two terminal windows and run  `$ python3 -m atomic_swaps/as_wallet_runnable.py`
 
   2. **Get Chia**
      - In Both terminals type **"11"** and press **enter** (This will give each wallet 1 million Chia)
