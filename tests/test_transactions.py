@@ -3,7 +3,7 @@ import pathlib
 import tempfile
 import clvm
 from aiter import map_aiter
-from ..wallet.wallet import Wallet
+from standard_wallet.wallet import Wallet
 from chiasim.utils.log import init_logging
 from chiasim.remote.api_server import api_server
 from chiasim.remote.client import request_response_proxy

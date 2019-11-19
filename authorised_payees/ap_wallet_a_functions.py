@@ -1,12 +1,12 @@
 from chiasim.hashable import Program, ProgramHash
 from binascii import hexlify
 from clvm_tools import binutils
-from .puzzle_utilities import pubkey_format
+from utilities.puzzle_utilities import pubkey_format
 from chiasim.validation.Conditions import ConditionOpcode
 
 
 # this is for wallet A to generate the permitted puzzlehashes and sign them ahead of time
-# returns a tuple of (puzhash, signature)
+# returns a list of tuples of (puzhash, signature)
 # not sure about how best to communicate/store who/what the puzzlehashes are, or if this is even important
 def ap_generate_signatures(puzhashes, oldpuzzlehash, a_wallet, a_pubkey_used):
     puzhash_signature_list = []

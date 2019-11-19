@@ -1,4 +1,4 @@
-from .wallet import Wallet
+from standard_wallet.wallet import Wallet
 import hashlib
 import clvm
 from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BLSSignature
@@ -10,7 +10,7 @@ from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from blspy import PublicKey
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from .ap_wallet_a_functions import ap_make_puzzle, ap_make_aggregation_puzzle
-from .puzzle_utilities import puzzlehash_from_string
+from utilities.puzzle_utilities import puzzlehash_from_string
 from chiasim.validation.Conditions import ConditionOpcode
 
 

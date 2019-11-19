@@ -2,9 +2,9 @@ import asyncio
 import pathlib
 import tempfile
 from aiter import map_aiter
-from ..wallet.wallet import Wallet
-from ..wallet.ap_wallet import APWallet
-from ..wallet import ap_wallet_a_functions
+from standard_wallet.wallet import Wallet
+from authorised_payees.ap_wallet import APWallet
+from authorised_payees import ap_wallet_a_functions
 from chiasim.utils.log import init_logging
 from chiasim.remote.api_server import api_server
 from chiasim.remote.client import request_response_proxy

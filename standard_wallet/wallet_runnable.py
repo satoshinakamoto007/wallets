@@ -1,7 +1,7 @@
 import asyncio
 import clvm
 import qrcode
-from decorations import print_leaf, divider, prompt, start_list, close_list, selectable, informative
+from utilities.decorations import print_leaf, divider, prompt, start_list, close_list, selectable, informative
 from pyzbar.pyzbar import decode
 from PIL import Image
 from chiasim.hashable import Coin
@@ -11,8 +11,8 @@ from chiasim.hashable.Body import BodyList
 from clvm_tools import binutils
 from chiasim.hashable import Program, ProgramHash
 from binascii import hexlify
-from wallet import ap_wallet_a_functions
-from wallet.wallet import Wallet
+from authorised_payees import ap_wallet_a_functions
+from standard_wallet.wallet import Wallet
 
 
 def view_funds(wallet):

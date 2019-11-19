@@ -13,7 +13,10 @@ We have a tutorial for writing smart transactions, and other documentation avail
 To install this repository, and all requirements, clone this repository and then run:
 
 ```
+$ python3 -m venv .venv
+$ . .venv/bin/activate
 $ pip install -r requirements.txt
+$ pip install -e .
 ```
 
 To use the QR codes you will also need to support [pyzbar](https://pypi.org/project/pyzbar/).
@@ -36,7 +39,7 @@ $ pip install pyzbar[scripts]
 
 # The Standard Wallet
 
-The standard command-line wallet contains the default functionality for a wallet. 
+The standard command-line wallet contains the default functionality for a wallet.
 It can send and receive transactions as well as generate QR codes and a few other 'smart' features.
 
 ## Using the Command-line Interface
@@ -51,7 +54,7 @@ $ ledger-sim
 The to start a new wallet type:
 
 ```
-$ python3 wallet_runnable.py
+$ python3 -m standard_wallet/wallet_runnable.py
 ```
 
 Feel free to run more than one instance of the wallet to test sending money between them.
@@ -72,9 +75,17 @@ The options available in a standard wallet are:
 # Smart Wallets
 
 The Smart Transactions currently available are:
-* **Atomic Swaps** - `$ python3 as_wallet_runnable.py`
-* **Authorised Payees** - `$ python3 AP_wallet_runnable.py`
+* **Atomic Swaps** - `$ python3 -m atomic_swaps/as_wallet_runnable.py`
+* **Authorised Payees** - `$ python3 -m authorised_payees/ap_wallet_runnable.py`
 * **Recovery Wallets**
 * **Multi-sig Wallet**
 
 For more information about the smart wallets, check out our **[docs](./docs).**
+
+# Tests
+
+You can run our tests with
+
+```
+$ python3 -m pytest tests
+```
