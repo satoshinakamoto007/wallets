@@ -51,7 +51,7 @@ In a terminal window, launch an instance of ledger-sim with:
 $ ledger-sim
 ```
 
-The to start a new wallet type:
+Then to start a new wallet, in a new terminal window, type:
 
 ```
 $ python3 -m standard_wallet/wallet_runnable.py
