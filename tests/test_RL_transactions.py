@@ -65,9 +65,9 @@ def test_rl_interval():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
     # A gives B some money, but B can only send that money to C (and generate change for itself)
-    wallet_a = Wallet()
+    wallet_a = RLWallet()
     wallet_b = RLWallet()
-    wallet_c = Wallet()
+    wallet_c = RLWallet()
     wallets = [wallet_a, wallet_b, wallet_c]
 
     limit = 10
@@ -124,9 +124,9 @@ def test_rl_spend():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
     # A gives B some money, but B can only send that money to C (and generate change for itself)
-    wallet_a = Wallet()
+    wallet_a = RLWallet()
     wallet_b = RLWallet()
-    wallet_c = Wallet()
+    wallet_c = RLWallet()
     wallets = [wallet_a, wallet_b, wallet_c]
 
     limit = 10
@@ -169,9 +169,9 @@ def test_rl_interval_more_funds():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
     # A gives B some money, but B can only send that money to C (and generate change for itself)
-    wallet_a = Wallet()
+    wallet_a = RLWallet()
     wallet_b = RLWallet()
-    wallet_c = Wallet()
+    wallet_c = RLWallet()
     wallets = [wallet_a, wallet_b, wallet_c]
 
     limit = 100
@@ -275,6 +275,7 @@ def test_spending_over_limit():
     amount = 30
     spend_bundle = wallet_b.rl_generate_signed_transaction(30, wallet_c.get_new_puzzlehash())
     _ = run(remote.push_tx(tx=spend_bundle))
+    assert _.args[0].startswith("exception: (<Err.ASSERT_BLOCK_AGE_EXCEEDS_FAILED: 13>")
     commit_and_notify(remote, wallets, Wallet())
     assert wallet_a.current_balance == 999995000
     assert wallet_b.current_rl_balance == 5000
