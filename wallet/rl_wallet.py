@@ -37,36 +37,38 @@ class RLWallet(Wallet):
         self.pubkey_orig = None
         self.current_rl_balance = 0
         self.temp_rl_balance = 0
-        self.rl_utxos = set()
+        self.rl_index = 0
+        self.tip_index = 0
+        self.all_additions = set()
         super().__init__()
         return
 
-    def setOrigin(self, origin):
-        self.rl_origin = origin.name()
+    def set_origin(self, origin):
+        if isinstance(origin, Coin):
+            self.rl_origin = origin.name()
+        else:
+            self.rl_origin = origin["name"]
         self.rl_parent = origin
 
-    def notify(self, additions, deletions):
+    def notify(self, additions, deletions, index):
         super().notify(additions, deletions)
+        self.tip_index = index
         for coin in additions:
             if self.can_generate_rl_puzzle_hash(coin.puzzle_hash):
-                self.current_rl_balance += coin.amount
-                self.rl_utxos.add(coin)
+                self.current_rl_balance = coin.amount
                 if self.rl_coin:
                     self.rl_parent = self.rl_coin
+                else:
+                    self.rl_origin = coin.parent_coin_info
                 self.rl_coin = coin
-                print("\nNOTIFY COIN: ",coin)
-        for coin in deletions:
-            if coin in self.rl_utxos:
-                print("\nNOTIFY COIN DELETION: ", coin)
-                self.rl_utxos.remove(coin),
-                self.current_rl_balance -= coin.amount
+                self.rl_index = index
 
         self.temp_rl_balance = self.current_rl_balance
         spend_bundle_list = self.ac_notify(additions)
         return spend_bundle_list
 
     def ac_notify(self, additions):
-        if len(self.rl_utxos) == 0 or self.rl_coin is None:
+        if self.rl_coin is None:
             return # prevent unnecessary searching
 
         spend_bundle_list = []
@@ -92,9 +94,9 @@ class RLWallet(Wallet):
             reversed(range(self.next_address))))
 
 
-    # Solution to this puzzle must be in format: ()
+    # Solution to this puzzle must be in format:
+    # (1 my_parent_id, my_puzzlehash, my_amount, outgoing_puzzle_hash, outgoing_amount, min_block_time, parent_parent_id, parent_amount)
     def rl_puzzle_for_pk(self, pubkey, rate_amount, interval_time, origin_id):
-
         hex_pk = hexbytes(pubkey)
         opcode_aggsig = hexlify(ConditionOpcode.AGG_SIG).decode('ascii')
         opcode_coin_block_age = hexlify(ConditionOpcode.ASSERT_BLOCK_AGE_EXCEEDS).decode('ascii')
@@ -102,7 +104,7 @@ class RLWallet(Wallet):
         opcode_myid = hexlify(ConditionOpcode.ASSERT_MY_COIN_ID).decode('ascii')
         if(not origin_id):
             return None
-        origin_id = hexbytes(origin_id)
+
         # M - chia_per_interval
         # N - interval_blocks
         # V - amount being spent
@@ -110,16 +112,8 @@ class RLWallet(Wallet):
         # if not (min_block_age * M >= 1000 * N) do X (raise)
         # ASSERT_COIN_BLOCK_AGE_EXCEEDS min_block_age
 
-        #TODO confirm parent has same puzzle hash as me or it's origin
-        #TODO Assert MY id() (sha256 my_parent_id, my_puzzlehash, my_amount)
-        #TODO (= my_parent_id (sha256 (my_parent_parent_id, my_puzzlehash, parent_amount)
-        #TODO or (= my_parentid origin_id)
-
-        AGGSIG_ENTIRE_SOLUTION = f"(c (q 0x{opcode_aggsig}) (c (q 0x{hex_pk}) (c (sha256 (wrap (a))) (q ()))))"
-
         TEMPLATE_MY_PARENT_ID = "(sha256 (f (r (r (r (r (r (r (a)))))))) (f (r (a))) (uint64 (f (r (r (r (r (r (r (r (a)))))))))))"
         TEMPLATE_SINGLETON_RL = f"((c (i (i (= {TEMPLATE_MY_PARENT_ID} (f (a))) (q 1) (= (f (a)) (q 0x{origin_id}))) (q (c (q 1) (q ()))) (q (x (q \"Parent doesnt satisfy RL conditions\")))) (a)))"
-
         TEMPLATE_BLOCK_AGE = f"((c (i (i (= (* (f (r (r (r (r (r (a))))))) (q {rate_amount})) (* (f (r (r (r (r (a)))))) (q {interval_time}))) (q 1) (q (> (* (f (r (r (r (r (r (a))))))) (q {rate_amount})) (* (f (r (r (r (r (a))))))) (q {interval_time})))) (q (c (q 0x{opcode_coin_block_age}) (c (f (r (r (r (r (r (a))))))) (q ())))) (q (x (q \"wrong min block time\")))) (a) ))"
         TEMPLATE_MY_ID = f"(c (q 0x{opcode_myid}) (c (sha256 (f (a)) (f (r (a))) (uint64 (f (r (r (a)))))) (q ())))"
         CREATE_CHANGE = f"(c (q 0x{opcode_create}) (c (f (r (a))) (c (- (f (r (r (a)))) (f (r (r (r (r (a))))))) (q ()))))"
@@ -133,11 +127,13 @@ class RLWallet(Wallet):
         CREATE_LOCK = f"(c (q 0x{opcode_create}) (c (sha256 (wrap (c (q 7) (c (c (q 5) (c (c (q 1) (c (sha256 (f (r (r (a)))) (f (r (r (r (a))))) (uint64 (f (r (r (r (r (a)))))))) (q ()))) (c (q (q ())) (q ())))) (q ()))))) (c (uint64 (q 0)) (q ()))))"
         MODE_TWO = f"(c {TEMPLATE_SINGLETON_RL_2} (c {MODE_TWO_ME_STRING} (c {CREATE_LOCK} (c {CREATE_CONSOLIDATED} (q ())))))"
 
+        AGGSIG_ENTIRE_SOLUTION = f"(c (q 0x{opcode_aggsig}) (c (q 0x{hex_pk}) (c (sha256 (wrap (a))) (q ()))))"
+
         WHOLE_PUZZLE = f"(c {AGGSIG_ENTIRE_SOLUTION} ((c (i (= (f (a)) (q 1)) (q ((c (q {RATE_LIMIT_PUZZLE}) (r (a))))) (q {MODE_TWO})) (a))) (q ()))"
 
         return Program(binutils.assemble(WHOLE_PUZZLE))
 
-    # Solution is (1 my_parent_id, my_puzzlehash, my_amount, outgoing_puzzle_hash, outgoing_amount, min_block_time)
+    # Solution is (1 my_parent_id, my_puzzlehash, my_amount, outgoing_puzzle_hash, outgoing_amount, min_block_time, parent_parent_id, parent_amount)
     # min block time = Math.ceil((new_amount * self.interval) / self.limit)
     def solution_for_rl(self, my_parent_id, my_puzzlehash, my_amount, out_puzzlehash, out_amount, my_parent_parent_id, parent_amount):
         min_block_count = math.ceil((out_amount * self.interval) / self.limit)
@@ -189,7 +185,6 @@ class RLWallet(Wallet):
         spends = []
         coin = self.rl_coin
         puzzle_hash = coin.puzzle_hash
-
         pubkey, secretkey = self.get_keys(puzzle_hash)
         puzzle = self.rl_puzzle_for_pk(pubkey.serialize(), self.limit, self.interval, self.rl_origin)
 
@@ -204,11 +199,13 @@ class RLWallet(Wallet):
         transaction = self.rl_generate_unsigned_transaction(to_puzzle_hash, amount)
         return self.rl_sign_transaction(transaction)
 
-    # TODO track self.rl_coin blockage and calculate available spend amount
-    def rl_balance(self):
+    def rl_available_balance(self):
+        if self.rl_coin is None:
+            return 0
+        unlocked = int(((self.tip_index - self.rl_index) / self.interval)) * self.limit
         total_amount = self.rl_coin.amount
-        available_amount = 0
-        return total_amount, available_amount
+        available_amount = min(unlocked, total_amount)
+        return available_amount
 
     def rl_sign_transaction(self, spends: (Program, [CoinSolution])):
         sigs = []
@@ -263,15 +260,31 @@ class RLWallet(Wallet):
         return SpendBundle(solution_list, aggsig)
 
 
-    def get_new_puzzle(self):
-        pubkey = self.get_next_public_key().serialize()
+    def get_new_puzzle(self, pubkey):
         puzzle = puzzle_for_pk(pubkey)
         return puzzle
 
     def get_new_puzzlehash(self):
-        puzzle = self.get_new_puzzle()
+        pubkey = self.get_next_public_key().serialize()
+        puzzle = self.get_new_puzzle(pubkey)
+        puzzlehash = ProgramHash(puzzle)
+        return puzzlehash
+
+    def get_new_puzzlehash_for_pk(self, pubkey):
+        puzzle = self.get_new_puzzle(pubkey)
         puzzlehash = ProgramHash(puzzle)
         return puzzlehash
 
     def rl_get_aggregation_puzzlehash(self, wallet_puzzle):
         return ProgramHash(self.rl_make_aggregation_puzzle(wallet_puzzle))
+
+    #Ideally origin primary input coin would be selected manually
+    def select_coins(self, amount):
+        if amount > self.temp_balance:
+            return None
+        used_utxos = set()
+        while sum(map(lambda coin: coin.amount, used_utxos)) < amount:
+            tmp = self.temp_utxos.pop()
+            if tmp.amount is not 0:
+                used_utxos.add(tmp)
+        return used_utxos
