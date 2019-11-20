@@ -189,8 +189,9 @@ class RLWallet(Wallet):
         return Program(binutils.assemble(puz))
 
     def rl_make_aggregation_solution(self, myid, wallet_coin_primary_input, wallet_coin_amount):
-        sol = "(0x%s 0x%s %d)" % (hexlify(myid).decode('ascii'), hexlify(
-            wallet_coin_primary_input).decode('ascii'), wallet_coin_amount)
+        opcode_myid = hexlify(myid).decode('ascii')
+        primary_input = hexlify(wallet_coin_primary_input).decode('ascii')
+        sol = f"(0x{opcode_myid} 0x{primary_input} {wallet_coin_amount})"
         return Program(binutils.assemble(sol))
 
     def get_keys(self, hash):
