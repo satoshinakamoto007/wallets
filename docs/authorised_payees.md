@@ -22,7 +22,7 @@ One of the unique qualities of the Authorised Payees smart contract is that it i
 You will need to run a standard wallet for setup, as well as an authorised payee wallet for receiving and managing the coin.
 
 
-1. Launch your authorised payees wallet by running `$ python3 -m authorised_payees/ap_wallet_runnable.py`.
+1. Launch your authorised payees wallet by running `$ ap_wallet`.
 Your public key will be shown, and you will be asked for some setup information.
 
 2. On your standard wallet, first make sure you have some money.

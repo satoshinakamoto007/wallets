@@ -54,7 +54,7 @@ $ ledger-sim
 Then to start a new wallet, in a new terminal window, type:
 
 ```
-$ python3 -m standard_wallet/wallet_runnable.py
+$ wallet
 ```
 
 Feel free to run more than one instance of the wallet to test sending money between them.
@@ -75,8 +75,8 @@ The options available in a standard wallet are:
 # Smart Wallets
 
 The Smart Transactions currently available are:
-* **Atomic Swaps** - `$ python3 -m atomic_swaps/as_wallet_runnable.py`
-* **Authorised Payees** - `$ python3 -m authorised_payees/ap_wallet_runnable.py`
+* **Atomic Swaps** - `$ as_wallet`
+* **Authorised Payees** - `$ ap_wallet`
 * **Recovery Wallets**
 * **Multi-sig Wallet**
 
