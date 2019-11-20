@@ -43,7 +43,6 @@ def print_my_details(wallet):
     pubkey = f"{hexlify(wallet.get_next_public_key().serialize()).decode('ascii')}"
     print(f"{informative} New pubkey: {pubkey}")
     print(f"{informative} Generator hash identifier: {wallet.puzzle_generator_id}")
-    print(f"{informative} Single string: {wallet.name}:{wallet.puzzle_generator_id}:{pubkey}")
 
 
 def make_QR(wallet):
