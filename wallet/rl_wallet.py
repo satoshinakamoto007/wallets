@@ -63,7 +63,7 @@ class RLWallet(Wallet):
         self.temp_rl_balance = 0
         self.rl_index = 0
         self.tip_index = 0
-        self.all_additions = set()
+        self.all_additions = {}
         super().__init__()
         return
 
@@ -78,6 +78,9 @@ class RLWallet(Wallet):
         super().notify(additions, deletions)
         self.tip_index = index
         for coin in additions:
+            if coin.name() in self.all_additions:
+                continue
+            self.all_additions[coin.name()] = coin
             if self.can_generate_rl_puzzle_hash(coin.puzzle_hash):
                 self.current_rl_balance = coin.amount
                 if self.rl_coin:
@@ -212,10 +215,12 @@ class RLWallet(Wallet):
         puzzle_hash = coin.puzzle_hash
         pubkey, secretkey = self.get_keys(puzzle_hash)
         puzzle = self.rl_puzzle_for_pk(pubkey.serialize(), self.limit, self.interval, self.rl_origin)
-
-        solution = self.solution_for_rl(coin.parent_coin_info, puzzle_hash, coin.amount, to_puzzlehash, amount,
+        if isinstance(self.rl_parent, Coin):
+            solution = self.solution_for_rl(coin.parent_coin_info, puzzle_hash, coin.amount, to_puzzlehash, amount,
                                         self.rl_parent.parent_coin_info, self.rl_parent.amount)
-
+        else:
+            solution = self.solution_for_rl(coin.parent_coin_info, puzzle_hash, coin.amount, to_puzzlehash, amount,
+                                            self.rl_parent["parent_coin_info"], self.rl_parent["amount"])
         spends.append((puzzle, CoinSolution(coin, solution)))
         return spends
 
@@ -228,7 +233,9 @@ class RLWallet(Wallet):
     def rl_available_balance(self):
         if self.rl_coin is None:
             return 0
+
         unlocked = int(((self.tip_index - self.rl_index) / self.interval)) * self.limit
+
         total_amount = self.rl_coin.amount
         available_amount = min(unlocked, total_amount)
         return available_amount
@@ -260,11 +267,17 @@ class RLWallet(Wallet):
             self.rl_coin.puzzle_hash)
         # Spend wallet coin
         puzzle = self.rl_puzzle_for_pk(pubkey.serialize(), self.limit, self.interval, self.rl_origin)
-        solution = self.rl_make_solution_mode_2(self.rl_coin.puzzle_hash, consolidating_coin.parent_coin_info,
+
+        if isinstance(self.rl_parent, Coin):
+            solution = self.rl_make_solution_mode_2(self.rl_coin.puzzle_hash, consolidating_coin.parent_coin_info,
                                                 consolidating_coin.puzzle_hash, consolidating_coin.amount,
                                                 self.rl_coin.parent_coin_info, self.rl_coin.amount,
                                                 self.rl_parent.amount, self.rl_parent.parent_coin_info)
-
+        else:
+            solution = self.rl_make_solution_mode_2(self.rl_coin.puzzle_hash, consolidating_coin.parent_coin_info,
+                                                    consolidating_coin.puzzle_hash, consolidating_coin.amount,
+                                                    self.rl_coin.parent_coin_info, self.rl_coin.amount,
+                                                    self.rl_parent["amount"], self.rl_parent["parent_coin_info"])
         signature = BLSPrivateKey(secretkey).sign(ProgramHash(solution))
         list_of_coinsolutions.append(CoinSolution(self.rl_coin, clvm.to_sexp_f([puzzle, solution])))
 

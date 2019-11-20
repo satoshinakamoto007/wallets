@@ -88,10 +88,10 @@ async def create_rl_coin(wallet, ledger_api):
     print("Specify the pubkey of receiver")
     pubkey = input(prompt)
     send_amount = get_int("Enter amount to give recipient: ")
-    print(f"Initialization string: {origin.parent_coin_info}:{origin.puzzle_hash}:"
+    print(f"\n\nInitialization string: {origin.parent_coin_info}:{origin.puzzle_hash}:"
           f"{origin.amount}:{origin.name()}:{rate}:{interval}")
     print("\nPaste Initialization string to the receiver")
-    print("\nPress Enter to continue:")
+    print("Press Enter to continue:")
     input(prompt)
     pubkey = PublicKey.from_bytes(bytes.fromhex(pubkey)).serialize()
     rl_puzzle = wallet.rl_puzzle_for_pk(pubkey, rate, interval, origin.name())
@@ -103,7 +103,7 @@ async def create_rl_coin(wallet, ledger_api):
 
 async def spend_rl_coin(wallet, ledger_api):
     if wallet.rl_available_balance() == 0:
-        print("No rate limited coin available!")
+        print("Available rate limited coin balance is 0!")
         return
     receiver_pubkey = input("Enter receiver's pubkey: 0x")
     receiver_pubkey = PublicKey.from_bytes(bytes.fromhex(receiver_pubkey)).serialize()
