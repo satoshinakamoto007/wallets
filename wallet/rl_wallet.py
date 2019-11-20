@@ -57,10 +57,8 @@ class RLWallet(Wallet):
         self.interval = 0
         self.limit = 0
         self.rl_origin = None
-        self.rl_origin_amount = 0
         self.pubkey_orig = None
         self.current_rl_balance = 0
-        self.temp_rl_balance = 0
         self.rl_index = 0
         self.tip_index = 0
         self.all_additions = {}
@@ -90,7 +88,6 @@ class RLWallet(Wallet):
                 self.rl_coin = coin
                 self.rl_index = index
 
-        self.temp_rl_balance = self.current_rl_balance
         spend_bundle_list = self.ac_notify(additions)
         return spend_bundle_list
 
