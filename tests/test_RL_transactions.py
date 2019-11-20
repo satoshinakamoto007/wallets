@@ -3,7 +3,7 @@ import pathlib
 import tempfile
 from aiter import map_aiter
 from ..wallet.wallet import Wallet
-from ..wallet.rl_wallet import RLWallet
+from ..rate_limit.rl_wallet import RLWallet
 from chiasim.utils.log import init_logging
 from chiasim.remote.api_server import api_server
 from chiasim.remote.client import request_response_proxy
@@ -13,7 +13,6 @@ from chiasim.hashable import Coin, ProgramHash
 from chiasim.storage import RAM_DB
 from chiasim.utils.server import start_unix_server_aiter
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
-import operator
 
 
 async def proxy_for_unix_connection(path):
@@ -100,9 +99,6 @@ def test_rl_spend():
     assert wallet_b.rl_available_balance() == 10
     commit_and_notify(remote, wallets, Wallet())
     assert wallet_b.rl_available_balance() == 20
-
-
-
 
 
 def test_rl_interval():
