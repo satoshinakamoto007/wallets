@@ -1,5 +1,13 @@
 # Rate Limited Wallet
 
+## About
+  When RL Coin is created, withdrawl limit and time interval are specified. Those two parameters can't be changed and are used to limit how much Chia can be spent per time interval(Blocks).    
+  Another paramater that is used for during creation of RL Coin is ID of primary input that's creating it. Before RL Coin can be spent it's puzzle checks if its parent is the Origin coin or if parent coin has the same puzzle hash as itself.     
+  This prevents Rate Limited coin owner to create copies of RL coin and spend at **CopyCount * RateLimit**.    
+
+
+ 
+ 
 ## Rate Limited Wallet Usage (step by step)
   1. **RUN**
      - Open two terminal windows and run  ``` python rl_wallet_runnable.py ```
