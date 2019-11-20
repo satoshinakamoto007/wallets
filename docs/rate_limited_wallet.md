@@ -2,7 +2,7 @@
 
 ## Rate Limited Wallet Usage (step by step)
   1. **RUN**
-     - Open two terminal windows and run  ``` $ sh atomic_swap.sh ```
+     - Open two terminal windows and run  ``` python rl_wallet_runnable.py ```
 
   2. **Get Chia**
      - **Terminal 1**
@@ -23,15 +23,15 @@
        - type "**4**" to farm next block
      - **Terminal 2**
        - type "**3**" (Get updated blocks)
-       - type "**2**" (View funds, "rate limited balance" should be 10000, and "Available RL Balance" should be 0 because two block have not passed yet)
-  4. **Interval Time **
+       - type "**2**" ("Rate limited balance" should be 10000, and "Available RL Balance" should be 0)
+  4. **Interval Time**
      - **Terminal 1** (Mine two blocks to make some funds available in wallet 2)
        - type "**4**" and press Enter
        - type "**4**" and press Enter
      - **Terminal 2**
        - type **3** and press Enter
        - type **2** and press Enter ("Available RL Balance" should be 100 now)
-  5. **Spend Rate Limited Funds **
+  5. **Spend Rate Limited Funds**
      - **Terminal 2** (Send 100 to wallet 1)
        - type "**7**" and press Enter
        - from **Terminal 1** copy pubkey and paste it to **Terminal 2**
@@ -42,7 +42,7 @@
      - **Terminal 2** (Send 100 to wallet 1)
        - type "**3**" and press Enter
        - type "**2**" and press Enter ("Current Rate limited Balance" should be 9900, and "Available RL Balance:" should be 0)
-  6. ** Add more funds into Rate Limited Wallet**
+  6. **Add more funds into Rate Limited Wallet**
      - **Terminal 1** (Send 100 to wallet 1)
        - type "**8**" and press Enter
        - from **Terminal 2** copy "RL Coin Puzzlehash" and paste it to **Terminal 1**
