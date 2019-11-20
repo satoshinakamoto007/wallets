@@ -231,9 +231,7 @@ class RLWallet(Wallet):
     def rl_available_balance(self):
         if self.rl_coin is None:
             return 0
-
         unlocked = int(((self.tip_index - self.rl_index) / self.interval)) * self.limit
-
         total_amount = self.rl_coin.amount
         available_amount = min(unlocked, total_amount)
         return available_amount
@@ -281,13 +279,13 @@ class RLWallet(Wallet):
 
         # Spend consolidating coin
         puzzle = self.rl_make_aggregation_puzzle(self.rl_coin.puzzle_hash)
-        solution = self.rl_make_aggregation_solution(consolidating_coin.name(
-        ), self.rl_coin.parent_coin_info, self.rl_coin.amount)
-        list_of_coinsolutions.append(CoinSolution(
-            consolidating_coin, clvm.to_sexp_f([puzzle, solution])))
+        solution = self.rl_make_aggregation_solution(consolidating_coin.name()
+                                                     , self.rl_coin.parent_coin_info
+                                                     , self.rl_coin.amount)
+        list_of_coinsolutions.append(CoinSolution(consolidating_coin, clvm.to_sexp_f([puzzle, solution])))
         # Spend lock
-        puzstring = "(r (c (q 0x" + hexlify(consolidating_coin.name()
-                                            ).decode('ascii') + ") (q ())))"
+        puzstring = "(r (c (q 0x" + hexlify(consolidating_coin.name()).decode('ascii') + ") (q ())))"
+
         puzzle = Program(binutils.assemble(puzstring))
         solution = Program(binutils.assemble("()"))
         list_of_coinsolutions.append(CoinSolution(Coin(self.rl_coin, ProgramHash(
@@ -340,7 +338,6 @@ class RLWallet(Wallet):
         change = spend_value - amount
         for coin in utxos:
             puzzle_hash = coin.puzzle_hash
-
             pubkey, secretkey = self.get_keys(puzzle_hash)
             puzzle = self.puzzle_for_pk(pubkey.serialize())
             if str(origin_name) == str(coin.name()):
