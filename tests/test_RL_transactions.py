@@ -61,6 +61,50 @@ def commit_and_notify(remote, wallets, reward_recipient):
                 _ = run(remote.push_tx(tx=bun))
 
 
+def test_rl_spend():
+    remote = make_client_server()
+    run = asyncio.get_event_loop().run_until_complete
+    # A gives B some money, but B can only send that money to C (and generate change for itself)
+    wallet_a = RLWallet()
+    wallet_b = RLWallet()
+    wallet_c = RLWallet()
+    wallets = [wallet_a, wallet_b, wallet_c]
+
+    limit = 10
+    interval = 1
+    commit_and_notify(remote, wallets, wallet_a)
+
+    origin_coin = wallet_a.my_utxos.copy().pop()
+    wallet_b_pk = wallet_b.get_next_public_key().serialize()
+    wallet_b.pubkey_orig = wallet_b_pk
+    wallet_b.set_origin(origin_coin)
+    wallet_b.limit = limit
+    wallet_b.interval = interval
+
+    rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_coin.name())
+    rl_puzzlehash = ProgramHash(rl_puzzle)
+
+    # wallet A is normal wallet, it sends coin that's rate limited to wallet B
+    amount = 5000
+    print("\n Origin Coin name: ", str(origin_coin.name()))
+    spend_bundle = wallet_a.generate_signed_transaction_with_origin(amount, rl_puzzlehash, origin_coin.name())
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+
+    assert wallet_a.current_balance == 999995000
+    assert wallet_b.current_rl_balance == 5000
+    assert wallet_c.current_balance == 0
+
+    # Now send some coins from b to c
+    commit_and_notify(remote, wallets, Wallet())
+    assert wallet_b.rl_available_balance() == 10
+    commit_and_notify(remote, wallets, Wallet())
+    assert wallet_b.rl_available_balance() == 20
+
+
+
+
+
 def test_rl_interval():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
@@ -74,24 +118,20 @@ def test_rl_interval():
     interval = 5
     commit_and_notify(remote, wallets, wallet_a)
 
-    utxo_copy = wallet_a.my_utxos.copy()
-    origin_coin = utxo_copy.pop()
-    while origin_coin.amount is 0:
-        origin_coin = utxo_copy.pop()
-
-    origin_id = origin_coin.name()
+    origin_coin = wallet_a.my_utxos.copy().pop()
     wallet_b_pk = wallet_b.get_next_public_key().serialize()
     wallet_b.pubkey_orig = wallet_b_pk
-    rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_id)
-
     wallet_b.set_origin(origin_coin)
     wallet_b.limit = limit
     wallet_b.interval = interval
+
+    rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_coin.name())
     rl_puzzlehash = ProgramHash(rl_puzzle)
 
     # wallet A is normal wallet, it sends coin that's rate limited to wallet B
     amount = 5000
-    spend_bundle = wallet_a.generate_signed_transaction(amount, rl_puzzlehash)
+    print("\n Origin Coin name: ", str(origin_coin.name()))
+    spend_bundle = wallet_a.generate_signed_transaction_with_origin(amount, rl_puzzlehash, origin_coin.name())
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
 
@@ -120,51 +160,6 @@ def test_rl_interval():
     assert wallet_c.current_balance == 10
 
 
-def test_rl_spend():
-    remote = make_client_server()
-    run = asyncio.get_event_loop().run_until_complete
-    # A gives B some money, but B can only send that money to C (and generate change for itself)
-    wallet_a = RLWallet()
-    wallet_b = RLWallet()
-    wallet_c = RLWallet()
-    wallets = [wallet_a, wallet_b, wallet_c]
-
-    limit = 10
-    interval = 1
-    commit_and_notify(remote, wallets, wallet_a)
-
-    utxo_copy = wallet_a.my_utxos.copy()
-    origin_coin = utxo_copy.pop()
-    while origin_coin.amount is 0:
-        origin_coin = utxo_copy.pop()
-
-    origin_id = origin_coin.name()
-    wallet_b_pk = wallet_b.get_next_public_key().serialize()
-    wallet_b.pubkey_orig = wallet_b_pk
-    rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_id)
-
-    wallet_b.set_origin(origin_coin)
-    wallet_b.limit = limit
-    wallet_b.interval = interval
-    rl_puzzlehash = ProgramHash(rl_puzzle)
-
-    # wallet A is normal wallet, it sends coin that's rate limited to wallet B
-    amount = 5000
-    spend_bundle = wallet_a.generate_signed_transaction(amount, rl_puzzlehash)
-    _ = run(remote.push_tx(tx=spend_bundle))
-    commit_and_notify(remote, wallets, Wallet())
-
-    assert wallet_a.current_balance == 999995000
-    assert wallet_b.current_rl_balance == 5000
-    assert wallet_c.current_balance == 0
-
-    # Now send some coins from b to c
-    commit_and_notify(remote, wallets, Wallet())
-    assert wallet_b.rl_available_balance() == 10
-    commit_and_notify(remote, wallets, Wallet())
-    assert wallet_b.rl_available_balance() == 20
-
-
 def test_rl_interval_more_funds():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
@@ -178,24 +173,20 @@ def test_rl_interval_more_funds():
     interval = 2
     commit_and_notify(remote, wallets, wallet_a)
 
-    utxo_copy = wallet_a.my_utxos.copy()
-    origin_coin = utxo_copy.pop()
-    while origin_coin.amount is 0:
-        origin_coin = utxo_copy.pop()
-
-    origin_id = origin_coin.name()
+    origin_coin = wallet_a.my_utxos.copy().pop()
     wallet_b_pk = wallet_b.get_next_public_key().serialize()
     wallet_b.pubkey_orig = wallet_b_pk
-    rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_id)
-
     wallet_b.set_origin(origin_coin)
     wallet_b.limit = limit
     wallet_b.interval = interval
+
+    rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_coin.name())
     rl_puzzlehash = ProgramHash(rl_puzzle)
 
     # wallet A is normal wallet, it sends coin that's rate limited to wallet B
     amount = 5000
-    spend_bundle = wallet_a.generate_signed_transaction(amount, rl_puzzlehash)
+    print("\n Origin Coin name: ", str(origin_coin.name()))
+    spend_bundle = wallet_a.generate_signed_transaction_with_origin(amount, rl_puzzlehash, origin_coin.name())
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
 
@@ -243,24 +234,20 @@ def test_spending_over_limit():
     interval = 2
     commit_and_notify(remote, wallets, wallet_a)
 
-    utxo_copy = wallet_a.my_utxos.copy()
-    origin_coin = utxo_copy.pop()
-    while origin_coin.amount is 0:
-        origin_coin = utxo_copy.pop()
-
-    origin_id = origin_coin.name()
+    origin_coin = wallet_a.my_utxos.copy().pop()
     wallet_b_pk = wallet_b.get_next_public_key().serialize()
     wallet_b.pubkey_orig = wallet_b_pk
-    rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_id)
-
     wallet_b.set_origin(origin_coin)
     wallet_b.limit = limit
     wallet_b.interval = interval
+
+    rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_coin.name())
     rl_puzzlehash = ProgramHash(rl_puzzle)
 
     # wallet A is normal wallet, it sends coin that's rate limited to wallet B
     amount = 5000
-    spend_bundle = wallet_a.generate_signed_transaction(amount, rl_puzzlehash)
+    print("\n Origin Coin name: ", str(origin_coin.name()))
+    spend_bundle = wallet_a.generate_signed_transaction_with_origin(amount, rl_puzzlehash, origin_coin.name())
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
 
@@ -295,24 +282,20 @@ def test_rl_aggregation():
     interval = 1
     commit_and_notify(remote, wallets, wallet_a)
 
-    utxo_copy = wallet_a.my_utxos.copy()
-    origin_coin = utxo_copy.pop()
-    while origin_coin.amount is 0:
-        origin_coin = utxo_copy.pop()
-
-    origin_id = origin_coin.name()
+    origin_coin = wallet_a.my_utxos.copy().pop()
     wallet_b_pk = wallet_b.get_next_public_key().serialize()
     wallet_b.pubkey_orig = wallet_b_pk
-    rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_id)
-
     wallet_b.set_origin(origin_coin)
     wallet_b.limit = limit
     wallet_b.interval = interval
+
+    rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_coin.name())
     rl_puzzlehash = ProgramHash(rl_puzzle)
 
     # wallet A is normal wallet, it sends coin that's rate limited to wallet B
     amount = 5000
-    spend_bundle = wallet_a.generate_signed_transaction(amount, rl_puzzlehash)
+    print("\n Origin Coin name: ", str(origin_coin.name()))
+    spend_bundle = wallet_a.generate_signed_transaction_with_origin(amount, rl_puzzlehash, origin_coin.name())
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
 

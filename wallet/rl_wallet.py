@@ -18,10 +18,34 @@ from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from chiasim.validation.consensus import (
     conditions_for_solution, hash_key_pairs_for_conditions_dict
 )
+from chiasim.validation.Conditions import (
+    conditions_by_opcode, make_create_coin_condition, make_assert_my_coin_id_condition, make_assert_min_time_condition,
+    make_assert_coin_consumed_condition
+)
+from chiasim.puzzles.p2_conditions import puzzle_for_conditions
 from .puzzle_utilities import pubkey_format, puzzlehash_from_string, BLSSignature_from_string
 from blspy import Signature
 from .keys import build_spend_bundle, sign_f_for_keychain
 import math
+
+
+def sha256(val):
+    return hashlib.sha256(val).digest()
+
+
+def make_solution(primaries=[], min_time=0, me={}, consumed=[]):
+    ret = []
+    for primary in primaries:
+        ret.append(make_create_coin_condition(
+            primary['puzzlehash'], primary['amount']))
+    for coin in consumed:
+        ret.append(make_assert_coin_consumed_condition(coin))
+    if min_time > 0:
+        ret.append(make_assert_min_time_condition(min_time))
+    if me:
+        ret.append(make_assert_my_coin_id_condition(me['id']))
+    return puzzle_for_conditions(ret)
+
 
 # RLWallet is subclass of Wallet
 class RLWallet(Wallet):
@@ -69,7 +93,7 @@ class RLWallet(Wallet):
 
     def ac_notify(self, additions):
         if self.rl_coin is None:
-            return # prevent unnecessary searching
+            return  # prevent unnecessary searching
 
         spend_bundle_list = []
 
@@ -84,15 +108,14 @@ class RLWallet(Wallet):
         else:
             return None
 
-
     def can_generate_rl_puzzle_hash(self, hash):
-        #breakpoint()
+        # breakpoint()
         if self.rl_origin is None:
             return None
         return any(map(lambda child: hash == ProgramHash(self.rl_puzzle_for_pk(
-            self.extended_secret_key.public_child(child).get_public_key().serialize(), self.limit, self.interval, self.rl_origin)),
-            reversed(range(self.next_address))))
-
+            self.extended_secret_key.public_child(child).get_public_key().serialize(), self.limit, self.interval,
+            self.rl_origin)),
+                       reversed(range(self.next_address))))
 
     # Solution to this puzzle must be in format:
     # (1 my_parent_id, my_puzzlehash, my_amount, outgoing_puzzle_hash, outgoing_amount, min_block_time, parent_parent_id, parent_amount)
@@ -102,7 +125,7 @@ class RLWallet(Wallet):
         opcode_coin_block_age = hexlify(ConditionOpcode.ASSERT_BLOCK_AGE_EXCEEDS).decode('ascii')
         opcode_create = hexlify(ConditionOpcode.CREATE_COIN).decode('ascii')
         opcode_myid = hexlify(ConditionOpcode.ASSERT_MY_COIN_ID).decode('ascii')
-        if(not origin_id):
+        if (not origin_id):
             return None
 
         # M - chia_per_interval
@@ -135,12 +158,14 @@ class RLWallet(Wallet):
 
     # Solution is (1 my_parent_id, my_puzzlehash, my_amount, outgoing_puzzle_hash, outgoing_amount, min_block_time, parent_parent_id, parent_amount)
     # min block time = Math.ceil((new_amount * self.interval) / self.limit)
-    def solution_for_rl(self, my_parent_id, my_puzzlehash, my_amount, out_puzzlehash, out_amount, my_parent_parent_id, parent_amount):
+    def solution_for_rl(self, my_parent_id, my_puzzlehash, my_amount, out_puzzlehash, out_amount, my_parent_parent_id,
+                        parent_amount):
         min_block_count = math.ceil((out_amount * self.interval) / self.limit)
         solution = f"(1 0x{my_parent_id} 0x{my_puzzlehash} {my_amount} 0x{out_puzzlehash} {out_amount} {min_block_count} 0x{my_parent_parent_id} {parent_amount})"
         return Program(binutils.assemble(solution))
 
-    def rl_make_solution_mode_2(self, my_puzzle_hash, consolidating_primary_input, consolidating_coin_puzzle_hash, outgoing_amount, my_primary_input, incoming_amount, parent_amount, my_parent_parent_id):
+    def rl_make_solution_mode_2(self, my_puzzle_hash, consolidating_primary_input, consolidating_coin_puzzle_hash,
+                                outgoing_amount, my_primary_input, incoming_amount, parent_amount, my_parent_parent_id):
         my_puzzle_hash = hexlify(my_puzzle_hash).decode('ascii')
         consolidating_primary_input = hexlify(consolidating_primary_input).decode('ascii')
         consolidating_coin_puzzle_hash = hexlify(consolidating_coin_puzzle_hash).decode('ascii')
@@ -152,13 +177,12 @@ class RLWallet(Wallet):
         # If Wallet A wants to send further funds to Wallet B then they can lock them up using this code
         # Solution will be (my_id wallet_coin_primary_input wallet_coin_amount)
         opcode_myid = hexlify(ConditionOpcode.ASSERT_MY_COIN_ID).decode('ascii')
-        wp = hexlify(wallet_puzzle).decode('ascii')
         opcode_consumed = hexlify(ConditionOpcode.ASSERT_COIN_CONSUMED).decode('ascii')
         me_is_my_id = f"(c (q 0x{opcode_myid}) (c (f (a)) (q ())))"
 
         # lock_puzzle is the hash of '(r (c (q "merge in ID") (q ())))'
         lock_puzzle = "(sha256 (wrap (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (c (q (q ())) (q ())))) (q ())))))"
-        parent_coin_id = f"(sha256 (f (r (a))) (q 0x{wp}) (uint64 (f (r (r (a))))))"
+        parent_coin_id = f"(sha256 (f (r (a))) (q 0x{wallet_puzzle}) (uint64 (f (r (r (a))))))"
         input_of_lock = f"(c (q 0x{opcode_consumed}) (c (sha256 {parent_coin_id} {lock_puzzle} (uint64 (q 0))) (q ())))"
         puz = f"(c {me_is_my_id} (c {input_of_lock} (q ())))"
 
@@ -176,7 +200,8 @@ class RLWallet(Wallet):
         for child in reversed(range(self.next_address)):
             pubkey = self.extended_secret_key.public_child(
                 child).get_public_key()
-            if hash == ProgramHash(self.rl_puzzle_for_pk(pubkey.serialize(), self.limit, self.interval, self.rl_origin)):
+            if hash == ProgramHash(
+                    self.rl_puzzle_for_pk(pubkey.serialize(), self.limit, self.interval, self.rl_origin)):
                 return pubkey, self.extended_secret_key.private_child(child).get_private_key()
 
     # This is for sending a received RL coin, not creating a new RL coin
@@ -188,7 +213,8 @@ class RLWallet(Wallet):
         pubkey, secretkey = self.get_keys(puzzle_hash)
         puzzle = self.rl_puzzle_for_pk(pubkey.serialize(), self.limit, self.interval, self.rl_origin)
 
-        solution = self.solution_for_rl(coin.parent_coin_info, puzzle_hash, coin.amount, to_puzzlehash, amount, self.rl_parent.parent_coin_info, self.rl_parent.amount)
+        solution = self.solution_for_rl(coin.parent_coin_info, puzzle_hash, coin.amount, to_puzzlehash, amount,
+                                        self.rl_parent.parent_coin_info, self.rl_parent.amount)
 
         spends.append((puzzle, CoinSolution(coin, solution)))
         return spends
@@ -233,9 +259,11 @@ class RLWallet(Wallet):
         pubkey, secretkey = self.get_keys(
             self.rl_coin.puzzle_hash)
         # Spend wallet coin
-        puzzle =self.rl_puzzle_for_pk(pubkey.serialize(), self.limit, self.interval, self.rl_origin)
+        puzzle = self.rl_puzzle_for_pk(pubkey.serialize(), self.limit, self.interval, self.rl_origin)
         solution = self.rl_make_solution_mode_2(self.rl_coin.puzzle_hash, consolidating_coin.parent_coin_info,
-                                                consolidating_coin.puzzle_hash, consolidating_coin.amount, self.rl_coin.parent_coin_info, self.rl_coin.amount, self.rl_parent.amount, self.rl_parent.parent_coin_info)
+                                                consolidating_coin.puzzle_hash, consolidating_coin.amount,
+                                                self.rl_coin.parent_coin_info, self.rl_coin.amount,
+                                                self.rl_parent.amount, self.rl_parent.parent_coin_info)
 
         signature = BLSPrivateKey(secretkey).sign(ProgramHash(solution))
         list_of_coinsolutions.append(CoinSolution(self.rl_coin, clvm.to_sexp_f([puzzle, solution])))
@@ -259,7 +287,6 @@ class RLWallet(Wallet):
 
         return SpendBundle(solution_list, aggsig)
 
-
     def get_new_puzzle(self, pubkey):
         puzzle = puzzle_for_pk(pubkey)
         return puzzle
@@ -278,13 +305,54 @@ class RLWallet(Wallet):
     def rl_get_aggregation_puzzlehash(self, wallet_puzzle):
         return ProgramHash(self.rl_make_aggregation_puzzle(wallet_puzzle))
 
-    #Ideally origin primary input coin would be selected manually
-    def select_coins(self, amount):
+    # We need to select origin primary input
+    def select_coins(self, amount, origin_name=None):
         if amount > self.temp_balance:
             return None
         used_utxos = set()
+        if origin_name is not None:
+            for coin in self.temp_utxos.copy():
+                if str(coin.name()) == str(origin_name):
+                    used_utxos.add(coin)
         while sum(map(lambda coin: coin.amount, used_utxos)) < amount:
             tmp = self.temp_utxos.pop()
             if tmp.amount is not 0:
                 used_utxos.add(tmp)
         return used_utxos
+
+    def generate_unsigned_transaction_with_origin(self, amount, newpuzzlehash, origin_name):
+        if self.temp_balance < amount:
+            return None  # TODO: Should we throw a proper error here, or just return None?
+        utxos = self.select_coins(amount, origin_name)
+        spends = []
+        spend_value = sum([coin.amount for coin in utxos])
+        change = spend_value - amount
+        for coin in utxos:
+            print("\n CoinZ: ", coin)
+            puzzle_hash = coin.puzzle_hash
+
+            pubkey, secretkey = self.get_keys(puzzle_hash)
+            puzzle = self.puzzle_for_pk(pubkey.serialize())
+            if str(origin_name) == str(coin.name()):
+                primaries = [{'puzzlehash': newpuzzlehash, 'amount': amount}]
+                if change > 0:
+                    changepuzzlehash = self.get_new_puzzlehash()
+                    primaries.append(
+                        {'puzzlehash': changepuzzlehash, 'amount': change})
+                    # add change coin into temp_utxo set
+                    self.temp_utxos.add(Coin(coin, changepuzzlehash, change))
+                solution = make_solution(primaries=primaries)
+                print("\nOutput, ", coin.name())
+            else:
+                print("\n2nd options: ", coin.name())
+                solution = make_solution(consumed=[coin.name()])
+            spends.append((puzzle, CoinSolution(coin, solution)))
+        self.temp_balance -= amount
+        return spends
+
+    def generate_signed_transaction_with_origin(self, amount, newpuzzlehash, origin_name):
+        transaction = self.generate_unsigned_transaction_with_origin(amount, newpuzzlehash, origin_name)
+        print("\nTransaction: ", transaction)
+        if transaction is None:
+            return None  # TODO: Should we throw a proper error here, or just return None?
+        return self.sign_transaction(transaction)
