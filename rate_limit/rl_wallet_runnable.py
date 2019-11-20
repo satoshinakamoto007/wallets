@@ -19,19 +19,6 @@ from chiasim.atoms import hash_pointer
 from chiasim.hashable.Hash import std_hash
 
 
-def get_int(message):
-    amount = ""
-    while amount == "":
-        amount = input(message)
-        if amount == "q":
-            return "q"
-        if not amount.isdigit():
-            amount = ""
-        if amount.isdigit():
-            amount = int(amount)
-    return amount
-
-
 def print_my_details(wallet):
     print()
     print(divider)
@@ -72,22 +59,23 @@ def receive_rl_coin(wallet):
 
 async def create_rl_coin(wallet, ledger_api):
     utxo_list = list(wallet.my_utxos)
-    if len(utxo_list) == 0:
-        print("No UTXOs available.")
-        return
     print("Select UTXO for origin: ")
     num = 0
     for utxo in utxo_list:
         print(f"{num}) coin_name:{utxo.name()} amount:{utxo.amount}")
         num += 1
-    selected = get_int("Select UTXO for origin: ")
+    print("Select UTXO for origin")
+    selected = int(input(prompt))
     origin = utxo_list[selected]
-    print("Rate limit is defined as amount of Chia per time interval.(Blocks)\n")
-    rate = get_int("Specify the Chia amount limit: ")
-    interval = get_int("Specify the interval length (blocks): ")
+    print("Rate limit is defined as amount of Chia per time interval.(Blocks)")
+    print("Specify the Chia amount limit:")
+    rate = int(input(prompt))
+    print("Specify the interval length (blocks):")
+    interval = int(input(prompt))
     print("Specify the pubkey of receiver")
     pubkey = input(prompt)
-    send_amount = get_int("Enter amount to give recipient: ")
+    print("Enter amount to give recipient:")
+    send_amount = int(input(prompt))
     print(f"Initialization string: {origin.parent_coin_info}:{origin.puzzle_hash}:"
           f"{origin.amount}:{origin.name()}:{rate}:{interval}")
     print("\nPaste Initialization string to the receiver")
@@ -102,9 +90,6 @@ async def create_rl_coin(wallet, ledger_api):
 
 
 async def spend_rl_coin(wallet, ledger_api):
-    if wallet.rl_available_balance() == 0:
-        print("No rate limited coin available!")
-        return
     receiver_pubkey = input("Enter receiver's pubkey: 0x")
     receiver_pubkey = PublicKey.from_bytes(bytes.fromhex(receiver_pubkey)).serialize()
     amount = -1
@@ -122,10 +107,6 @@ async def spend_rl_coin(wallet, ledger_api):
 
 
 async def add_funds_to_rl_coin(wallet, ledger_api):
-    utxo_list = list(wallet.my_utxos)
-    if len(utxo_list) == 0:
-        print("No UTXOs available.")
-        return
     rl_puzzlehash = input("Enter RL coin puzzlehash: ")
     agg_puzzlehash = wallet.rl_get_aggregation_puzzlehash(rl_puzzlehash)
     amount = -1
