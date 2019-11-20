@@ -38,7 +38,10 @@ def print_my_details(wallet):
     print(" \u2447 Wallet Details \u2447")
     print()
     print("Name: " + wallet.name)
-    print("New pubkey: " + pubkey_format(wallet.get_next_public_key()))
+    pk = hexlify(wallet.get_next_public_key().serialize()).decode("ascii")
+    print(f"New pubkey: {pk}")
+    pk = hexlify(wallet.pubkey_orig).decode("ascii")
+    print(f"RL pubkey: {pk}")
     print(divider)
 
 
