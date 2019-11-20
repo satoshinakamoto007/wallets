@@ -76,7 +76,6 @@ def test_rl_spend():
 
     origin_coin = wallet_a.my_utxos.copy().pop()
     wallet_b_pk = wallet_b.get_next_public_key().serialize()
-    wallet_b.pubkey_orig = wallet_b_pk
     wallet_b.set_origin(origin_coin)
     wallet_b.limit = limit
     wallet_b.interval = interval
@@ -120,7 +119,6 @@ def test_rl_interval():
 
     origin_coin = wallet_a.my_utxos.copy().pop()
     wallet_b_pk = wallet_b.get_next_public_key().serialize()
-    wallet_b.pubkey_orig = wallet_b_pk
     wallet_b.set_origin(origin_coin)
     wallet_b.limit = limit
     wallet_b.interval = interval
@@ -175,7 +173,6 @@ def test_rl_interval_more_funds():
 
     origin_coin = wallet_a.my_utxos.copy().pop()
     wallet_b_pk = wallet_b.get_next_public_key().serialize()
-    wallet_b.pubkey_orig = wallet_b_pk
     wallet_b.set_origin(origin_coin)
     wallet_b.limit = limit
     wallet_b.interval = interval
@@ -236,7 +233,6 @@ def test_spending_over_limit():
 
     origin_coin = wallet_a.my_utxos.copy().pop()
     wallet_b_pk = wallet_b.get_next_public_key().serialize()
-    wallet_b.pubkey_orig = wallet_b_pk
     wallet_b.set_origin(origin_coin)
     wallet_b.limit = limit
     wallet_b.interval = interval
@@ -283,7 +279,6 @@ def test_rl_aggregation():
 
     origin_coin = wallet_a.my_utxos.copy().pop()
     wallet_b_pk = wallet_b.get_next_public_key().serialize()
-    wallet_b.pubkey_orig = wallet_b_pk
     wallet_b.set_origin(origin_coin)
     wallet_b.limit = limit
     wallet_b.interval = interval
