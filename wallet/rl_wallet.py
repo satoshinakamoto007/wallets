@@ -328,7 +328,6 @@ class RLWallet(Wallet):
         spend_value = sum([coin.amount for coin in utxos])
         change = spend_value - amount
         for coin in utxos:
-            print("\n CoinZ: ", coin)
             puzzle_hash = coin.puzzle_hash
 
             pubkey, secretkey = self.get_keys(puzzle_hash)
@@ -342,9 +341,7 @@ class RLWallet(Wallet):
                     # add change coin into temp_utxo set
                     self.temp_utxos.add(Coin(coin, changepuzzlehash, change))
                 solution = make_solution(primaries=primaries)
-                print("\nOutput, ", coin.name())
             else:
-                print("\n2nd options: ", coin.name())
                 solution = make_solution(consumed=[coin.name()])
             spends.append((puzzle, CoinSolution(coin, solution)))
         self.temp_balance -= amount
@@ -352,7 +349,6 @@ class RLWallet(Wallet):
 
     def generate_signed_transaction_with_origin(self, amount, newpuzzlehash, origin_name):
         transaction = self.generate_unsigned_transaction_with_origin(amount, newpuzzlehash, origin_name)
-        print("\nTransaction: ", transaction)
         if transaction is None:
             return None  # TODO: Should we throw a proper error here, or just return None?
         return self.sign_transaction(transaction)
