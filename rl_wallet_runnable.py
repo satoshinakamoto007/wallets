@@ -9,7 +9,8 @@ from chiasim.hashable.Body import BodyList
 from decorations import print_leaf, divider, prompt
 from clvm_tools import binutils
 from chiasim.hashable import Program, ProgramHash, BLSSignature
-from wallet.puzzle_utilities import pubkey_format, signature_from_string, puzzlehash_from_string, BLSSignature_from_string
+from wallet.puzzle_utilities import pubkey_format, signature_from_string, puzzlehash_from_string, \
+    BLSSignature_from_string
 from binascii import hexlify
 from chiasim.validation import ChainView
 from chiasim.ledger.ledger_api import LedgerAPI
@@ -17,13 +18,14 @@ from blspy import PublicKey
 from chiasim.atoms import hash_pointer
 from chiasim.hashable.Hash import std_hash
 
+
 def print_my_details(wallet):
     print()
     print(divider)
     print(" \u2447 Wallet Details \u2447")
     print()
     print("Name: " + wallet.name)
-    print("New pubkey: "+ pubkey_format(wallet.get_next_public_key()))
+    print("New pubkey: " + pubkey_format(wallet.get_next_public_key()))
     print(divider)
 
 
@@ -34,7 +36,9 @@ def view_funds(wallet):
     print("UTXOs: ")
     print([x.amount for x in wallet.temp_utxos if x.amount > 0])
     if wallet.rl_coin is not None:
-        print(f"RL Coin:\nAmount {wallet.rl_coin.amount} \nRate Limit: {wallet.limit}Chia/{wallet.interval}Blocks" )
+        print(f"RL Coin:\nAmount {wallet.rl_coin.amount} \nRate Limit: {wallet.limit}Chia/{wallet.interval}Blocks")
+        print(f"RL Coin puzzlehash: {wallet.rl_coin.puzzle_hash}")
+
 
 def receive_rl_coin(wallet):
     print()
@@ -80,8 +84,10 @@ async def create_rl_coin(wallet, ledger_api):
     pubkey = PublicKey.from_bytes(bytes.fromhex(pubkey)).serialize()
     rl_puzzle = wallet.rl_puzzle_for_pk(pubkey, rate, interval, origin.name())
     rl_puzzlehash = ProgramHash(rl_puzzle)
-    spend_bundle = wallet.generate_signed_transaction(send_amount, rl_puzzlehash)
+    spend_bundle = wallet.generate_signed_transaction_with_origin(send_amount, rl_puzzlehash, origin.name())
     _ = await ledger_api.push_tx(tx=spend_bundle)
+
+
 
 async def spend_rl_coin(wallet, ledger_api):
     receiver_pubkey = input("Enter receiver's pubkey: 0x")
@@ -97,6 +103,22 @@ async def spend_rl_coin(wallet, ledger_api):
 
     puzzlehash = wallet.get_new_puzzlehash_for_pk(receiver_pubkey)
     spend_bundle = wallet.rl_generate_signed_transaction(amount, puzzlehash)
+    _ = await ledger_api.push_tx(tx=spend_bundle)
+
+
+async def add_funds_to_rl_coin(wallet, ledger_api):
+    rl_puzzlehash = input("Enter RL coin puzzlehash: ")
+    agg_puzzlehash = wallet.rl_get_aggregation_puzzlehash(rl_puzzlehash)
+    amount = -1
+    while amount > wallet.current_balance or amount < 0:
+        amount = input("Enter amount to add into RL coin: ")
+        if amount == "q":
+            return
+        if not amount.isdigit():
+            amount = -1
+        amount = int(amount)
+
+    spend_bundle = wallet.generate_signed_transaction(amount, agg_puzzlehash)
     _ = await ledger_api.push_tx(tx=spend_bundle)
 
 
@@ -162,8 +184,9 @@ async def main():
         print("\u2448 3 Get Update")
         print("\u2448 4 *GOD MODE* Farm Block / Get Money")
         print("\u2448 5 Receive a new rate limited coin")
-        print("\u2448 6 Create a new rate limited coin")
+        print("\u2448 6 Send a new rate limited coin")
         print("\u2448 7 Spend from rate limited coin")
+        print("\u2448 8 Add funds to existing rate limited coin")
         print("\u2448 q Quit")
         print(divider)
         print()
@@ -183,6 +206,8 @@ async def main():
             await create_rl_coin(wallet, ledger_api)
         elif selection == "7":
             await spend_rl_coin(wallet, ledger_api)
+        elif selection == "8":
+            await add_funds_to_rl_coin(wallet, ledger_api)
 
 
 run = asyncio.get_event_loop().run_until_complete
