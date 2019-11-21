@@ -84,7 +84,6 @@ def test_rl_spend():
 
     # wallet A is normal wallet, it sends coin that's rate limited to wallet B
     amount = 5000
-    print("\n Origin Coin name: ", str(origin_coin.name()))
     spend_bundle = wallet_a.generate_signed_transaction_with_origin(amount, rl_puzzlehash, origin_coin.name())
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
@@ -127,7 +126,6 @@ def test_rl_interval():
 
     # wallet A is normal wallet, it sends coin that's rate limited to wallet B
     amount = 5000
-    print("\n Origin Coin name: ", str(origin_coin.name()))
     spend_bundle = wallet_a.generate_signed_transaction_with_origin(amount, rl_puzzlehash, origin_coin.name())
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
@@ -181,7 +179,6 @@ def test_rl_interval_more_funds():
 
     # wallet A is normal wallet, it sends coin that's rate limited to wallet B
     amount = 5000
-    print("\n Origin Coin name: ", str(origin_coin.name()))
     spend_bundle = wallet_a.generate_signed_transaction_with_origin(amount, rl_puzzlehash, origin_coin.name())
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
