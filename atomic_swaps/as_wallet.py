@@ -24,6 +24,7 @@ from .keys import build_spend_bundle, sign_f_for_keychain
 #ASWallet is subclass of Wallet
 class ASWallet(Wallet):
     def __init__(self):
+        self.overlook = []
         super().__init__()
         return
 
@@ -54,10 +55,11 @@ class ASWallet(Wallet):
         counter = 0
         for coin in additions:
             for puzzlehash in puzzlehashes:
-                if hexlify(coin.puzzle_hash).decode('ascii') == puzzlehash:
+                if hexlify(coin.puzzle_hash).decode('ascii') == puzzlehash and coin.puzzle_hash not in self.overlook:
                     self.current_balance += coin.amount
                     self.my_utxos.add(coin)
                     counter += 1
+                    self.overlook.append(coin.puzzle_hash)
         if counter == 1:
             print()
             print("{} {}".format(counter, "new atomic swap coin is available to you."))
@@ -66,10 +68,6 @@ class ASWallet(Wallet):
             print("{} {}".format(counter, "new atomic swap coins are available to you."))
 
 
-    # needs to be adapted for potential future changes regarding how atomic ...
-    # ... swap coins are integrated into wallets (right now the atomic swap ...
-    # ... coins are added to an atomic swap wallet's utxo set but that ...
-    # ... could change)
     def as_select_coins(self, amount, as_puzzlehash):
         if amount > self.current_balance:
             return None
@@ -85,7 +83,7 @@ class ASWallet(Wallet):
         return used_utxos
 
 
-    # fake version
+    # not in use
     def as_request(self, as_wallet_receiver, as_amount, as_timelock_t):
         print()
         print("Hi " + str(as_wallet_receiver) + ".")
@@ -108,7 +106,7 @@ class ASWallet(Wallet):
             return as_pubkey_sender_outgoing, as_pubkey_sender_incoming, as_pubkey_receiver_outgoing, as_pubkey_receiver_incoming
 
 
-    # fake version
+    # not in use
     def as_pubkey_exchange(self, as_wallet_receiver):
         as_pubkey_sender_outgoing = self.get_next_public_key().serialize()
         as_pubkey_sender_incoming = self.get_next_public_key().serialize()
@@ -137,7 +135,7 @@ class ASWallet(Wallet):
         return secret_hash
 
 
-    def as_make_puzzle(self, as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_t, as_secret_hash):
+    def as_make_puzzle(self, as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_block, as_secret_hash):
         as_pubkey_sender_cl = "0x%s" % (hexlify(as_pubkey_sender).decode('ascii'))
         as_pubkey_receiver_cl = "0x%s" % (hexlify(as_pubkey_receiver).decode('ascii'))
 
@@ -149,7 +147,7 @@ class ASWallet(Wallet):
         aggsig_receiver = "(c (q 0x%s) (c (q %s) (c (sha256 (wrap (a))) (q ()))))" % (hexlify(ConditionOpcode.AGG_SIG).decode('ascii'), as_pubkey_receiver_cl)
         aggsig_sender = "(c (q 0x%s) (c (q %s) (c (sha256 (wrap (a))) (q ()))))" % (hexlify(ConditionOpcode.AGG_SIG).decode('ascii'), as_pubkey_sender_cl)
         receiver_puz = ("((c (i (= (sha256 (f (r (a)))) (q %s)) (q (c " + aggsig_receiver + " (c " + payout_receiver + " (q ())))) (q (x (q 'invalid secret')))) (a))) ) ") % (as_secret_hash)
-        timelock = "(c (q 0x%s) (c (q %d) (q ()))) " % (hexlify(ConditionOpcode.ASSERT_MIN_TIME).decode('ascii'), as_timelock_t)
+        timelock = "(c (q 0x%s) (c (q %d) (q ()))) " % (hexlify(ConditionOpcode.ASSERT_BLOCK_INDEX_EXCEEDS).decode('ascii'), as_timelock_block)
         sender_puz = "(c " + aggsig_sender + " (c " + timelock + " (c " + payout_sender + " (q ()))))"
         as_puz_sender = "((c (i (= (f (a)) (q 77777)) (q " + sender_puz + ") (q (x (q 'not a valid option'))) ) (a)))"
         as_puz = "((c (i (= (f (a)) (q 33333)) (q " + receiver_puz + " (q " + as_puz_sender + ")) (a)))"
@@ -163,8 +161,8 @@ class ASWallet(Wallet):
         # test sender solution: (77777)
 
 
-    def as_get_new_puzzlehash(self, as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_t, as_secret_hash):
-        as_puz = self.as_make_puzzle(as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_t, as_secret_hash)
+    def as_get_new_puzzlehash(self, as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_block, as_secret_hash):
+        as_puz = self.as_make_puzzle(as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_block, as_secret_hash)
         as_puzzlehash = ProgramHash(as_puz)
         return as_puzzlehash
 
@@ -181,6 +179,34 @@ class ASWallet(Wallet):
         sol += ")"
         return Program(binutils.assemble(sol))
 
+    def as_solution_list(self, body_program):
+        """
+        Return a list of tuples of (coin_name, puzzle_hash, conditions_dict, puzzle_solution_program)
+        """
+
+        try:
+            sexp = clvm.eval_f(clvm.eval_f, body_program, [])
+        except clvm.EvalError.EvalError:
+            breakpoint()
+            raise ConsensusError(Err.INVALID_BLOCK_SOLUTION, body_program)
+
+        npc_list = []
+        for name_solution in sexp.as_iter():
+            _ = name_solution.as_python()
+            if len(_) != 2:
+                raise ConsensusError(Err.INVALID_COIN_SOLUTION, name_solution)
+            if not isinstance(_[0], bytes) or len(_[0]) != 32:
+                raise ConsensusError(Err.INVALID_COIN_SOLUTION, name_solution)
+            if not isinstance(_[1], list) or len(_[1]) != 2:
+                raise ConsensusError(Err.INVALID_COIN_SOLUTION, name_solution)
+            puzzle_solution_program = name_solution.rest().first()
+            puzzle_program = puzzle_solution_program.first()
+            puzzle_hash = ProgramHash(Program(puzzle_program))
+
+            npc_list.append((puzzle_hash, puzzle_solution_program))
+
+        return npc_list
+
 
     def get_private_keys(self):
         return [BLSPrivateKey(self.extended_secret_key.private_child(child).get_private_key()) for child in range(self.next_address)]
@@ -195,11 +221,11 @@ class ASWallet(Wallet):
         return sign_f_for_keychain(self.make_keychain())
 
 
-    def as_create_spend_bundle(self, as_puzzlehash, as_amount, as_timelock_t, as_secret_hash, as_pubkey_sender = None, as_pubkey_receiver = None, who = None, as_sec_to_try = None):
+    def as_create_spend_bundle(self, as_puzzlehash, as_amount, as_timelock_block, as_secret_hash, as_pubkey_sender = None, as_pubkey_receiver = None, who = None, as_sec_to_try = None):
         utxos = self.as_select_coins(as_amount, as_puzzlehash)
         spends = []
         for coin in utxos:
-            puzzle = self.as_make_puzzle(as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_t, as_secret_hash)
+            puzzle = self.as_make_puzzle(as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_block, as_secret_hash)
             if who == "sender":
                 solution = self.as_make_solution_sender()
             elif who == "receiver":
