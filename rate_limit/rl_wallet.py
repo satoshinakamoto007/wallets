@@ -1,6 +1,5 @@
 from chiasim.atoms import hexbytes
-
-from .wallet import Wallet
+from standard_wallet.wallet import Wallet
 import hashlib
 import clvm
 import sys
@@ -23,9 +22,7 @@ from chiasim.validation.Conditions import (
     make_assert_coin_consumed_condition
 )
 from chiasim.puzzles.p2_conditions import puzzle_for_conditions
-from .puzzle_utilities import pubkey_format, puzzlehash_from_string, BLSSignature_from_string
 from blspy import Signature
-from .keys import build_spend_bundle, sign_f_for_keychain
 import math
 
 

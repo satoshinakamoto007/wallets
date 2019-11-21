@@ -1,15 +1,15 @@
 import asyncio
 import clvm
 import qrcode
-from wallet.rl_wallet import RLWallet
+from rate_limit.rl_wallet import RLWallet
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
 from chiasim.hashable import Coin
 from chiasim.hashable.Body import BodyList
-from decorations import print_leaf, divider, prompt
+from utilities.decorations import print_leaf, divider, prompt
 from clvm_tools import binutils
 from chiasim.hashable import Program, ProgramHash, BLSSignature
-from wallet.puzzle_utilities import pubkey_format, signature_from_string, puzzlehash_from_string, \
+from utilities.puzzle_utilities import pubkey_format, signature_from_string, puzzlehash_from_string, \
     BLSSignature_from_string
 from binascii import hexlify
 from chiasim.validation import ChainView
@@ -179,7 +179,7 @@ async def new_block(wallet, ledger_api):
     return most_recent_header
 
 
-async def main():
+async def main_loop():
     ledger_api = await connect_to_ledger_sim("localhost", 9868)
     selection = ""
     wallet = RLWallet()
@@ -232,5 +232,9 @@ async def main():
             await add_funds_to_rl_coin(wallet, ledger_api)
 
 
-run = asyncio.get_event_loop().run_until_complete
-run(main())
+def main():
+    run = asyncio.get_event_loop().run_until_complete
+    run(main_loop())
+
+if __name__ == "__main__":
+    main()
