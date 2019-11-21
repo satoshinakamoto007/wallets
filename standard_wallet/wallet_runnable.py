@@ -278,12 +278,13 @@ async def main_loop():
             set_name(wallet)
         elif selection == "6":
             await select_smart_contract(wallet, ledger_api)
-        elif selection == "7":
-            make_QR(wallet)
-        elif selection == "8":
-            r = read_qr(wallet)
-            if r is not None:
-                await ledger_api.push_tx(tx=r)
+        if qrcode:
+            if selection == "7":
+                make_QR(wallet)
+            elif selection == "8":
+                r = read_qr(wallet)
+                if r is not None:
+                    await ledger_api.push_tx(tx=r)
 
 
 def main():
