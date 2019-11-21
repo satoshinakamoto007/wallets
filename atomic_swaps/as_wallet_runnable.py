@@ -1052,7 +1052,7 @@ async def farm_block(wallet, ledger_api, as_contacts, as_swap_list):
     return most_recent_header
 
 
-async def main():
+async def main_loop():
     ledger_api = await connect_to_ledger_sim("localhost", 9868)
     selection = ""
     wallet = ASWallet()
@@ -1120,10 +1120,13 @@ async def main():
             most_recent_header = await farm_block(wallet, ledger_api, as_contacts, as_swap_list)
 
 
+def main():
+    run = asyncio.get_event_loop().run_until_complete
+    run(main_loop())
 
 
-run = asyncio.get_event_loop().run_until_complete
-run(main())
+if __name__ == "__main__":
+    main()
 
 
 """

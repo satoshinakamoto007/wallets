@@ -242,7 +242,7 @@ async def update_ledger(wallet, ledger_api, most_recent_header):
         wallet.notify(additions, removals)
 
 
-async def main():
+async def main_loop():
     ledger_api = await connect_to_ledger_sim("localhost", 9868)
     selection = ""
     wallet = Wallet()
@@ -288,8 +288,13 @@ async def main():
                 await ledger_api.push_tx(tx=r)
 
 
-run = asyncio.get_event_loop().run_until_complete
-run(main())
+def main():
+    run = asyncio.get_event_loop().run_until_complete
+    run(main_loop())
+
+
+if __name__ == "__main__":
+    main()
 
 
 """

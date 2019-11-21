@@ -178,7 +178,7 @@ def ap_settings(wallet, approved_puzhash_sig_pairs):
     wallet.set_approved_change_signature(sig)
 
 
-async def main():
+async def main_loop():
     ledger_api = await connect_to_ledger_sim("localhost", 9868)
     selection = ""
     wallet = APWallet()
@@ -245,9 +245,13 @@ async def main():
             ap_settings(wallet, approved_puzhash_sig_pairs)
 
 
-run = asyncio.get_event_loop().run_until_complete
-run(main())
+def main():
+    run = asyncio.get_event_loop().run_until_complete
+    run(main_loop())
 
+
+if __name__ == "__main__":
+    main()
 
 """
 Copyright 2018 Chia Network Inc
