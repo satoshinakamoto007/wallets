@@ -1,6 +1,6 @@
 import setuptools
 
-dependencies = ['aiter', 'blspy', 'cbor', 'qrcode', 'pyzbar', 'Pillow']
+dependencies = ['aiter', 'blspy', 'cbor']
 
 setuptools.setup(
    name='wallets',

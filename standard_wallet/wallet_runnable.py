@@ -10,6 +10,12 @@ from chiasim.hashable import Program, ProgramHash
 from binascii import hexlify
 from authorised_payees import ap_wallet_a_functions
 from standard_wallet.wallet import Wallet
+try:
+    import qrcode
+    from PIL import Image
+    from pyzbar.pyzbar import decode
+except ImportError:
+    qrcode = None
 
 
 def view_funds(wallet):
@@ -41,64 +47,55 @@ def print_my_details(wallet):
 
 
 def make_QR(wallet):
-    try:
-        import qrcode
-        print(divider)
-        pubkey = hexlify(wallet.get_next_public_key().serialize()).decode('ascii')
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_H,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(f"{wallet.name}:{wallet.puzzle_generator_id}:{pubkey}")
-        qr.make(fit=True)
-        img = qr.make_image()
-        fn = input("Input file name: ")
-        if fn.endswith(".jpg"):
-            img.save(fn)
-        else:
-            img.save(f"{fn}.jpg")
-        print(f"QR code created in '{fn}.jpg'")
-    except Exception as err:
-        print(err)
+    print(divider)
+    pubkey = hexlify(wallet.get_next_public_key().serialize()).decode('ascii')
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(f"{wallet.name}:{wallet.puzzle_generator_id}:{pubkey}")
+    qr.make(fit=True)
+    img = qr.make_image()
+    fn = input("Input file name: ")
+    if fn.endswith(".jpg"):
+        img.save(fn)
+    else:
+        img.save(f"{fn}.jpg")
+    print(f"QR code created in '{fn}.jpg'")
 
 
 def read_qr(wallet):
-    try:
-        from pyzbar.pyzbar import decode
-        from PIL import Image
-        amount = -1
-        if wallet.current_balance <= 0:
-            print("You need some money first")
-            return None
-        print("Input filename of QR code: ")
-        fn = input()
-        decoded = decode(Image.open(fn))
-        name, type, pubkey = QR_string_parser(str(decoded[0].data))
-        if type not in wallet.generator_lookups:
-            print("Unknown generator - please input the source.")
-            source = input("Source: ")
-            if str(ProgramHash(Program(binutils.assemble(source)))) != f"0x{type}":
-                print("source not equal to ID")
-                breakpoint()
-                return
-            else:
-                wallet.generator_lookups[type] = source
-        while amount > wallet.temp_balance or amount <= 0:
-            amount = input("Amount: ")
-            if amount == "q":
-                return
-            if not amount.isdigit():
-                amount = -1
-            amount = int(amount)
-        args = binutils.assemble(f"(0x{pubkey})")
-        program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
-            wallet.generator_lookups[type]), args))
-        puzzlehash = ProgramHash(program)
-        return wallet.generate_signed_transaction(amount, puzzlehash)
-    except Exception as err:
-        print(err)
+    amount = -1
+    if wallet.current_balance <= 0:
+        print("You need some money first")
+        return None
+    print("Input filename of QR code: ")
+    fn = input()
+    decoded = decode(Image.open(fn))
+    name, type, pubkey = QR_string_parser(str(decoded[0].data))
+    if type not in wallet.generator_lookups:
+        print("Unknown generator - please input the source.")
+        source = input("Source: ")
+        if str(ProgramHash(Program(binutils.assemble(source)))) != f"0x{type}":
+            print("source not equal to ID")
+            breakpoint()
+            return
+        else:
+            wallet.generator_lookups[type] = source
+    while amount > wallet.temp_balance or amount <= 0:
+        amount = input("Amount: ")
+        if amount == "q":
+            return
+        if not amount.isdigit():
+            amount = -1
+        amount = int(amount)
+    args = binutils.assemble(f"(0x{pubkey})")
+    program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
+        wallet.generator_lookups[type]), args))
+    puzzlehash = ProgramHash(program)
+    return wallet.generate_signed_transaction(amount, puzzlehash)
 
 
 def QR_string_parser(input):
@@ -260,9 +257,10 @@ async def main_loop():
         print(f"{selectable} 3: *GOD MODE* Commit Block / Get Money")
         print(f"{selectable} 4: Print my details for somebody else")
         print(f"{selectable} 5: Set my wallet name")
-        print(f"{selectable} 6: Make QR code")
-        print(f"{selectable} 7: Make Smart Contract")
-        print(f"{selectable} 8: Payment to QR code")
+        print(f"{selectable} 6: Make Smart Contract")
+        if qrcode:
+            print(f"{selectable} 7: Make QR code")
+            print(f"{selectable} 8: Payment to QR code")
         print(f"{selectable} q: Quit")
         print(close_list)
         selection = input(prompt)
@@ -279,9 +277,9 @@ async def main_loop():
         elif selection == "5":
             set_name(wallet)
         elif selection == "6":
-            make_QR(wallet)
-        elif selection == "7":
             await select_smart_contract(wallet, ledger_api)
+        elif selection == "7":
+            make_QR(wallet)
         elif selection == "8":
             r = read_qr(wallet)
             if r is not None:
