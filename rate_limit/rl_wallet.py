@@ -121,7 +121,7 @@ class RLWallet(Wallet):
         # N - interval_blocks
         # V - amount being spent
         # MIN_BLOCK_AGE = V / (M / N)
-        # if not (min_block_age * M >= 1000 * N) do X (raise)
+        # if not (min_block_age * M >=  V * N) do X (raise)
         # ASSERT_COIN_BLOCK_AGE_EXCEEDS min_block_age
 
         TEMPLATE_MY_PARENT_ID = "(sha256 (f (r (r (r (r (r (r (a)))))))) (f (r (a))) (uint64 (f (r (r (r (r (r (r (r (a)))))))))))"
