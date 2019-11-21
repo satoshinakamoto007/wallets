@@ -93,5 +93,5 @@ $ pip install pytest
 Then you can run our tests with
 
 ```
-$ python3 -m pytest tests
+$ py.test tests
 ```

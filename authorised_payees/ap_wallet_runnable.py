@@ -1,5 +1,4 @@
 import asyncio
-import qrcode
 from authorised_payees.ap_wallet import APWallet
 from utilities.decorations import print_leaf, divider, prompt, start_list, close_list, selectable, informative
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
@@ -71,23 +70,27 @@ def print_my_details(wallet):
 
 
 def make_QR(wallet):
-    print(divider)
-    pubkey = hexlify(wallet.get_next_public_key().serialize()).decode('ascii')
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(f"{wallet.name}:{wallet.puzzle_generator_id}:{pubkey}")
-    qr.make(fit=True)
-    img = qr.make_image()
-    fn = input("Input file name: ")
-    if fn.endswith(".jpg"):
-        img.save(fn)
-    else:
-        img.save(f"{fn}.jpg")
-    print(f"QR code created in '{fn}.jpg'")
+    try:
+        import qrcode
+        print(divider)
+        pubkey = hexlify(wallet.get_next_public_key().serialize()).decode('ascii')
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_H,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(f"{wallet.name}:{wallet.puzzle_generator_id}:{pubkey}")
+        qr.make(fit=True)
+        img = qr.make_image()
+        fn = input("Input file name: ")
+        if fn.endswith(".jpg"):
+            img.save(fn)
+        else:
+            img.save(f"{fn}.jpg")
+        print(f"QR code created in '{fn}.jpg'")
+    except Exception as err:
+        print(err)
 
 
 def set_name(wallet):
