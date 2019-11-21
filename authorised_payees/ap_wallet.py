@@ -77,7 +77,6 @@ class APWallet(Wallet):
                     return (pubkey, self.extended_secret_key.private_child(child).get_private_key())
 
     def notify(self, additions, deletions):
-        # TODO: evaluate if this is the best way of doing this
         super().notify(additions, deletions)
         self.my_utxos = self.temp_utxos
         self.ap_notify(additions)
