@@ -5,9 +5,24 @@
   Another paramater that is used for during creation of RL Coin is ID of primary input that's creating it. Before RL Coin can be spent it's puzzle checks if its parent is the Origin coin or if parent coin has the same puzzle hash as itself.     
   This prevents Rate Limited coin owner to create copies of RL coin and spend at **CopyCount * RateLimit**.    
 
+## Setup
 
- 
- 
+To install this repository, and all requirements, clone this repository and then run:
+
+```
+$ python3 -m venv .venv
+$ . .venv/bin/activate
+$ pip install -r requirements.txt
+$ pip install -e .
+```
+## Launch
+
+Before launching rl_wallet, make sure there is an instance of ledger-sim running.   
+run:
+```
+$ ledger-sim
+```
+
 ## Rate Limited Wallet Usage (step by step)
   1. **RUN**
      - Open two terminal windows and run  ```rl_wallet```
