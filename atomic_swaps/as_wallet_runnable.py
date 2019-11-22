@@ -343,7 +343,17 @@ async def set_partner(wallet, ledger_api, as_contacts, method):
     view_contacts(as_contacts)
     print()
     print("Choose a contact for the atomic swap. If your partner is not currently in your contact list, enter their name now to add them to your contacts:")
-    swap_partner = input(prompt)
+    choice = "invalid"
+    while choice == "invalid":
+        swap_partner = input(prompt)
+        if swap_partner == "" or swap_partner == "menu":
+            print()
+            print("You have entered an invalid swap partner name. Please enter a valid name, or type 'menu' to cancel the atomic swap:")
+            swap_partner = input(prompt)
+            if partner_pubkey == "menu":
+                return None, None, None, None
+        else:
+            choice = "continue"
     if swap_partner not in as_contacts:
         as_contacts[swap_partner] = ["unknown", [[],[]]]
     if method == "init":
@@ -352,7 +362,10 @@ async def set_partner(wallet, ledger_api, as_contacts, method):
         print("This is your pubkey for this swap:")
         print(my_swap_pubkey)
         print()
-        print("Send the above pubkey to your swap partner. When they send you their swap pubkey, enter it here:")
+        print("Send the above pubkey to your swap partner, and then press 'return' to continue.")
+        confirm = input(prompt)
+        print()
+        print("Enter your swap partner's pubkey:")
         partner_pubkey = input(prompt)
         choice = "invalid"
         while choice == "invalid":
@@ -360,7 +373,7 @@ async def set_partner(wallet, ledger_api, as_contacts, method):
                 hexval = int(partner_pubkey, 16)
                 if len(partner_pubkey) != 96:
                     print()
-                    print("This is not a valid pubkey. Please enter a valid pubkey or type 'menu' to cancel the atomic swap:")
+                    print("This is not a valid pubkey. Please enter a valid pubkey, or type 'menu' to cancel the atomic swap:")
                     partner_pubkey = input(prompt)
                     if partner_pubkey == "menu":
                         return None, None, None, None
@@ -368,7 +381,7 @@ async def set_partner(wallet, ledger_api, as_contacts, method):
                     choice = "continue"
             except:
                 print()
-                print("This is not a valid pubkey. Please enter a valid pubkey or type 'menu' to cancel the atomic swap:")
+                print("This is not a valid pubkey. Please enter a valid pubkey, or type 'menu' to cancel the atomic swap:")
                 partner_pubkey = input(prompt)
                 if partner_pubkey == "menu":
                     return None, None, None, None
@@ -384,7 +397,7 @@ async def set_partner(wallet, ledger_api, as_contacts, method):
                 hexval = int(partner_pubkey, 16)
                 if len(partner_pubkey) != 96:
                     print()
-                    print("This is not a valid pubkey. Please enter a valid pubkey or type 'menu' to cancel the atomic swap:")
+                    print("This is not a valid pubkey. Please enter a valid pubkey, or type 'menu' to cancel the atomic swap:")
                     partner_pubkey = input(prompt)
                     if partner_pubkey == "menu":
                         return None, None, None, None
@@ -392,7 +405,7 @@ async def set_partner(wallet, ledger_api, as_contacts, method):
                     choice = "continue"
             except:
                 print()
-                print("This is not a valid pubkey. Please enter a valid pubkey or type 'menu' to cancel the atomic swap:")
+                print("This is not a valid pubkey. Please enter a valid pubkey, or type 'menu' to cancel the atomic swap:")
                 partner_pubkey = input(prompt)
                 if partner_pubkey == "menu":
                     return None, None, None, None
@@ -410,16 +423,12 @@ async def set_partner(wallet, ledger_api, as_contacts, method):
     return my_swap_pubkey, swap_partner, partner_pubkey, tip_index_at_start
 
 
-def set_amount(wallet, as_contacts, method):
+def set_amount(wallet, as_contacts):
     print()
     print("Your coins: ", [x.amount for x in wallet.my_utxos])
     print()
-    if method == "init":
-        print("Enter the amount you'd like to swap:")
-        amount = input(prompt)
-    elif method == "add":
-        print("Enter the amount being swapped:")
-        amount = input(prompt)
+    print("Enter the amount being swapped:")
+    amount = input(prompt)
     try:
         amount = int(amount)
     except ValueError:
@@ -490,12 +499,12 @@ async def set_parameters_init(wallet, ledger_api, as_contacts):
             choice = "continue"
     choice = "amount"
     while choice == "amount":
-        amount = set_amount(wallet, as_contacts, "init")
+        amount = set_amount(wallet, as_contacts)
         if amount == None:
             choice = "invalid"
             while choice == "invalid":
                 print()
-                print("Type 'amount' to enter a new amount, or 'menu' to return to menu:")
+                print("Type 'amount' to enter a new amount, or type 'menu' to cancel the atomic swap:")
                 choice = input(prompt)
                 if choice == "menu":
                     return None, None, None, None, None, None, None, "menu"
@@ -508,10 +517,10 @@ async def set_parameters_init(wallet, ledger_api, as_contacts):
     secret = hexlify(os.urandom(256)).decode('ascii')
     secret_hash = wallet.as_generate_secret_hash(secret)
     print()
-    print("The hash of your secret is:")
+    print("The hash of the secret for this swap is:")
     print(secret_hash)
     print()
-    print("Please send the hash of your secret to your swap partner, and then press 'return' to continue.")
+    print("Please send the hash of the secret to your swap partner, and then press 'return' to continue.")
     confirm = input(prompt)
     choice = "time"
     while choice == "time":
@@ -520,7 +529,7 @@ async def set_parameters_init(wallet, ledger_api, as_contacts):
             choice = "invalid"
             while choice == "invalid":
                 print()
-                print("Type 'time' to enter a new timelock time, or 'menu' to return to menu:")
+                print("Type 'time' to enter a new timelock time, or type 'menu' to cancel the atomic swap:")
                 choice = input(prompt)
                 if choice == "menu":
                     return None, None, None, None, None, None, None, "menu"
@@ -636,7 +645,7 @@ def add_secret_hash(wallet):
                 print()
                 print("This is not a valid hashlock secret hash.")
                 print()
-                print("Please enter a valid hashlock secret hash or type 'menu' to cancel the atomic swap:")
+                print("Please enter a valid hashlock secret hash, or type 'menu' to cancel the atomic swap:")
                 secret_hash = input(prompt)
                 if secret_hash == "menu":
                     print(divider)
@@ -647,7 +656,7 @@ def add_secret_hash(wallet):
             print()
             print("This is not a valid hashlock secret hash.")
             print()
-            print("Please enter a valid hashlock secret hash or type 'menu' to cancel the atomic swap:")
+            print("Please enter a valid hashlock secret hash, or type 'menu' to cancel the atomic swap:")
             secret_hash = input(prompt)
             if secret_hash == "menu":
                 print(divider)
@@ -655,7 +664,28 @@ def add_secret_hash(wallet):
     return secret_hash
 
 
-async def add_puzzlehash(wallet, ledger_api, partner_pubkey, my_swap_pubkey, amount, timelock, secret_hash, tip_index_at_start):
+def add_buffer(timelock):
+    print()
+    print("Enter the minimum number of blocks you will accept as a buffer between the timeout times of your outgoing and incoming coins (buffer must be greater than 0 and less than or equal to half of your incoming coin's timelock time):")
+    buffer = input(prompt)
+    try:
+        buffer = int(buffer)
+    except ValueError:
+        print()
+        print("Invalid input: You entered an invalid buffer time.")
+        return None
+    if buffer <= 0:
+        print()
+        print("Invalid input: Buffer time must be greater than 0.")
+        return None
+    elif buffer > (timelock // 2):
+        print()
+        print("Invalid input: Buffer time may not be greater than half of the timelock time of your incoming coin.")
+    else:
+        return buffer
+
+
+async def add_puzzlehash(wallet, ledger_api, partner_pubkey, my_swap_pubkey, amount, timelock, secret_hash, tip_index_at_start, buffer):
     print()
     print("Enter the incoming coin's puzzlehash:")
     puzzlehash = input(prompt)
@@ -673,7 +703,7 @@ async def add_puzzlehash(wallet, ledger_api, partner_pubkey, my_swap_pubkey, amo
         print()
         print("Invalid input: You did not enter a valid puzzlehash.")
         return None, None
-    timelock_block_incoming = await receiver_check(wallet, ledger_api, puzzlehash, partner_pubkey, my_swap_pubkey, amount, timelock, secret_hash, tip_index_at_start)
+    timelock_block_incoming = await receiver_check(wallet, ledger_api, puzzlehash, partner_pubkey, my_swap_pubkey, amount, timelock, secret_hash, tip_index_at_start, buffer)
     if timelock_block_incoming == "search fail":
         print()
         print("An error has occurred. Please coordinate with your partner to restart the atomic swap.")
@@ -683,13 +713,13 @@ async def add_puzzlehash(wallet, ledger_api, partner_pubkey, my_swap_pubkey, amo
     return puzzlehash, timelock_block_incoming
 
 
-async def receiver_check(wallet, ledger_api, puzzlehash, partner_pubkey, my_swap_pubkey, amount, timelock, secret_hash, tip_index_at_start):
+async def receiver_check(wallet, ledger_api, puzzlehash, partner_pubkey, my_swap_pubkey, amount, timelock, secret_hash, tip_index_at_start, buffer):
     tip = await ledger_api.get_tip()
     for t in range(tip_index_at_start, tip["tip_index"] + 1):
         timelock_block_incoming = int(timelock + t)
         if puzzlehash_from_string(puzzlehash) == wallet.as_get_new_puzzlehash(bytes.fromhex(partner_pubkey), bytes.fromhex(my_swap_pubkey), amount, timelock_block_incoming, secret_hash):
             timelock_block_outgoing_check = int(tip["tip_index"] + (timelock * 0.5))
-            if timelock_block_incoming <= (timelock_block_outgoing_check + 2):
+            if timelock_block_incoming < (timelock_block_outgoing_check + buffer):
                 print()
                 print("{} {}".format("Current block height: ", tip["tip_index"]))
                 print("{} {}".format("Incoming coin timelock block: ", timelock_block_incoming))
@@ -713,12 +743,12 @@ async def set_parameters_add(wallet, ledger_api, as_contacts, as_swap_list):
             choice = "continue"
     choice = "amount"
     while choice == "amount":
-        amount = set_amount(wallet, as_contacts, "add")
+        amount = set_amount(wallet, as_contacts)
         if amount == None:
             choice = "invalid"
             while choice == "invalid":
                 print()
-                print("Type 'amount' to enter a new amount, or 'menu' to return to menu:")
+                print("Type 'amount' to enter a new amount, or type 'menu' to cancel the atomic swap:")
                 choice = input(prompt)
                 if choice == "menu":
                     return None, None, None, None, None, None, None, None, None, "menu"
@@ -736,7 +766,7 @@ async def set_parameters_add(wallet, ledger_api, as_contacts, as_swap_list):
             choice = "invalid"
             while choice == "invalid":
                 print()
-                print("Type 'hash' to enter a new secret hash, or 'menu' to return to menu:")
+                print("Type 'hash' to enter a new secret hash, or type 'menu' to cancel the atomic swap:")
                 choice = input(prompt)
                 if choice == "menu":
                     return None, None, None, None, None, None, None, None, None, "menu"
@@ -753,7 +783,7 @@ async def set_parameters_add(wallet, ledger_api, as_contacts, as_swap_list):
             choice = "invalid"
             while choice == "invalid":
                 print()
-                print("Type 'time' to enter a new timelock time, or 'menu' to return to menu:")
+                print("Type 'time' to enter a new timelock time, or type 'menu' to cancel the atomic swap:")
                 choice = input(prompt)
                 if choice == "menu":
                     return None, None, None, None, None, None, None, None, None, "menu"
@@ -763,14 +793,31 @@ async def set_parameters_add(wallet, ledger_api, as_contacts, as_swap_list):
                     print("You entered an invalid selection.")
         else:
             choice = "continue"
+    choice = "buffer"
+    while choice == "buffer":
+        buffer = add_buffer(timelock)
+        if buffer == None:
+            choice = "invalid"
+            while choice == "invalid":
+                print()
+                print("Type 'buffer' to enter a new timelock buffer, or type 'menu' to cancel the atomic swap:")
+                choice = input(prompt)
+                if choice == "menu":
+                    return None, None, None, None, None, None, None, None, None, "menu"
+                elif choice != "buffer":
+                    choice = "invalid"
+                    print()
+                    print("You entered an invalid selection.")
+        else:
+            choice = "continue"
     choice = "puzzlehash"
     while choice == "puzzlehash":
-        puzzlehash, timelock_block_incoming = await add_puzzlehash(wallet, ledger_api, partner_pubkey, my_swap_pubkey, amount, timelock, secret_hash, tip_index_at_start)
+        puzzlehash, timelock_block_incoming = await add_puzzlehash(wallet, ledger_api, partner_pubkey, my_swap_pubkey, amount, timelock, secret_hash, tip_index_at_start, buffer)
         if puzzlehash == None:
             choice = "invalid"
             while choice == "invalid":
                 print()
-                print("Type 'puzzlehash' to enter a new puzzlehash, or 'menu' to return to menu:")
+                print("Type 'puzzlehash' to enter a new puzzlehash, or type 'menu' to cancel the atomic swap:")
                 choice = input(prompt)
                 if choice == "menu":
                     return None, None, None, None, None, None, None, None, None, "menu"
