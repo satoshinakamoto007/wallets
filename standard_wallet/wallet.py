@@ -56,6 +56,8 @@ class Wallet:
         self.generator_lookups[self.puzzle_generator_id] = self.puzzle_generator
         self.temp_utxos = set()
         self.temp_balance = 0
+        self.all_additions = {}
+        self.all_deletions = {}
 
     def get_next_public_key(self):
         pubkey = self.extended_secret_key.public_child(
@@ -87,10 +89,16 @@ class Wallet:
 
     def notify(self, additions, deletions):
         for coin in additions:
+            if coin.name() in self.all_additions:
+                continue
+            self.all_additions[coin.name()] = coin
             if self.can_generate_puzzle_hash(coin.puzzle_hash):
                 self.current_balance += coin.amount
                 self.my_utxos.add(coin)
         for coin in deletions:
+            if coin.name() in self.all_deletions:
+                continue
+            self.all_deletions[coin.name()] = coin
             if coin in self.my_utxos:
                 self.my_utxos.remove(coin)
                 self.current_balance -= coin.amount
