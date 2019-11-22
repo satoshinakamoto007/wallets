@@ -14,6 +14,15 @@ The Authorised Payee smart transaction works in the following way.
 7. Any wallet can send Wallet B some more money that can only be aggregated into the Authorised Payee coin by using an aggregation puzzle.
 8. Wallet A can send additional signatures to Wallet B off the chain at any time it likes.
 
+
+## Contacts
+
+The AP wallet uses a contacts system to remember who it is approved to send to.
+A contact is comprised of:
+1. A human readable name
+2. A puzzlehash
+3. A signature of that puzzlehash from the authoriser
+
 ## Usage
 
 As always, make sure you have a version of ledger-sim running before trying to use the wallets.
@@ -26,7 +35,7 @@ You will need to run a standard wallet for setup, as well as an authorised payee
 Your public key will be shown, and you will be asked for some setup information.
 
 2. On your standard wallet, first make sure you have some money.
-Then from the menu, select `7: Make Smart Contract`, followed by `1: Authorised Payees`.
+Then from the menu, select `6: Make Smart Contract`, followed by `1: Authorised Payees`.
 Paste the AP wallet's public key into the terminal and enter an amount of Chia to send to the AP wallet.
 You should then see the initialization string for the Authorised Payee wallet.
 
@@ -40,7 +49,7 @@ This should print out some information about the wallet, including a single stri
 5. Paste this single string into the first standard wallet, which we used to create the smart contract.
 It should return a `Single string for AP Wallet`. Copy this and paste it into the AP Wallet.
 
-* You can repeat steps 4 and 5 for multiple recipients, but for now we will move on.
+* You can repeat steps 4 and 5 for multiple contacts, but for now we will move on.
 
 6. In one of the wallets you must select `Commit Block` to commit the send to the AP Wallet to the chain.
 If you didn't do this from the AP Wallet, then select `4: Get Update` from the AP Wallet's menu.

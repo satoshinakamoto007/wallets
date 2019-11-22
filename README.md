@@ -67,8 +67,8 @@ The options available in a standard wallet are:
 * **Commit Block / Get Money** - This will create a new block, therefore committing all the pending transactions and also giving your wallet 1000000000 Chia.
 * **Print My Details** - This will output a string of information that another wallet can use to send money to you.
 * **Set Wallet Name** - This will change how your wallet self-identifies when communicating with other wallets.
-* **Make QR code** - This will create a QR code image in the installed folder.
 * **Make Smart Contract** - This will allow you to communicate with the Authorised Payees wallet, and send a coin that can only be spent in approved ways. For more information read the [documentation here](./docs/authorised_payees.md).
+* **Make QR code** - This will create a QR code image in the installed folder.
 * **Payment to QR code** - This acts the same way as 'Make Payment' but instead of a string storing the information, it reads in a QR image.
 * **Quit** - Closes the wallet program.
 
