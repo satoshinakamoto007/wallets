@@ -10,7 +10,7 @@
  
 ## Rate Limited Wallet Usage (step by step)
   1. **RUN**
-     - Open two terminal windows and run  ``` python rl_wallet_runnable.py ```
+     - Open two terminal windows and run  ```rl_wallet```
 
   2. **Get Chia**
      - **Terminal 1**
