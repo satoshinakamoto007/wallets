@@ -50,7 +50,7 @@ class RLWallet(Wallet):
         self.current_rl_balance = 0
         self.rl_index = 0
         self.tip_index = 0
-        self.all_additions = {}
+        self.all_rl_additions = {}
         super().__init__()
         return
 
@@ -65,9 +65,9 @@ class RLWallet(Wallet):
         super().notify(additions, deletions)
         self.tip_index = index
         for coin in additions:
-            if coin.name() in self.all_additions:
+            if coin.name() in self.all_rl_additions:
                 continue
-            self.all_additions[coin.name()] = coin
+            self.all_rl_additions[coin.name()] = coin
             if self.can_generate_rl_puzzle_hash(coin.puzzle_hash):
                 self.current_rl_balance = coin.amount
                 if self.rl_coin:
