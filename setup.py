@@ -4,7 +4,7 @@ dependencies = ["aiter", "blspy", "cbor"]
 
 setuptools.setup(
     name="wallets",
-    version="1.0",
+    version="0.1",
     description="Chis wallets that interact with ledger-sim",
     author="Chia Network",
     packages=[
