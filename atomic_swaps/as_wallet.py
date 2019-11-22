@@ -1,24 +1,14 @@
-from .wallet import Wallet
-import hashlib
+from standard_wallet.wallet import Wallet
 import clvm
 import sys
-from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BLSSignature
+from chiasim.hashable import Program, ProgramHash, SpendBundle
 from binascii import hexlify
-from chiasim.validation.Conditions import (
-    conditions_by_opcode, make_create_coin_condition, make_assert_my_coin_id_condition, make_assert_min_time_condition
-)
-from chiasim.hashable.Coin import Coin
-from chiasim.hashable.CoinSolution import CoinSolutionList
 from clvm_tools import binutils
 from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from chiasim.validation.Conditions import ConditionOpcode
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
-from chiasim.validation.consensus import (
-    conditions_for_solution, hash_key_pairs_for_conditions_dict
-)
-from .puzzle_utilities import pubkey_format, puzzlehash_from_string, BLSSignature_from_string
-from blspy import Signature
-from .keys import build_spend_bundle, sign_f_for_keychain
+from utilities.puzzle_utilities import puzzlehash_from_string
+from utilities.keys import build_spend_bundle, sign_f_for_keychain
 
 
 #ASWallet is subclass of Wallet

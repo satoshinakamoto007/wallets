@@ -1,20 +1,14 @@
 import asyncio
-import clvm
-import qrcode
 import os
-from wallet.as_wallet import ASWallet
+from .as_wallet import ASWallet
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
 from chiasim.hashable import Coin
 from chiasim.hashable.Body import BodyList
-from decorations import print_leaf, divider, prompt
+from utilities.decorations import print_leaf, divider, prompt
 from clvm_tools import binutils
-from chiasim.hashable import Program, ProgramHash, BLSSignature
-from wallet.puzzle_utilities import pubkey_format, signature_from_string, puzzlehash_from_string, BLSSignature_from_string
+from utilities.puzzle_utilities import pubkey_format, puzzlehash_from_string
 from binascii import hexlify
-from chiasim.validation import ChainView
-from chiasim.ledger.ledger_api import LedgerAPI
-from chiasim.validation.chainview import name_puzzle_conditions_list
 
 
 def print_my_details(wallet):
