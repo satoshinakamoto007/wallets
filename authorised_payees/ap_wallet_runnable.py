@@ -22,7 +22,7 @@ def add_contact(wallet, approved_puzhash_sig_pairs):
     choice = "c"
     print(divider)
     while choice == "c":
-        singlestring = input("Enter payee string from authoriser: ")
+        singlestring = input("Enter contact string from authoriser: ")
         if singlestring == "q":
             return
         try:
@@ -189,7 +189,8 @@ async def main_loop():
     print(divider)
     print("Welcome to AP Wallet")
     print(f"Your pubkey is: {hexlify(wallet.get_next_public_key().serialize()).decode('ascii')}")
-    print("Please fill in some initialisation information (this can be changed later)")
+    print("To start an AP wallet, it must be initialised from a standard wallet.")
+    print("From a standard wallet and press `6` and enter the pubkey above.")
     complete = False
     while complete is False:
         print("Please enter initialisation string: ")

@@ -173,12 +173,15 @@ async def initiate_ap(wallet, ledger_api):
         APpuzzlehash, wallet, a_pubkey).sig)
     print(f"{informative} Approved change signature is: {sig}")
     print()
-    print(f"{informative} Single string: {str(APpuzzlehash)}:{hexlify(a_pubkey).decode('ascii')}:{sig}")
-    # Authorised puzzle printout for AP Wallet
-    print("Enter single string of authorised recipients, press 'q' to finish")
+    print("Give the AP wallet the following initialisation string -")
+    print(f"{informative} Initialisation string: {str(APpuzzlehash)}:{hexlify(a_pubkey).decode('ascii')}:{sig}")
+
+    print()
+    print("The next step is to approve some contacts for the AP wallet to send to.")
+    print("From another standard wallet press '4' to print out their single string for receiving money.")
     choice = ""
     while choice != "q":
-        singlestr = input("Enter recipient contact's single string: ")
+        singlestr = input("Enter approved recipient contact's single string: ")
         if singlestr == "q":
             return
         name, type, pubkey = QR_string_parser(singlestr)
@@ -198,7 +201,8 @@ async def initiate_ap(wallet, ledger_api):
         #print("Puzzle: " + str(puzzlehash))
         sig = wallet.sign(puzzlehash, a_pubkey)
         #print("Signature: " + str(sig.sig))
-        print(f"{informative} Payee string for AP Wallet: {name}:{str(puzzlehash)}:{str(sig.sig)}")
+        print("Give the following contact string to the AP wallet.")
+        print(f"{informative} Contact string for AP Wallet: {name}:{str(puzzlehash)}:{str(sig.sig)}")
         choice = input("Press 'c' to continue, or 'q' to quit to menu: ")
 
 
