@@ -118,7 +118,7 @@ def make_payment(wallet):
     if wallet.current_balance <= 0:
         print("You need some money first")
         return None
-    qr = input("Enter QR string: ")
+    qr = input("Enter recipients details singlestring: ")
     name, type, pubkey = QR_string_parser(qr)
     if type not in wallet.generator_lookups:
         print("Unknown generator - please input the source.")
