@@ -1,9 +1,8 @@
 # Chia Wallets
 
-The Chia Wallets are designed to show off Chia's approach to transactions, and our new language ChiaLisp.
-At the moment this project is uses a local server which simulates the full network. This allows us to test the wallet functionality in isolation.
-
-The local server which handles transactions in Chia is called [ledger_sim](https://github.com/Chia-Network/ledger_sim).
+The Chia Wallets are designed to demonstrate Chia transactions, and the contract language ChiaLisp.
+This project uses a simplified version of the full network called
+[ledger_sim](https://github.com/Chia-Network/ledger_sim) containing only transactions.
 
 We have a tutorial for writing smart transactions, and other documentation available [here](./docs).
 
@@ -13,19 +12,19 @@ We have a tutorial for writing smart transactions, and other documentation avail
 To install this repository, and all requirements, clone this repository and then run:
 
 ```
-$ python3 -m venv .venv
-$ . .venv/bin/activate
+$ python3 -m venv venv
+$ . venv/bin/activate
 $ pip install -r requirements.txt
 $ pip install -e .
 ```
 
-**(Note: at the moment [blspy](https://github.com/Chia-Network/bls-signatures) may require you to have [CMake](https://cmake.org/install/) installed as well, though this dependency should be temporary)**
+**(Note: [blspy](https://github.com/Chia-Network/bls-signatures) may require you to have [CMake](https://cmake.org/install/) installed as well. This dependency should be temporary)**
 
-### QR Code Setup
+### Optional QR Code Setup
 
 To use the QR codes you will also need to support [pyzbar](https://pypi.org/project/pyzbar/).
 
-On Windows this requires no extra effort.
+On Windows this requires no additional install.
 
 On Linux, run:
 
@@ -44,7 +43,7 @@ $ pip install pyzbar[scripts]
 # The Standard Wallet
 
 The standard command-line wallet contains the default functionality for a wallet.
-It can send and receive transactions as well as generate QR codes and a few other 'smart' features.
+It can send and receive transactions as well as generate QR codes and a few other "smart" features.
 
 ## Using the Command-line Interface
 
@@ -82,19 +81,19 @@ The Smart Transactions currently available are:
 * **Atomic Swaps** - `$ as_wallet`
 * **Authorised Payees** - `$ ap_wallet`
 * **Recoverable Wallets** - `$ recoverable_wallet`
-* **Multi-sig Wallet**
+* **Multi-sig Wallet** - see `multisig/README.org` for more details.
 
-For more information about the smart wallets, check out our **[docs](./docs).**
+For more information about the smart wallets, check out **[docs](./docs).**
 
 # Tests
 
-Firstly, make sure pytest is installed with
+If necessary, install pytest.
 
 ```
 $ pip install pytest
 ```
 
-Then you can run our tests with
+Run the tests with
 
 ```
 $ py.test tests
