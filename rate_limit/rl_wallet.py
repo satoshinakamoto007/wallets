@@ -69,9 +69,22 @@ class RLWallet(Wallet):
             self.rl_origin = origin["name"]
         self.rl_parent = origin
 
+    def rl_available_balance(self):
+        if self.rl_coin is None:
+            return 0
+        unlocked = int(((self.tip_index - self.rl_index) / self.interval)) * self.limit
+        total_amount = self.rl_coin.amount
+        available_amount = min(unlocked, total_amount)
+        return available_amount
+
     def notify(self, additions, deletions, index):
         super().notify(additions, deletions)
         self.tip_index = index
+        self.rl_notify(additions, deletions, index)
+        spend_bundle_list = self.ac_notify(additions)
+        return spend_bundle_list
+
+    def rl_notify(self, additions, deletions, index):
         for coin in additions:
             if coin.name() in self.all_rl_additions:
                 continue
@@ -100,9 +113,6 @@ class RLWallet(Wallet):
                     self.rl_origin = None
                     self.rl_parent = None
                 #TODO clean/reset all state so that new rl coin can be received again
-
-        spend_bundle_list = self.ac_notify(additions)
-        return spend_bundle_list
 
     def ac_notify(self, additions):
         if self.rl_coin is None:
@@ -255,14 +265,6 @@ class RLWallet(Wallet):
             return None
         transaction = self.rl_generate_unsigned_transaction(to_puzzle_hash, amount)
         return self.rl_sign_transaction(transaction)
-
-    def rl_available_balance(self):
-        if self.rl_coin is None:
-            return 0
-        unlocked = int(((self.tip_index - self.rl_index) / self.interval)) * self.limit
-        total_amount = self.rl_coin.amount
-        available_amount = min(unlocked, total_amount)
-        return available_amount
 
     def rl_sign_transaction(self, spends: (Program, [CoinSolution])):
         sigs = []
