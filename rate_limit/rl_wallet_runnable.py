@@ -126,6 +126,14 @@ async def spend_rl_coin(wallet, ledger_api):
     _ = await ledger_api.push_tx(tx=spend_bundle)
 
 
+async def retrieve_rate_limited_coin(wallet, ledger_api):
+    spend_bundle = wallet.clawback_rl_coin()
+    print("SB, ", spend_bundle)
+    breakpoint()
+    _ = await ledger_api.push_tx(tx=spend_bundle)
+    print("Response", _)
+
+
 async def add_funds_to_rl_coin(wallet, ledger_api):
     utxo_list = list(wallet.my_utxos)
     if len(utxo_list) == 0:
@@ -211,6 +219,7 @@ async def main_loop():
         print("\u2448 6 Send a new rate limited coin")
         print("\u2448 7 Spend from rate limited coin")
         print("\u2448 8 Add funds to existing rate limited coin")
+        print("\u2448 9 Retrieve sent rate limited coin")
         print("\u2448 q Quit")
         print(divider)
         print()
@@ -232,6 +241,8 @@ async def main_loop():
             await spend_rl_coin(wallet, ledger_api)
         elif selection == "8":
             await add_funds_to_rl_coin(wallet, ledger_api)
+        elif selection == "9":
+            await retrieve_rate_limited_coin(wallet, ledger_api)
 
 
 def main():
