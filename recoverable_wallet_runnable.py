@@ -4,13 +4,15 @@ from chiasim.clients.ledger_sim import connect_to_ledger_sim
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
 from chiasim.hashable import Coin, Header, HeaderHash, Body
 from chiasim.hashable import ProgramHash
+from chiasim.remote.client import RemoteError
 from decimal import Decimal
-from pprint import pprint
+from blspy import ExtendedPublicKey, PrivateKey
 
 
 def view_coins(wallet):
-    pprint([coin for coin in wallet.my_utxos])
-    print('Total value: ' + str(sum([coin.amount for coin in wallet.my_utxos])))
+    for coin in wallet.my_utxos:
+        print(f'{coin.name()}: {coin.amount}')
+    print('Total value: ' + str(wallet.balance()))
 
 
 def generate_puzzlehash(wallet):
@@ -18,15 +20,12 @@ def generate_puzzlehash(wallet):
 
 
 async def spend_coins(wallet, ledger_api):
-    amount = -1
-    if wallet.current_balance <= 0:
-        print('Insufficient funds')
-        return None
     puzzlehash_string = input('Enter PuzzleHash: ')
     puzzlehash = ProgramHash.from_bytes(bytes.fromhex(puzzlehash_string))
-
-    while amount > wallet.current_balance or amount < 0:
-        amount = int(input('Amount: '))
+    amount = int(input('Amount: '))
+    if amount > wallet.current_balance or amount < 0:
+        print('Insufficient funds')
+        return None
     tx = wallet.generate_signed_transaction(amount, puzzlehash)
     if tx is not None:
         await ledger_api.push_tx(tx=tx)
@@ -42,10 +41,16 @@ async def process_blocks(wallet, ledger_api, last_known_header, current_header_h
     additions = list(additions_for_body(body))
     removals = removals_for_body(body)
     removals = [Coin.from_bytes(await ledger_api.hash_preimage(hash=x)) for x in removals]
-    print(f'additions: {additions}')
-    print(f'removals: {removals}')
-
     wallet.notify(additions, removals)
+    clawback_coins = [coin for coin in additions if wallet.is_in_escrow(coin)]
+    if len(clawback_coins) != 0:
+        print(f'WARNING! Coins from this wallet have been moved to escrow!\n'
+              f'Attempting to send a clawback for these coins:\n')
+        for coin in clawback_coins:
+            print(f'{coin.name()}: {coin.amount}')
+        transaction = wallet.generate_clawback_transaction(clawback_coins)
+        await ledger_api.push_tx(tx=transaction)
+        print('Clawback transaction submitted')
 
 
 async def farm_block(wallet, ledger_api, last_known_header):
@@ -73,22 +78,23 @@ async def update_ledger(wallet, ledger_api, most_recent_header):
 
 
 def print_backup(wallet):
-    print(f'HD Public Key: {wallet.get_recovery_public_key().serialize().hex()}\n'
-          f'Private Key: {wallet.get_recovery_private_key().serialize().hex()}\n')
+    print(f'HD Root Public Key: {wallet.get_recovery_hd_root_public_key().serialize().hex()}\n'
+          f'Secret Key: {wallet.get_recovery_private_key().serialize().hex()}\n')
 
 
 async def restore(ledger_api, wallet):
     root_public_key = bytes.fromhex(input('Enter the HD public key of the wallet to be restored: '))
-
+    recovery_pubkey = ExtendedPublicKey.from_bytes(root_public_key).public_child(0).get_public_key().serialize()
     r = await ledger_api.all_unspents()
     recoverable_coins = []
     print('scanning', end='')
     for ptr in r['unspents']:
-        print('.', end='')
         coin = await ptr.obj(data_source=ledger_api)
         if wallet.can_generate_puzzle_hash_with_root_public_key(coin.puzzle_hash, root_public_key):
             recoverable_coins.append(coin)
-            print('*', end='')
+            print('*', end='', flush=True)
+        else:
+            print('.', end='', flush=True)
     recoverable_amount = sum([coin.amount for coin in recoverable_coins])
     print(f'\nFound {len(recoverable_coins)} coins totaling {recoverable_amount}')
     stake_amount = round(recoverable_amount * (1.1 - 1))
@@ -96,25 +102,32 @@ async def restore(ledger_api, wallet):
         print(f'Insufficient funds to stake the recovery process. {stake_amount} needed.')
         return
     for coin in recoverable_coins:
-        print('amount ', coin.amount)
+        print(f'{coin.name()}: {coin.amount}')
         pubkey = wallet.find_pubkey_for_hash(coin.puzzle_hash, root_public_key, Decimal('1.1'))
-        signed_transaction, destination_puzzlehash, amount = wallet.generate_signed_recovery_transaction(coin, root_public_key, pubkey, Decimal('1.1'))
-        for coin_solution in signed_transaction.coin_solutions:
-            print(f'burning {coin_solution.coin}')
-            coin_solution
+        signed_transaction, destination_puzzlehash, amount = \
+            wallet.generate_signed_recovery_to_escrow_transaction(coin, recovery_pubkey, pubkey, Decimal('1.1'))
         child = Coin(coin.name(), destination_puzzlehash, amount)
         wallet.escrow_coins.add(child)
         await ledger_api.push_tx(tx=signed_transaction)
 
 
 def view_escrow_coins(wallet):
-    pprint([coin for coin in wallet.escrow_coins])
+    for coin in wallet.escrow_coins:
+        print(f'{coin.name()}: {coin.amount}')
     print('Total value: ' + str(sum([coin.amount for coin in wallet.escrow_coins])))
 
 
-async def grab(ledger_api, wallet):
-    private_key = bytes.fromhex(input('Enter the private key of the wallet to be restored: '))
-    spends = wallet.generate_recovery_transaction(wallet.escrow_coins)
+async def recover_escrow_coins(ledger_api, wallet):
+    root_public_key_serialized = bytes.fromhex(input('Enter the HD Root Public key of the wallet to be restored: '))
+    root_public_key = ExtendedPublicKey.from_bytes(root_public_key_serialized)
+    secret_key_serialized = bytes.fromhex(input('Enter the Secret Key of the wallet to be restored: '))
+    secret_key = PrivateKey.from_bytes(secret_key_serialized)
+    signed_transaction = wallet.generate_recovery_transaction(wallet.escrow_coins, root_public_key, secret_key)
+    r = await ledger_api.push_tx(tx=signed_transaction)
+    if type(r) is RemoteError:
+        print('Too soon to recover coins')
+    else:
+        print('Recovery transaction submitted')
 
 
 async def main():
@@ -131,8 +144,8 @@ async def main():
         print('5: Generate Puzzle Hash')
         print('6: Print Backup')
         print('7: Recover Coins')
-        print('8: View Escrowed Coins')
-        print('9: Grab')
+        print('8: View Escrow Coins')
+        print('9: Recover Escrow Coins')
         print('q: Quit')
         selection = input()
         if selection == '1':
@@ -152,7 +165,7 @@ async def main():
         elif selection == '8':
             view_escrow_coins(wallet)
         elif selection == '9':
-            await grab(ledger_api, wallet)
+            await recover_escrow_coins(ledger_api, wallet)
 
 
 

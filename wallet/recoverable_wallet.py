@@ -58,20 +58,40 @@ class RecoverableWallet(Wallet):
     def __init__(self):
         super().__init__()
         # self.backup_public_key = self.extended_secret_key.public_child(self.next_address).get_public_key()
-        self.backup_public_key = self.extended_secret_key.get_extended_public_key()
+        self.escrow_duration = 3
+        self.backup_hd_root_public_key = self.extended_secret_key.get_extended_public_key()
         self.backup_private_key = self.extended_secret_key.private_child(self.next_address).get_private_key()
         self.next_address += 1
         self.escrow_coins = set()
 
     def get_recovery_public_key(self):
-        return self.backup_public_key
+        return self.backup_private_key.get_public_key()
 
     def get_recovery_private_key(self):
         return self.backup_private_key
 
+    def get_recovery_hd_root_public_key(self):
+        return self.backup_hd_root_public_key
 
-    def get_new_puzzle_with_params_and_root(self, root_pubkey, pubkey, escrow_factor):
+    def get_escrow_puzzle_with_params(self, recovery_pubkey, pubkey, duration):
         op_block_age_exceeds = ConditionOpcode.ASSERT_BLOCK_AGE_EXCEEDS[0]
+        solution = args(0)
+        solution_args = args(1)
+        secure_switch = args(2)
+        evaluate_solution = eval(solution, solution_args)
+        standard_conditions = make_list(aggsig_condition(pubkey),
+                                        terminator=evaluate_solution)
+        recovery_conditions = make_list(aggsig_condition(recovery_pubkey),
+                                        make_list(quote(op_block_age_exceeds),
+                                                  quote(duration)),
+                                        terminator=evaluate_solution)
+        escrow_puzzle = make_if(is_zero(secure_switch),
+                                standard_conditions,
+                                recovery_conditions)
+        program = Program(binutils.assemble(escrow_puzzle))
+        return program
+
+    def get_new_puzzle_with_params_and_root(self, recovery_pubkey, pubkey, escrow_factor):
         op_create = ConditionOpcode.CREATE_COIN[0]
         op_consumed = ConditionOpcode.ASSERT_COIN_CONSUMED[0]
         solution = args(0)
@@ -85,14 +105,8 @@ class RecoverableWallet(Wallet):
         standard_conditions = make_list(aggsig_condition(pubkey),
                                         terminator=evaluate_solution)
         duration = 3
-        recovery_conditions = make_list(aggsig_condition(root_pubkey),
-                                        make_list(quote(op_block_age_exceeds),
-                                                  quote(duration)),
-                                        terminator=evaluate_solution)
-        escrow_puzzle = make_if(is_zero(secure_switch),
-                                standard_conditions,
-                                recovery_conditions)
-        escrow_puzzlehash = f'0x' + str(hexbytes(ProgramHash(Program(binutils.assemble(escrow_puzzle)))))
+        escrow_program = self.get_escrow_puzzle_with_params(recovery_pubkey, pubkey, duration)
+        escrow_puzzlehash = f'0x' + str(hexbytes(ProgramHash(escrow_program)))
         f = Fraction(escrow_factor)
         escrow_factor_numerator = quote(f.numerator)
         escrow_factor_denominator = quote(f.denominator)
@@ -111,7 +125,7 @@ class RecoverableWallet(Wallet):
         return program
 
     def get_new_puzzle_with_params(self, pubkey, escrow_factor):
-        return self.get_new_puzzle_with_params_and_root(self.backup_public_key.serialize(), pubkey, escrow_factor)
+        return self.get_new_puzzle_with_params_and_root(self.get_recovery_public_key().serialize(), pubkey, escrow_factor)
 
     def get_new_puzzle(self):
         pubkey = self.get_next_public_key().serialize()
@@ -128,34 +142,44 @@ class RecoverableWallet(Wallet):
             self.extended_secret_key.public_child(child).get_public_key().serialize(), Decimal('1.1'))),
                 reversed(range(self.next_address))))
 
+    def is_in_escrow(self, coin):
+        keys = self.get_keys_for_escrow_puzzle(coin.puzzle_hash)
+        return keys is not None
+
+    def balance(self):
+        return sum([coin.amount for coin in self.my_utxos])
+
     def notify(self, additions, deletions):
-        for coin in additions:
-            if self.can_generate_puzzle_hash(coin.puzzle_hash):
-                self.current_balance += coin.amount
-                self.my_utxos.add(coin)
         for coin in deletions:
             if coin in self.my_utxos:
                 self.my_utxos.remove(coin)
                 self.current_balance -= coin.amount
+        for coin in additions:
+            if self.can_generate_puzzle_hash(coin.puzzle_hash):
+                self.current_balance += coin.amount
+                self.my_utxos.add(coin)
 
         self.temp_utxos = self.my_utxos.copy()
         self.temp_balance = self.current_balance
 
     def can_generate_puzzle_hash_with_root_public_key(self, hash, root_public_key_serialized):
         root_public_key = ExtendedPublicKey.from_bytes(root_public_key_serialized)
+        recovery_pubkey = root_public_key.public_child(0).get_public_key().serialize()
         return any(map(lambda child: hash == ProgramHash(self.get_new_puzzle_with_params_and_root(
-            root_public_key_serialized, root_public_key.public_child(child).get_public_key().serialize(), Decimal('1.1'))),
+            recovery_pubkey,
+            root_public_key.public_child(child).get_public_key().serialize(),
+            Decimal('1.1'))),
                 reversed(range(20))))
 
     def find_pubkey_for_hash(self, hash, root_public_key_serialized, escrow_factor):
         root_public_key = ExtendedPublicKey.from_bytes(root_public_key_serialized)
+        recovery_pubkey = root_public_key.public_child(0).get_public_key().serialize()
         for child in reversed(range(20)):
             pubkey = root_public_key.public_child(child).get_public_key().serialize()
-            puzzle = self.get_new_puzzle_with_params_and_root(root_public_key_serialized, pubkey, escrow_factor)
+            puzzle = self.get_new_puzzle_with_params_and_root(recovery_pubkey, pubkey, escrow_factor)
             puzzlehash = ProgramHash(puzzle)
             if hash == puzzlehash:
                 return pubkey
-
 
     def get_keys(self, hash):
         for child in range(self.next_address):
@@ -212,29 +236,26 @@ class RecoverableWallet(Wallet):
             spends.append((puzzle, CoinSolution(coin, solution)))
         return spends
 
-    def generate_recovery_transaction(self, coins, pubkey):
-        escrow_factor = Decimal('1.1')
-        spends = []
-        output_id = None
-        amount = sum([coin.amount for coin in coins])
-        newpuzzlehash = self.get_new_puzzlehash()
-        for coin in coins:
-            puzzle_hash = coin.puzzle_hash
-            puzzle = self.get_escrow_puzzle_with_params(pubkey.serialize(), escrow_factor)
-            if output_id == None:
-                primaries = [{'puzzlehash': newpuzzlehash, 'amount': amount}]
-                solution = make_solution(coin.parent_coin_info, coin.puzzle_hash, coin.amount, escrow_factor, primaries=primaries)
-                output_id = hash_sha256(coin.name() + newpuzzlehash)
-            else:
-                solution = make_solution(coin.parent_coin_info, coin.puzzle_hash, coin.amount, escrow_factor)
-            spends.append((puzzle, CoinSolution(coin, solution)))
-        return spends
+    def sign_recovery_transaction(self, spends, secret_key):
+        sigs = []
+        for puzzle, solution in spends:
+            secret_key = BLSPrivateKey(secret_key)
+            code_ = [puzzle, solution.solution]
+            sexp = clvm.to_sexp_f(code_)
+            conditions_dict = conditions_by_opcode(conditions_for_solution(sexp))
+            for _ in hash_key_pairs_for_conditions_dict(conditions_dict):
+                signature = secret_key.sign(_.message_hash)
+                sigs.append(signature)
+        aggsig = BLSSignature.aggregate(sigs)
+        solution_list = CoinSolutionList(
+            [CoinSolution(coin_solution.coin, clvm.to_sexp_f([puzzle, coin_solution.solution])) for
+             (puzzle, coin_solution) in spends])
+        spend_bundle = SpendBundle(solution_list, aggsig)
+        return spend_bundle
 
-    def generate_recovery_to_escrow_transaction(self, coin, root_public_key, pubkey, escrow_factor):
+    def generate_recovery_to_escrow_transaction(self, coin, recovery_pubkey, pubkey, escrow_factor):
         solution = make_solution(coin.parent_coin_info, coin.puzzle_hash, coin.amount, escrow_factor, recovery=True)
-        puzzle = self.get_new_puzzle_with_params_and_root(root_public_key, pubkey, escrow_factor)
-        print("Puzzle   ", binutils.disassemble(puzzle))
-        print("Solution ", binutils.disassemble(solution))
+        puzzle = self.get_new_puzzle_with_params_and_root(recovery_pubkey, pubkey, escrow_factor)
 
         sexp = clvm.to_sexp_f([puzzle, solution])
         destination_puzzle_hash = get_destination_puzzle_hash(sexp)
@@ -243,9 +264,11 @@ class RecoverableWallet(Wallet):
         spends.append((puzzle, CoinSolution(coin, solution)))
         return spends, destination_puzzle_hash, coin.amount + staked_amount
 
-    def generate_signed_recovery_transaction(self, coin, root_public_key, pubkey, escrow_factor):
-        transaction, destination_puzzlehash, amount = self.generate_recovery_to_escrow_transaction(coin, root_public_key, pubkey, escrow_factor)
-        return self.sign_transaction(transaction), destination_puzzlehash
+    def generate_signed_recovery_to_escrow_transaction(self, coin, recovery_pubkey, pubkey, escrow_factor):
+        transaction, destination_puzzlehash, amount = \
+            self.generate_recovery_to_escrow_transaction(coin, recovery_pubkey, pubkey, escrow_factor)
+        signed_transaction = self.sign_transaction(transaction)
+        return signed_transaction, destination_puzzlehash, amount
 
     def sign_transaction(self, spends: (Program, CoinSolution)):
         sigs = []
@@ -257,7 +280,6 @@ class RecoverableWallet(Wallet):
             secretkey = BLSPrivateKey(secretkey)
             code_ = [puzzle, solution.solution]
             sexp = clvm.to_sexp_f(code_)
-            print(f'getting conditions for:\ncoin: {solution.coin}\npuzzle: {binutils.disassemble(puzzle)}\nsolution: {binutils.disassemble(solution.solution)}\n')
             conditions_dict = conditions_by_opcode(conditions_for_solution(sexp))
             for _ in hash_key_pairs_for_conditions_dict(conditions_dict):
                 signature = secretkey.sign(_.message_hash)
@@ -269,8 +291,90 @@ class RecoverableWallet(Wallet):
         spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle
 
+    def get_keys_for_escrow_puzzle(self, hash):
+        for child in range(self.next_address):
+            pubkey = self.extended_secret_key.public_child(child).get_public_key()
+            escrow_hash = ProgramHash(self.get_escrow_puzzle_with_params(self.get_recovery_public_key().serialize(),
+                                                                         pubkey.serialize(),
+                                                                         self.escrow_duration))
+            if hash == escrow_hash:
+                return pubkey, self.extended_secret_key.private_child(child).get_private_key()
+
     def generate_signed_transaction(self, amount, newpuzzlehash):
         transaction = self.generate_unsigned_transaction(amount, newpuzzlehash)
         if transaction is None:
             return None
         return self.sign_transaction(transaction)
+
+    def generate_clawback_transaction(self, coins):
+        signatures = []
+        coin_solutions = []
+        for coin in coins:
+            pubkey, secret_key = self.get_keys_for_escrow_puzzle(coin.puzzle_hash)
+            secret_key = BLSPrivateKey(secret_key)
+            puzzle = self.get_escrow_puzzle_with_params(self.get_recovery_public_key().serialize(),
+                                                        pubkey.serialize(),
+                                                        self.escrow_duration)
+
+            op_create_coin = ConditionOpcode.CREATE_COIN[0]
+            puzzlehash = f'0x' + str(hexbytes(self.get_new_puzzlehash()))
+            solution_src = f'((q (({op_create_coin} {puzzlehash} {coin.amount}))) () 0)'
+            solution = Program(binutils.assemble(solution_src))
+
+            puzzle_solution_list = clvm.to_sexp_f([puzzle, solution])
+            coin_solution = CoinSolution(coin, puzzle_solution_list)
+            coin_solutions.append(coin_solution)
+
+            conditions_dict = conditions_by_opcode(conditions_for_solution(puzzle_solution_list))
+            for _ in hash_key_pairs_for_conditions_dict(conditions_dict):
+                signature = secret_key.sign(_.message_hash)
+                signatures.append(signature)
+
+        coin_solution_list = CoinSolutionList(coin_solutions)
+        aggsig = BLSSignature.aggregate(signatures)
+        spend_bundle = SpendBundle(coin_solution_list, aggsig)
+        return spend_bundle
+
+    def find_pubkey_for_escrow_puzzle(self, coin, root_public_key):
+        duration = 3
+        recovery_pubkey = root_public_key.public_child(0).get_public_key().serialize()
+
+        child = 0
+        while True:
+            pubkey = root_public_key.public_child(child).get_public_key()
+            test_hash = ProgramHash(self.get_escrow_puzzle_with_params(recovery_pubkey,
+                                                                       pubkey.serialize(),
+                                                                       duration))
+            if coin.puzzle_hash == test_hash:
+                return pubkey
+            child += 1
+
+    def generate_recovery_transaction(self, coins, root_public_key, secret_key):
+        recovery_pubkey = root_public_key.public_child(0).get_public_key().serialize()
+        signatures = []
+        coin_solutions = []
+        secret_key = BLSPrivateKey(secret_key)
+        for coin in coins:
+            pubkey = self.find_pubkey_for_escrow_puzzle(coin, root_public_key)
+            puzzle = self.get_escrow_puzzle_with_params(recovery_pubkey,
+                                                        pubkey.serialize(),
+                                                        self.escrow_duration)
+
+            op_create_coin = ConditionOpcode.CREATE_COIN[0]
+            puzzlehash = f'0x' + str(hexbytes(self.get_new_puzzlehash()))
+            solution_src = f'((q (({op_create_coin} {puzzlehash} {coin.amount}))) () 1)'
+            solution = Program(binutils.assemble(solution_src))
+
+            puzzle_solution_list = clvm.to_sexp_f([puzzle, solution])
+            coin_solution = CoinSolution(coin, puzzle_solution_list)
+            coin_solutions.append(coin_solution)
+
+            conditions_dict = conditions_by_opcode(conditions_for_solution(puzzle_solution_list))
+            for _ in hash_key_pairs_for_conditions_dict(conditions_dict):
+                signature = secret_key.sign(_.message_hash)
+                signatures.append(signature)
+
+        coin_solution_list = CoinSolutionList(coin_solutions)
+        aggsig = BLSSignature.aggregate(signatures)
+        spend_bundle = SpendBundle(coin_solution_list, aggsig)
+        return spend_bundle
