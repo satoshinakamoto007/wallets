@@ -69,7 +69,8 @@ def view_funds(wallet, as_swap_list):
     for swap in as_swap_list:
         puzzlehashes.append(swap["outgoing puzzlehash"])
         puzzlehashes.append(swap["incoming puzzlehash"])
-    coins = [x.amount if hexlify(x.puzzle_hash).decode('ascii') not in puzzlehashes else "{}{}".format("*", x.amount) for x in wallet.my_utxos]
+    coins = [x.amount for x in wallet.my_utxos]
+    coins.extend("{}{}".format("*", x.amount) for x in wallet.as_pending_utxos)
     if coins == []:
         print()
         print("Your coins:")
@@ -1008,6 +1009,10 @@ def spend_with_timelock(wallet, as_swap_list, swap_index):
 
 def remove_swap_instances(wallet, as_contacts, as_swap_list, removals):
     for coin in removals:
+        pcoins = wallet.as_pending_utxos.copy()
+        for pcoin in pcoins:
+            if coin.puzzle_hash == pcoin.puzzle_hash:
+                wallet.as_pending_utxos.remove(pcoin)
         for swap in as_swap_list:
             if hexlify(coin.puzzle_hash).decode('ascii') == swap["outgoing puzzlehash"]:
                 as_contacts[swap["swap partner"]][1][0].remove(swap["outgoing puzzlehash"])
