@@ -57,7 +57,10 @@ $ ledger-sim
   5. **Spend Rate Limited Funds**
      - **Terminal 2** (Send 100 to wallet 1)
        - type "**7**" and press Enter
+     - **Terminal 1** (Show pubkey)
+       - type "**1**"
        - from **Terminal 1** copy pubkey and paste it to **Terminal 2**
+     - **Terminal 2**
        - type "**100**" and press Enter
      - **Terminal 1**
        - type "**4**" and press Enter
@@ -78,3 +81,11 @@ $ ledger-sim
      - **Terminal 2**
        - type "**3**" and press Enter
        - type "**2**" and press Enter ("Current Rate limited Balance" should be 10900)
+  7. **Wallet 1 Retrieve RL coin**
+    - **Terminal 1**
+       - type "**9**" and press Enter
+       - type "**4**" and press Enter
+       - type "**2**" and press Enter (UTXO set should include UTXO of 10900 in value)
+    - **Terminal 2**
+       - type "**3**" and press Enter
+       - type "**2**" and press Enter ("Current rate limited balance" should be 0)
