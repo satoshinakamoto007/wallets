@@ -81,11 +81,11 @@ $ ledger-sim
      - **Terminal 2**
        - type "**3**" and press Enter
        - type "**2**" and press Enter ("Current Rate limited Balance" should be 10900)
-  7. **Wallet 1 Retrieve RL coin**
-    - **Terminal 1**
+  7. **Retrieve RL Coin (Clawback)**
+     - **Terminal 1**
        - type "**9**" and press Enter
        - type "**4**" and press Enter
        - type "**2**" and press Enter (UTXO set should include UTXO of 10900 in value)
-    - **Terminal 2**
+     - **Terminal 2**
        - type "**3**" and press Enter
        - type "**2**" and press Enter ("Current rate limited balance" should be 0)
