@@ -127,11 +127,14 @@ async def spend_rl_coin(wallet, ledger_api):
 
 
 async def retrieve_rate_limited_coin(wallet, ledger_api):
+    if wallet.clawback_origin is None:
+        print("There is no retrievable RL Coins")
     spend_bundle = wallet.clawback_rl_coin()
-    print("SB, ", spend_bundle)
-    breakpoint()
     _ = await ledger_api.push_tx(tx=spend_bundle)
-    print("Response", _)
+    if _.get("response").startswith("accepted"):
+        amount =  spend_bundle.coin_solutions._items[0].coin.amount
+        print(f"{amount} Chia will be retrieved in the next block")
+
 
 
 async def add_funds_to_rl_coin(wallet, ledger_api):
