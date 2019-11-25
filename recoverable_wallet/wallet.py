@@ -7,7 +7,7 @@ from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BL
 from chiasim.hashable.CoinSolution import CoinSolutionList
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from chiasim.puzzles.p2_conditions import puzzle_for_conditions
-from .puzzle_utilities import pubkey_format
+from utilities.puzzle_utilities import pubkey_format
 from chiasim.validation.Conditions import (
     conditions_by_opcode, make_create_coin_condition, make_assert_my_coin_id_condition, make_assert_min_time_condition, make_assert_coin_consumed_condition
 )
@@ -15,6 +15,8 @@ from chiasim.validation.consensus import (
     conditions_for_solution, hash_key_pairs_for_conditions_dict
 )
 from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
+from binascii import hexlify
+from chiasim.validation.Conditions import ConditionOpcode
 
 
 def sha256(val):
@@ -39,7 +41,7 @@ class Wallet:
     seed = b'seed'
     next_address = 0
     pubkey_num_lookup = {}
-    puzzle_generator = "(c (q 5) (c (c (q 5) (c (q (q 50)) (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((c (sha256 (wrap (f (a)))) (q ())))))) (q ())))) (q (((c (f (a)) (f (r (a)))))))))"
+    puzzle_generator = f"(c (q 5) (c (c (q 5) (c (q (q 0x{hexlify(ConditionOpcode.AGG_SIG).decode('ascii')})) (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((c (sha256 (wrap (f (a)))) (q ())))))) (q ())))) (q (((c (f (a)) (f (r (a)))))))))"
     puzzle_generator_id = str(ProgramHash(
         Program(binutils.assemble(puzzle_generator))))
 
@@ -54,6 +56,8 @@ class Wallet:
         self.generator_lookups[self.puzzle_generator_id] = self.puzzle_generator
         self.temp_utxos = set()
         self.temp_balance = 0
+        self.all_additions = {}
+        self.all_deletions = {}
 
     def get_next_public_key(self):
         pubkey = self.extended_secret_key.public_child(
@@ -67,12 +71,6 @@ class Wallet:
     #        return None
     #    else:
     #        self.contacts[name] = [puzzlegenerator, last, extradata]
-
-    # def get_contact(self, name):
-    #    return self.contacts[name]
-
-    # def get_contact_names(self):
-    #    return [*self.contacts]  # returns list of names
 
     def set_name(self, name):
         self.name = name
@@ -91,10 +89,16 @@ class Wallet:
 
     def notify(self, additions, deletions):
         for coin in additions:
+            if coin.name() in self.all_additions:
+                continue
+            self.all_additions[coin.name()] = coin
             if self.can_generate_puzzle_hash(coin.puzzle_hash):
                 self.current_balance += coin.amount
                 self.my_utxos.add(coin)
         for coin in deletions:
+            if coin.name() in self.all_deletions:
+                continue
+            self.all_deletions[coin.name()] = coin
             if coin in self.my_utxos:
                 self.my_utxos.remove(coin)
                 self.current_balance -= coin.amount
@@ -111,7 +115,7 @@ class Wallet:
         return used_utxos
 
     def puzzle_for_pk(self, pubkey):
-        args = "(" + pubkey_format(pubkey) + ")"
+        args = f"({pubkey_format(pubkey)})"
         puzzle = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
             self.puzzle_generator), binutils.assemble(args)))
         return puzzle
@@ -126,22 +130,11 @@ class Wallet:
         puzzlehash = ProgramHash(puzzle)
         return puzzlehash
 
-    # def get_puzzle_for_contact(self, contact_name):
-    #    puzzle = self.contacts[contact_name][0](self.contacts[contact_name][1])
-    #    self.contacts[contact_name][1] += 1
-    #    return puzzle
-
-    # def get_puzzlehash_for_contact(self, contact_name):
-    #    return ProgramHash(self.get_puzzle_for_contact(contact_name))
-
     def sign(self, value, pubkey):
         privatekey = self.extended_secret_key.private_child(
             self.pubkey_num_lookup[pubkey]).get_private_key()
         blskey = BLSPrivateKey(privatekey)
         return blskey.sign(value)
-
-    # returns {'spends' spends, 'signature': None}
-    # spends is {(primary_input, puzzle): solution}
 
     def generate_unsigned_transaction(self, amount, newpuzzlehash):
         if self.temp_balance < amount:
@@ -196,3 +189,17 @@ class Wallet:
         if transaction is None:
             return None  # TODO: Should we throw a proper error here, or just return None?
         return self.sign_transaction(transaction)
+
+
+"""
+Copyright 2018 Chia Network Inc
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+   http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""

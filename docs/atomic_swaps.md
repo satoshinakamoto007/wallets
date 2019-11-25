@@ -27,8 +27,6 @@ In the standard case, Alice will spend her incoming coin (_C2_) to her wallet us
 In the case that Alice fails to spend _C2_ to her wallet before _C2_'s timeout time has elapsed (i.e. when block height _(NOW+B)/2_ is reached), Bob may spend _C2_ back to his wallet. Because Bob does not have the secret _s_, he is unable to spend _C1_ to his wallet. After _C1_'s timeout time has elapsed (i.e. when block height _NOW+B_ is reached), Alice may spend _C1_ back to her wallet.
 
 
-
-
 ## Usage
 
 Run a version of `ledger-sim` in a background terminal window.
@@ -52,53 +50,46 @@ https://www.youtube.com/watch?v=oe5kcGsdJqY
 
 ### Atomic Swap (step by step)
   1. **RUN**
-     - Open two terminal windows and run  ``` $ sh atomic_swap.sh ```
+     - Open two terminal windows and run  `$ as_wallet`
 
   2. **Get Chia**
-     - In Both terminals type **"11"** and press **enter** (This will give each wallet 1 million Chia)
-  3. **Add Contact**
-     - **Terminal 1**
-       - type "**4**" and press **enter**
-       - Name the Contact:
-       - type **"Alice"** and press **enter**
-       - PubKey for that contact:
-       - Copy PubKey from **Terminal 2** and then paste it to **Terminal 1**. press **enter**.
-       - Type **"Menu"** to go back
-     - **Terminal 2**
-       - type "**4**" and press **enter**
-       - Name the Contact:
-       - type **"Bob"** and press **enter**
-       - PubKey for that contact:
-       - Copy PubKey from **Terminal 1** and then paste it to **Terminal 2**. press **enter**.
-       - Type **"Menu"** to go back
-  4. **Atomic Swap**
+     - In Both terminals type **"11"** and press **enter** (This will give each wallet 1 billion Chia)
+
+  3. **Atomic Swap**
      - **Terminal 1** (Initializes)
-       - type "**7**" and press **enter**
-       - type "**Alice**" and press **enter**
-       - type "**1000**" and press **enter** (Select Amount to be swapped)
-       - type "**10**" and press **enter** (Select time lock of the swap)
-       - type "**password**" and press **enter** (Sets secret that needs to be used in order to spend this coin)
-       - [Go To Terminal 2 before proceeding with instructions bellow]
+       - Type "**7**" and press **enter**.
+       - Type "**Alice**" and press **enter**.
      - **Terminal 2** (Adds)
-       - type "**8**" and press **enter**
-       - type "**Bob**" and press **enter**
-       - type "**1000**" and press **enter** (Select Amount to be swapped)
-       - type "**10**" and press **enter** (Select time lock of the swap)
-       - copy the value of **"Atomic swap secret hash"** from **Terminal 1** and paste it to **Terminal 2**. Press **enter**
-       - copy the value of **"Atomic swap outgoing puzzlehash"** from **Terminal 1** and paste it to **Terminal 2**. Press **enter**.
-       - [Go back to **Terminal 1**]
+       - Type "**8**" and press **enter**.
+       - Type "**Bob**" and press **enter**.
      - **Terminal 1**
-       - copy the value of **"Atomic swap outgoing puzzlehash"** from **Terminal 2** and paste it to **Terminal 1**. Press **ENTER**.
+       - Copy PubKey from **Terminal 1** and then paste it to **Terminal 2** and press **enter**. Go back to **Terminal 1** and press **enter**.
      - **Terminal 2**
-       - Press **ENTER**
-  5. **Get Update**
+       - Copy PubKey from **Terminal 2** and then paste it to **Terminal 1** and press **enter**. Go back to **Terminal 2** and press **enter**.
+     - **Terminal 1**
+       - Type "**1000**" and press **enter**. (Select Amount to be swapped.)
+     - **Terminal 2**
+       - Type "**1000**" and press **enter**. (Select Amount to be swapped.)
+     - **Terminal 1**
+       - Copy hash of the secret from **Terminal 1** and then paste it to **Terminal 2** and press **enter**. Go back to **Terminal 1** and press **enter**.
+       - Type "**10**" and press **enter**. (Select time lock of the swap.)
+     - **Terminal 2**
+       - Type "**10**" and press **enter**. (Select time lock of the swap.)
+       - Type "**5**" and press **enter**. (Select timelock buffer of the swap.)
+     - **Terminal 1**
+       - Copy puzzlehash from **Terminal 1** and then paste it to **Terminal 2** and press **enter**. Go back to **Terminal 1** and press **enter**.
+     - **Terminal 2**
+       - Copy puzzlehash from **Terminal 2** and then paste it to **Terminal 1** and press **enter**. Go back to **Terminal 2** and press **enter**.
+
+  4. **Get Update**
      - **Terminal 1**
        - type "**11**" and press **enter** (Farms a new block & transaction is included in that block)
        - type "**2**" and press **enter** (View Funds)
      - **Terminal 2**
        - type "**10**" and press **enter** (Updates lates block info)
        - type "**2**" and press **enter** (View Funds)
-  6. **Spend Coins**
+       
+  5. **Spend Coins**
      - **Terminal 1**
        - type "**9**" and press **enter**
        - Copy the value of "**Atomic swap incoming puzzlehash:**" from **Terminal 1** and paste it into **Terminal 1**. Press **enter**.
@@ -109,7 +100,8 @@ https://www.youtube.com/watch?v=oe5kcGsdJqY
        - type "**9**" and press **enter**
        - copy the value of "**Atomic swap incoming puzzlehash:**" from **Terminal 2** and paste it to **Terminal 2**.Press **enter**.
        - Type "**y**" and press **enter**.
-       - Type "**password**" and press **enter**. (Secret was revield publicaly by spending previous coin)
-       - Type "**y**" and press **enter**.
        - type "**11**" and press **enter** (Farms a new block & transaction is included in that block)
+       - type "**2**" and press **enter** (View Funds)
+     - **Terminal 1**
+       - type "**10**" and press **enter** (Updates lates block info)
        - type "**2**" and press **enter** (View Funds)

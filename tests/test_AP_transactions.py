@@ -2,9 +2,9 @@ import asyncio
 import pathlib
 import tempfile
 from aiter import map_aiter
-from ..wallet.wallet import Wallet
-from ..wallet.ap_wallet import APWallet
-from ..wallet import ap_wallet_a_functions
+from standard_wallet.wallet import Wallet
+from authorised_payees.ap_wallet import APWallet
+from authorised_payees import ap_wallet_a_functions
 from chiasim.utils.log import init_logging
 from chiasim.remote.api_server import api_server
 from chiasim.remote.client import request_response_proxy
@@ -224,3 +224,17 @@ def test_invalid_payee():
     assert wallet_b.current_balance == 5000
     assert wallet_b.temp_coin.amount == 5000
     assert len(wallet_b.my_utxos) == 1
+
+
+"""
+Copyright 2018 Chia Network Inc
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+   http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""

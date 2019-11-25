@@ -1,6 +1,6 @@
 import hashlib
 import clvm
-from wallet import Wallet
+from .wallet import Wallet
 from chiasim.validation.Conditions import ConditionOpcode
 from chiasim.atoms import hexbytes
 from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BLSSignature
