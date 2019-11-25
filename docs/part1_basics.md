@@ -1,7 +1,7 @@
 # Part 1: CLVM Basics
 
 CLVM is the compiled, minimal version of ChiaLisp that is used by the Chia network.
-The full set of operators is documented [here](https://github.com/Chia-Network/clvm/blob/master/docs/clvm.org)
+The full set of operators is documented [here](https://github.com/Chia-Network/clvm/blob/master/docs/clvm.org).
 
 This guide will cover the basics of the language and act as an introduction to the structure of programs.
 You should be able to follow along by running a version of [clvm_tools](https://github.com/Chia-Network/clvm_tools).
@@ -9,22 +9,54 @@ You should be able to follow along by running a version of [clvm_tools](https://
 
 ## Types
 
-In ChiaLisp everything is either a list or an atom.
-Lists take the form of parentheses and each entry in the list is single spaced.
+A ChiaLisp expression is known as an "s-expression", and is either an atom (a variable-lengthed binary blob),
+or an ordered pair, also known as a "cons" or "cons box" for [historical reasons](https://en.wikipedia.org/wiki/Cons).
 
-Atoms are either literal binary blobs or variables.
+Note that the notation `(a . b)` represents the cons box containing the pair of values `a` and `b`.
+
 **A program is actually just a list in [polish notation](https://en.wikipedia.org/wiki/Polish_notation).**
 
-There is no distinguishing of variable types in ChiaLisp.
-This means that `(100 0x65 0x68656c6c6f)` and `(0x64 101 'hello')` are equivalent lists.
+The empty atom (the unique binary blob of length zero) is special and also known as "null". It's the
+only value that is considered "false" by the conditional "i" operator. It also acts as a "list terminator".
+
+The cons-box construct can be expanded to a general list of arbitrary size using a standard technique
+described [here](https://en.wikipedia.org/wiki/Cons#Lists). In brief, lists are expressed **without** the
+dots, so a sample three-element list might look like `(a b c)` which is a shorthand for writing
+`(a . (b . (c . () )))`. Here `()` is the null mentioned above.
+
+Since atoms are simply binary blobs, they can be interpreted in many ways, including as ascii strings
+or integers. This means that `(100 0x65 0x68656c6c6f)` and `(0x64 101 'hello')` are equivalent lists.
 Internally however the blobs can be interpreted in a number of different ways, which we will cover later.
+
+When tools display atoms, heuristics are used to determine if the output should be displayed as a
+text string, an integer, or as raw hex. These heuristics are imperfect and not always correct.
+
+```
+$ brun '(q 0x1000)' '()'
+4096
+
+$ brun '(q 0x10003847583)' '()'
+0x010003847583
+
+$ brun '(q "the quick brown fox")' '()'
+"the quick brown fox"
+
+$ brun '(q "hi")' '()'
+26729
+```
 
 ## Math
 
 There are no support for floating point numbers in ChiaLisp, only integers.
-Internally integers are interpreted as 256 bit signed integers.
+Internally integers are interpreted as 256 bit signed integers with unnecessary
+leading bytes of 0x00 or 0xff removed if the resulting value would be the same.
+This is similar to how bitcoin does it, and it means some binary blobs are not
+valid to interpret as "minimal" integers.
 
-The math operators are `*`, `+`, `-`, and `uint64`.
+Note that 0 is represented as the empty string, which is identical to null.
+
+The math operators are `*`, `+`, `-`, and `uint64` (which casts to a fixed-size 8 byte integer,
+which is necessary for coin amounts).
 
 ```
 $ brun '(- (q 6) (q 5))' '()'
@@ -41,12 +73,11 @@ $ $ brun '(uint64 (q 10))' '()'
 ```
 
 You may have noticed that the multiplication example above takes more than two parameters in the list.
-This is because many operators can take variable amounts of parameters.
-`+` and `-` are commutative so the order of parameters does not matter.
+This is because many operators can take a variable number of parameters.
+`+` and `*` are commutative so the order of parameters does not matter.
 For non-commutative operations, `(- (q 100) (q 30) (q 20) (q 5))` is equivalent to `(- (q 100) (+ (q 30) (q 20) (q 5)))`.
-Similarly, `(/ 120 5 4 2)` is equivalent to `(/ 120 (* 5 4 2))`.
 
-There is also internal support for negatives.
+There is also support for negatives.
 
 ```
 $ brun '(- (q 5) (q 7))' '()'
@@ -57,14 +88,15 @@ $ brun '(+ (q 3) (q -8))' '()'
 -5
 ```
 
-To use hexadecimal numbers, simply prefix them with `0x`.
+Strings prefixed with `0x` are literal binary blobs. This gives you a short-cut to use
+hex integer values if you're careful.
 
 ```
-$ brun '(+ (q 0x000a) (q 0x000b))' '()'
+$ brun '(+ (q 0x0a) (q 0x0b))' '()'
 21
 ```
 
-The final mathematical operator is equal which acts similarly to == in other languages.
+The "=" operator accepts two atoms and returns 1 if they are identical or () if not.
 ```
 $ brun '(= (q 5) (q 6))' '()'
 ()
@@ -77,8 +109,8 @@ As you can see above this language interprets some data as boolean values.
 
 ## Booleans
 
-In this language an empty list `()` evaluate to `False`.
-Any other value evaluates to `True`, though internally `True` is represented with `1`.
+As mentioned, an empty list `()` is the empty string, which is also 0, and evaluates to `False`.
+Any other value, including 1 (which is the binary blob 0x01) evaluates to `True`.
 
 
 ```
@@ -101,7 +133,7 @@ $ brun '(+ (q 70) (q ()))' '()'
 
 ## Flow Control
 
-The `i` operator takes the form `(i A B C)` and acts as an `if` statement where `(if A is True then do B, else do C)`.
+The `i` operator takes the form `(i A B C)` and acts as an `if` statement where `(if A is True then return B, else return C)`.
 
 ```
 $ brun '(i (q 0) (q 70) (q 80))' '()'
@@ -116,6 +148,8 @@ $ brun '(i (q 12) (q 70) (q 80))' '()'
 $ brun '(i (q (70 80 90)) (q 70) (q 80))' '()'
 70
 ```
+
+**WARNING** The `i` does **not** do lazy evaluation... both B and C are evaluated, but the result from only one is returned.
 
 Now seems like a good time to clarify further about lists and programs.
 
@@ -160,21 +194,21 @@ It is recommended that you create your programs in an editor with brackets match
 
 ## List Operators
 
-`f` returns the first element in a passed list.
+`f` returns the left element in a cons box, ie. the first element in a passed list.
 
 ```
 $ brun '(f (q (80 90 100)))' '()'
 80
 ```
 
-`r` returns every element in a list except for the first.
+`r` returns the right element in a cons box, ie. every element in a list except for the first ("rest").
 
 ```
 $ brun '(r (q (80 90 100)))' '()'
 (90 100)
 ```
 
-`c` prepends an element to a list
+`c` creates a new cons box, ie. prepends an element to a list.
 
 ```
 $ brun '(c (q 70) (q (80 90 100)))' '()'
@@ -198,7 +232,7 @@ Up until now our programs have not had any input or variables, however ChiaLisp 
 It's important to remember that the context for ChiaLisp is for use in locking up coins with a puzzle program.
 This means that we need to be able to pass some information to the puzzle.
 
-A solution is a list passed to the puzzle, and can be referenced with `a`.
+A solution is a list passed to the puzzle, and can be referenced with the zero-argument operator `a`.
 
 ```
 $ brun '(a)' '("this" "is the" "solution")'
