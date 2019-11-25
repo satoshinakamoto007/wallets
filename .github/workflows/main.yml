@@ -15,8 +15,6 @@ jobs:
         python-version: 3.7
     - name: Set env
       run: |
-        /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-        brew install zbar
         python3 -m venv env
         ln -s env/bin/activate
         . activate
