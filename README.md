@@ -81,7 +81,7 @@ The options available in a standard wallet are:
 The Smart Transactions currently available are:
 * **Atomic Swaps** - `$ as_wallet`
 * **Authorised Payees** - `$ ap_wallet`
-* **Recovery Wallets**
+* **Recoverable Wallets** - `$ recoverable_wallet`
 * **Multi-sig Wallet**
 
 For more information about the smart wallets, check out our **[docs](./docs).**
