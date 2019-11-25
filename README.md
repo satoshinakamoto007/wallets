@@ -19,6 +19,10 @@ $ pip install -r requirements.txt
 $ pip install -e .
 ```
 
+**(Note: at the moment [blspy](https://github.com/Chia-Network/bls-signatures) may require you to have [CMake](https://cmake.org/install/) installed as well, though this dependency should be temporary)**
+
+### QR Code Setup
+
 To use the QR codes you will also need to support [pyzbar](https://pypi.org/project/pyzbar/).
 
 On Windows this requires no extra effort.
