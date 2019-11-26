@@ -362,3 +362,60 @@ def test_rl_aggregation():
     assert wallet_a.current_balance == 999990000
     assert wallet_b.current_rl_balance == 10000
     assert wallet_c.current_balance == 0
+
+
+def test_rl_spend_all():
+    remote = make_client_server()
+    run = asyncio.get_event_loop().run_until_complete
+    # A gives B some money, but B can only send that money to C (and generate change for itself)
+    wallet_a = RLWallet()
+    wallet_b = RLWallet()
+    wallet_c = RLWallet()
+    wallets = [wallet_a, wallet_b, wallet_c]
+
+    limit = 100
+    interval = 1
+    commit_and_notify(remote, wallets, wallet_a)
+
+    origin_coin = wallet_a.my_utxos.copy().pop()
+    wallet_b_pk = wallet_b.get_next_public_key().serialize()
+    wallet_b.set_origin(origin_coin)
+    wallet_b.limit = limit
+    wallet_b.interval = interval
+    clawback_pk = wallet_a.get_next_public_key().serialize()
+    clawback_pk = hexbytes(clawback_pk)
+    wallet_b.rl_clawback_pk = clawback_pk
+    rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_coin.name(), clawback_pk)
+    rl_puzzlehash = ProgramHash(rl_puzzle)
+    wallet_a.clawback_puzzlehash = rl_puzzlehash
+    wallet_a.rl_receiver_pk = wallet_b_pk
+    wallet_a.clawback_pk = clawback_pk
+    wallet_a.clawback_interval = interval
+    wallet_a.clawback_limit = limit
+    wallet_a.clawback_origin = origin_coin.name()
+
+    # wallet A is normal wallet, it sends coin that's rate limited to wallet B
+    amount = 300
+    spend_bundle = wallet_a.generate_signed_transaction_with_origin(amount, rl_puzzlehash, origin_coin.name())
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+
+    assert wallet_a.current_balance == 999999700
+    assert wallet_b.current_rl_balance == 300
+    assert wallet_c.current_balance == 0
+
+    commit_and_notify(remote, wallets, Wallet())
+    assert wallet_b.rl_available_balance() == 100
+    commit_and_notify(remote, wallets, Wallet())
+    assert wallet_b.rl_available_balance() == 200
+    commit_and_notify(remote, wallets, Wallet())
+    assert wallet_b.rl_available_balance() == 300
+
+    amount = 300
+    spend_bundle = wallet_b.rl_generate_signed_transaction(amount, wallet_c.get_new_puzzlehash())
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+
+    assert wallet_a.current_balance == 999999700
+    assert wallet_b.current_rl_balance == 0
+    assert wallet_c.current_balance == 300
