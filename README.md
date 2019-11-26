@@ -83,6 +83,7 @@ The Smart Transactions currently available are:
 * **Authorised Payees** - `$ ap_wallet`
 * **Recoverable Wallets** - `$ recoverable_wallet`
 * **Multi-sig Wallet**
+* **Rate-Limited Wallet** - `$ rl_wallet`
 
 For more information about the smart wallets, check out our **[docs](./docs).**
 
