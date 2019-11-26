@@ -14,6 +14,7 @@ from utilities.keys import build_spend_bundle, sign_f_for_keychain
 #ASWallet is subclass of Wallet
 class ASWallet(Wallet):
     def __init__(self):
+        self.as_pending_utxos = set()
         self.overlook = []
         super().__init__()
         return
@@ -46,8 +47,8 @@ class ASWallet(Wallet):
         for coin in additions:
             for puzzlehash in puzzlehashes:
                 if hexlify(coin.puzzle_hash).decode('ascii') == puzzlehash and coin.puzzle_hash not in self.overlook:
-                    self.current_balance += coin.amount
-                    self.my_utxos.add(coin)
+                    # self.current_balance += coin.amount
+                    self.as_pending_utxos.add(coin)
                     counter += 1
                     self.overlook.append(coin.puzzle_hash)
         if counter == 1:
@@ -61,60 +62,17 @@ class ASWallet(Wallet):
     def as_select_coins(self, amount, as_puzzlehash):
         if amount > self.current_balance:
             return None
-
         used_utxos = set()
         if isinstance(as_puzzlehash, str):
             as_puzzlehash = puzzlehash_from_string(as_puzzlehash)
         print(self.my_utxos)
         coins = self.my_utxos.copy()
+        for pcoin in self.as_pending_utxos:
+            coins.add(pcoin)
         for coin in coins:
             if coin.puzzle_hash == as_puzzlehash:
                 used_utxos.add(coin)
         return used_utxos
-
-
-    # not in use
-    def as_request(self, as_wallet_receiver, as_amount, as_timelock_t):
-        print()
-        print("Hi " + str(as_wallet_receiver) + ".")
-        print("This is " + str(self) + ".")
-        reply = input("Would you like to swap " + str(as_amount) + " coins with me in an atomic swap with a timelock of " + str(as_timelock_t) + " blocks? (y/n): ")
-        if reply == "y":
-            print()
-            print("Initiating swap.")
-            as_pubkey_sender_outgoing, as_pubkey_sender_incoming, as_pubkey_receiver_outgoing, as_pubkey_receiver_incoming = self.as_pubkey_exchange(as_wallet_receiver)
-            return as_pubkey_sender_outgoing, as_pubkey_sender_incoming, as_pubkey_receiver_outgoing, as_pubkey_receiver_incoming
-        elif reply == "n":
-            print()
-            print("Swap denied.")
-            print()
-            sys.exit(0)
-        else:
-            print()
-            print("That is reply is invalid. Please enter 'y' or 'n'.")
-            as_pubkey_sender_outgoing, as_pubkey_sender_incoming, as_pubkey_receiver_outgoing, as_pubkey_receiver_incoming = self.as_request(as_wallet_receiver, as_amount, as_timelock_t)
-            return as_pubkey_sender_outgoing, as_pubkey_sender_incoming, as_pubkey_receiver_outgoing, as_pubkey_receiver_incoming
-
-
-    # not in use
-    def as_pubkey_exchange(self, as_wallet_receiver):
-        as_pubkey_sender_outgoing = self.get_next_public_key().serialize()
-        as_pubkey_sender_incoming = self.get_next_public_key().serialize()
-        print()
-        print("Here is my outgoing pubkey: " + str(as_pubkey_sender_outgoing))
-        print()
-        print("Here is my incoming pubkey: " + str(as_pubkey_sender_incoming))
-        print()
-        print("What is your pubkey?")
-        # FIX THIS –– this is currently a placeholder for the pubkey received from the receiver
-        as_pubkey_receiver_outgoing = as_wallet_receiver.get_next_public_key().serialize()
-        as_pubkey_receiver_incoming = as_wallet_receiver.get_next_public_key().serialize()
-        print()
-        print("Your outgoing pubkey is: " + str(as_pubkey_receiver_outgoing))
-        print()
-        print("Your incoming pubkey is: " + str(as_pubkey_receiver_incoming))
-        print()
-        return as_pubkey_sender_outgoing, as_pubkey_sender_incoming, as_pubkey_receiver_outgoing, as_pubkey_receiver_incoming
 
 
     def as_generate_secret_hash(self, secret):

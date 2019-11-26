@@ -13,9 +13,16 @@ class Storage(RAM_DB):
         super(Storage, self).__init__()
 
     def add_interested_puzzle_hashes(self, puzzle_hashes):
+        """
+        Add the given puzzle hashes to the list of "interesting" ones.
+        """
         self._interested_puzzled_hashes.update(puzzle_hashes)
 
     async def sync(self):
+        """
+        Get blocks from ledger sim and make a note of new and spent coins
+        that are "interesting".
+        """
         headers = []
         tip_dict = await self._ledger_sim.get_tip()
         genesis_hash = tip_dict["genesis_hash"]

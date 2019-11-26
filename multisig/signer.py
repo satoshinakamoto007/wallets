@@ -14,6 +14,10 @@ from chiasim.validation.consensus import (
 
 
 def create_private_wallet(path, entropy_f):
+    """
+    Invoke the entropy function and create a new private wallet as a json
+    file with the given path.
+    """
     seed = hashlib.sha256(entropy_f()).digest()
     private_hd_key = BLSPrivateHDKey.from_seed(seed)
     d = dict(key=bytes(private_hd_key).hex())
@@ -22,16 +26,26 @@ def create_private_wallet(path, entropy_f):
 
 
 def load_private_wallet(path):
+    """
+    Load a json file with the given path as a private wallet.
+    """
     d = json.load(open(path))
     blob = bytes.fromhex(d["key"])
     return BLSPrivateHDKey.from_bytes(blob)
 
 
 def default_entropy():
+    """
+    Call the os entropy function.
+    """
     return os.urandom(1024)
 
 
 def generate_signatures(pst, private_wallet):
+    """
+    For a given unfinalized SpendBundle, look at the hints to see if the given
+    private wallet can generate any signatures, and generate them.
+    """
     hd_hints = pst.get("hd_hints")
     sigs = {}
     private_fingerprint = private_wallet.fingerprint()
@@ -57,6 +71,9 @@ def generate_signatures(pst, private_wallet):
 
 
 def get_pst():
+    """
+    UI to accept an unfinalized SpendBundle, create signatures, and display them.
+    """
     while True:
         pst_hex = input("enter partially-signed transaction hex> ")
         if len(pst_hex) == 0:

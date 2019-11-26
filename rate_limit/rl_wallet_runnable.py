@@ -8,6 +8,7 @@ from utilities.decorations import print_leaf, divider, prompt
 from chiasim.hashable import ProgramHash
 from binascii import hexlify
 from blspy import PublicKey
+from chiasim.atoms import hexbytes
 
 
 def get_int(message):
@@ -57,7 +58,9 @@ def receive_rl_coin(wallet):
     origin = {"parent_coin_info": arr[0], "puzzle_hash": ph, "amount": arr[2], "name": arr[3]}
     limit = arr[4]
     interval = arr[5]
+    clawback_pk = arr[6]
     print(origin)
+    wallet.rl_clawback_pk = clawback_pk
     wallet.set_origin(origin)
     wallet.limit = int(limit)
     wallet.interval = int(interval)
@@ -81,15 +84,23 @@ async def create_rl_coin(wallet, ledger_api):
     interval = get_int("Specify the interval length (blocks): ")
     print("Specify the pubkey of receiver")
     pubkey = input(prompt)
+    my_pubkey = hexbytes(wallet.get_next_public_key().serialize())
     send_amount = get_int("Enter amount to give recipient: ")
     print(f"\n\nInitialization string: {origin.parent_coin_info}:{origin.puzzle_hash}:"
-          f"{origin.amount}:{origin.name()}:{rate}:{interval}")
+          f"{origin.amount}:{origin.name()}:{rate}:{interval}:{my_pubkey}")
     print("\nPaste Initialization string to the receiver")
     print("Press Enter to continue:")
     input(prompt)
     pubkey = PublicKey.from_bytes(bytes.fromhex(pubkey)).serialize()
-    rl_puzzle = wallet.rl_puzzle_for_pk(pubkey, rate, interval, origin.name())
+    rl_puzzle = wallet.rl_puzzle_for_pk(pubkey, rate, interval, origin.name(), my_pubkey)
     rl_puzzlehash = ProgramHash(rl_puzzle)
+    wallet.clawback_puzzlehash = rl_puzzlehash
+    wallet.clawback_origin = origin.name()
+    wallet.clawback_limit = rate
+    wallet.clawback_interval = interval
+    wallet.clawback_pk = my_pubkey
+    wallet.rl_receiver_pk = pubkey
+
     spend_bundle = wallet.generate_signed_transaction_with_origin(send_amount, rl_puzzlehash, origin.name())
     _ = await ledger_api.push_tx(tx=spend_bundle)
 
@@ -110,9 +121,20 @@ async def spend_rl_coin(wallet, ledger_api):
             amount = -1
         amount = int(amount)
 
-    puzzlehash = wallet.get_new_puzzlehash_for_pk(receiver_pubkey)
+    puzzlehash = wallet.get_puzzlehash_for_pk(receiver_pubkey)
     spend_bundle = wallet.rl_generate_signed_transaction(amount, puzzlehash)
     _ = await ledger_api.push_tx(tx=spend_bundle)
+
+
+async def retrieve_rate_limited_coin(wallet, ledger_api):
+    if wallet.clawback_origin is None:
+        print("There is no retrievable RL Coins")
+    spend_bundle = wallet.clawback_rl_coin()
+    _ = await ledger_api.push_tx(tx=spend_bundle)
+    if _.get("response").startswith("accepted"):
+        amount =  spend_bundle.coin_solutions._items[0].coin.amount
+        print(f"{amount} Chia will be retrieved in the next block")
+
 
 
 async def add_funds_to_rl_coin(wallet, ledger_api):
@@ -200,6 +222,7 @@ async def main_loop():
         print("\u2448 6 Send a new rate limited coin")
         print("\u2448 7 Spend from rate limited coin")
         print("\u2448 8 Add funds to existing rate limited coin")
+        print("\u2448 9 Retrieve sent rate limited coin")
         print("\u2448 q Quit")
         print(divider)
         print()
@@ -221,6 +244,8 @@ async def main_loop():
             await spend_rl_coin(wallet, ledger_api)
         elif selection == "8":
             await add_funds_to_rl_coin(wallet, ledger_api)
+        elif selection == "9":
+            await retrieve_rate_limited_coin(wallet, ledger_api)
 
 
 def main():
