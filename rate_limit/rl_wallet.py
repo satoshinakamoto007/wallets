@@ -1,6 +1,5 @@
 from chiasim.atoms import hexbytes
-from standard_wallet.wallet import Wallet
-import hashlib
+from standard_wallet.wallet import *
 import clvm
 from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BLSSignature
 from binascii import hexlify
@@ -10,31 +9,7 @@ from clvm_tools import binutils
 from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from chiasim.validation.Conditions import ConditionOpcode
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
-from chiasim.validation.Conditions import (
-    make_create_coin_condition, make_assert_my_coin_id_condition, make_assert_min_time_condition,
-    make_assert_coin_consumed_condition
-)
-from chiasim.puzzles.p2_conditions import puzzle_for_conditions
 import math
-
-
-def sha256(val):
-    return hashlib.sha256(val).digest()
-
-
-def make_solution(primaries=[], min_time=0, me={}, consumed=[]):
-    ret = []
-    for primary in primaries:
-        ret.append(make_create_coin_condition(
-            primary['puzzlehash'], primary['amount']))
-    for coin in consumed:
-        ret.append(make_assert_coin_consumed_condition(coin))
-    if min_time > 0:
-        ret.append(make_assert_min_time_condition(min_time))
-    if me:
-        ret.append(make_assert_my_coin_id_condition(me['id']))
-    return puzzle_for_conditions(ret)
-
 
 # RLWallet is subclass of Wallet
 class RLWallet(Wallet):
@@ -63,6 +38,7 @@ class RLWallet(Wallet):
         return
 
     def set_origin(self, origin):
+        #In tests Coin object is passed, in runnable it's a dictionary
         if isinstance(origin, Coin):
             self.rl_origin = origin.name()
         else:
