@@ -121,7 +121,7 @@ async def spend_rl_coin(wallet, ledger_api):
             amount = -1
         amount = int(amount)
 
-    puzzlehash = wallet.get_new_puzzlehash_for_pk(receiver_pubkey)
+    puzzlehash = wallet.get_puzzlehash_for_pk(receiver_pubkey)
     spend_bundle = wallet.rl_generate_signed_transaction(amount, puzzlehash)
     _ = await ledger_api.push_tx(tx=spend_bundle)
 

@@ -355,18 +355,12 @@ class RLWallet(Wallet):
 
         return SpendBundle(solution_list, aggsig)
 
-    def get_new_puzzle(self, pubkey):
+    def get_puzzle_for_pk(self, pubkey):
         puzzle = puzzle_for_pk(pubkey)
         return puzzle
 
-    def get_new_puzzlehash(self):
-        pubkey = self.get_next_public_key().serialize()
-        puzzle = self.get_new_puzzle(pubkey)
-        puzzlehash = ProgramHash(puzzle)
-        return puzzlehash
-
-    def get_new_puzzlehash_for_pk(self, pubkey):
-        puzzle = self.get_new_puzzle(pubkey)
+    def get_puzzlehash_for_pk(self, pubkey):
+        puzzle = self.get_puzzle_for_pk(pubkey)
         puzzlehash = ProgramHash(puzzle)
         return puzzlehash
 
