@@ -26,10 +26,20 @@ from chiasim.validation.consensus import (
 )
 
 
-GAP_LIMIT = 100  # TODO: fix this
+# we hard-code a gap limit for now (ie. the number
+# of addresses allocated that haven't been referenced
+# in the blockchain)
+# Eventually, the wallet should keep track of the
+# maximum gap limit it's ever seen to minimize
+# unnecessary address generation.
+
+# TODO: fix this
+
+GAP_LIMIT = 100
 
 
 def pubkey_for_str(s):
+    """Turn a string into a public key. Returns the blob or None."""
     k = bytes.fromhex(s)
     if len(k) == 93:
         return k
@@ -37,6 +47,11 @@ def pubkey_for_str(s):
 
 
 def create_wallet(path, input=input):
+    """
+    UI to accept information necessary to create an M of N wallet.
+
+    path: where to store the wallet (as json)
+    """
     print("Creating M of N wallet")
     pubkeys = []
     while True:
@@ -67,6 +82,9 @@ def create_wallet(path, input=input):
 
 
 def load_wallet(path) -> MultisigHDWallet:
+    """
+    Load a MultisigHDWallet from a json file
+    """
     d = json.load(open(path))
     pub_hd_keys_bytes = [bytes.fromhex(_) for _ in d["public_hd_keys"]]
     pub_hd_keys = [BLSPublicHDKey.from_bytes(_) for _ in pub_hd_keys_bytes]
@@ -75,6 +93,9 @@ def load_wallet(path) -> MultisigHDWallet:
 
 
 async def generate_coins(wallet, storage, coinbase_puzzle_hash, fees_puzzle_hash):
+    """
+    Invoke "next_block" on ledger sim with the given reward puzzle hashes.
+    """
     remote = storage.ledger_sim()
     await remote.next_block(
         coinbase_puzzle_hash=coinbase_puzzle_hash, fees_puzzle_hash=fees_puzzle_hash
@@ -83,6 +104,10 @@ async def generate_coins(wallet, storage, coinbase_puzzle_hash, fees_puzzle_hash
 
 
 async def do_generate_address(wallet, storage, input):
+    """
+    UI to generate and return an address in the wallet and optionally
+    generate coins.
+    """
     index_str = input("Choose index (integer >= 0)> ")
     try:
         index = int(index_str)
@@ -98,6 +123,9 @@ async def do_generate_address(wallet, storage, input):
 
 
 async def do_spend_coin(wallet, storage, input):
+    """
+    UI to spend a coin.
+    """
     coins = []
     while True:
         coin_str = input("Enter hex id of coin to spend> ")
@@ -116,9 +144,13 @@ async def do_spend_coin(wallet, storage, input):
         return
     dest_address = "14c56fdefb47e2208de54b6c609a907c522348c96e8cfb41c7a8c75f44835dd9"
     print(f"sending 1 coin to {dest_address}, rest fees")
+
+    # create an unfinalized SpendBundle
     pst = spend_coin(wallet, coins, dest_address)
     pst_encoded = bytes(pst)
     print(pst_encoded.hex())
+
+    # keep requesting signatures until finalized
     sigs = []
     while True:
         sig_str = input("Enter a signature> ")
@@ -138,13 +170,21 @@ async def do_spend_coin(wallet, storage, input):
                 % (summary[0].name(), len(summary[2]), summary[3])
             )
     print("spend bundle = %s" % bytes(spend_bundle).hex())
-    r = input(f"Send to ledgersim? (y/n)> ")
+
+    # optionally send to ledger sim
+    r = input(f"Send to ledger sim? (y/n)> ")
     if r.lower().startswith("y"):
         r = await storage.ledger_sim().push_tx(tx=spend_bundle)
     return spend_bundle
 
 
-def solution_for_coin(wallet, index, coin, conditions):
+def maximal_solution_for_coin(wallet, index, coin, conditions):
+    """
+    Create a "maximal" solution for coin. This is an N of N
+    solution which doesn't actually work (unless M == N), but
+    gives insight to the signers as to which N public keys would
+    be necessary.
+    """
     delegated_puzzle = puzzle_for_conditions(conditions)
     delegated_solution = solution_for_conditions(conditions)
 
@@ -157,6 +197,9 @@ def solution_for_coin(wallet, index, coin, conditions):
 
 
 def spend_coin(wallet, coins, dest_address):
+    """
+    Create and return an unfinalized SpendBundle.
+    """
     conditions = [make_create_coin_condition(bytes.fromhex(dest_address), 1)]
     m = wallet.m()
 
@@ -164,7 +207,9 @@ def spend_coin(wallet, coins, dest_address):
     hd_hints = {}
     for coin in coins:
         index = wallet.index_for_puzzle_hash(coin.puzzle_hash, GAP_LIMIT)
-        coin_solution, pub_keys = solution_for_coin(wallet, index, coin, conditions)
+        coin_solution, pub_keys = maximal_solution_for_coin(
+            wallet, index, coin, conditions
+        )
         coin_solutions.append(coin_solution)
         new_hints = {
             fingerprint_for_pk(_.public_child(index)): dict(
@@ -183,7 +228,16 @@ def spend_coin(wallet, coins, dest_address):
 
 
 def sigs_to_aggsig_sig_dict(wallet, pst, sigs):
-    # this n^2 algorithm matches signatures to aggsig
+    """
+    Figure out which signatures in sigs correspond to which
+    aggsig pairs in the unfinalized SpendBundle pst.
+
+    Return a dictionary with keys that are aggsig pairs and
+    signature values.
+
+    This is an n^2 algorithm, so not ideal, but fine for small
+    M and N.
+    """
     all_sigs_dict = {}
     all_aggsigs = set()
     for coin_solution in pst.get("coin_solutions"):
@@ -201,8 +255,16 @@ def sigs_to_aggsig_sig_dict(wallet, pst, sigs):
 
 
 def finalize_pst(wallet, pst, sigs):
-    # figure out which keys we have signatures for
+    """
+    Return a pair (SpendBundle or None, summary_list).
 
+    If we have a finalized SpendBundle, it's returned, otherwise None,
+    The summary_list item is a list of items (coin, hkp_list, sigs_to_use, m)
+    which allows the UI to give the end user information about which
+    coins still need signatures.
+
+    Note that hkp is short for hash_key_pair (ie. aggsig pair)
+    """
     m = wallet.m()
     coin_solutions = []
     sig_dict = sigs_to_aggsig_sig_dict(wallet, pst, sigs)
@@ -258,6 +320,9 @@ def finalize_pst(wallet, pst, sigs):
 
 
 async def ledger_sim_proxy():
+    """
+    Return an async proxy to the ledger sim instance running on 9868.
+    """
     from chiasim.clients import ledger_sim
     from chiasim.remote.client import request_response_proxy
 
@@ -267,6 +332,9 @@ async def ledger_sim_proxy():
 
 
 async def all_coins_and_unspents(storage):
+    """
+    Query the ledger sim instance for all coins and unspents.
+    """
     coins = []
     unspents = []
     coin_name_unspent_pairs = [_ async for _ in storage.all_unspents()]
@@ -279,6 +347,10 @@ async def all_coins_and_unspents(storage):
 
 
 async def do_sync(wallet, storage):
+    """
+    Fetch the most recent blocks from the ledger sim instance
+    and troll through them looking for relevant puzzle hashes.
+    """
     storage.add_interested_puzzle_hashes(
         wallet.puzzle_hash_for_index(_) for _ in range(GAP_LIMIT)
     )
@@ -296,6 +368,9 @@ async def do_sync(wallet, storage):
 
 
 async def menu(wallet, storage, input):
+    """
+    UI for the main menu.
+    """
     print("Choose:")
     print("1. Generate an address")
     print("2. Spend a coin")
@@ -312,6 +387,9 @@ async def menu(wallet, storage, input):
 
 
 async def main_loop(path, storage=None, input=input):
+    """
+    async version of main
+    """
     if storage is None:
         storage = Storage("junk path", await ledger_sim_proxy())
 

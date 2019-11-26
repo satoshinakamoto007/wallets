@@ -1,17 +1,15 @@
 import cbor
 
+from chiasim.atoms import hexbytes
 from chiasim.hashable import BLSSignature, CoinSolution, Program
 
 
-class hexbytes(bytes):
-    def __str__(self):
-        return self.hex()
-
-    def __repr__(self):
-        return "<hex:%s>" % self
-
-
 def remap(s, f):
+    """
+    Iterate through a json-like structure, applying remap(_, f) recursively
+    to all items in collectives and f(_) to all non-collectives
+    within the structure.
+    """
     if isinstance(s, list):
         return [remap(_, f) for _ in s]
     if isinstance(s, tuple):
@@ -22,6 +20,11 @@ def remap(s, f):
 
 
 def use_hexbytes(s):
+    """
+    Dig through json-like structure s and replace all instances of bytes
+    with hexbytes so the repr isn't as ugly.
+    """
+
     def to_hexbytes(s):
         if isinstance(s, bytes):
             return hexbytes(s)
@@ -31,6 +34,12 @@ def use_hexbytes(s):
 
 
 def cbor_struct_to_bytes(s):
+    """
+    Dig through json-like structure s and replace t with bytes(t) for
+    every substructure t that supports it. This prepares a structure to
+    be serialized with cbor.
+    """
+
     def to_bytes(k):
         if hasattr(k, "__bytes__"):
             return bytes(k)
@@ -51,16 +60,37 @@ class PartiallySignedTransaction(dict):
 
 
 def xform_aggsig_sig_pair(pair):
+    """
+    Transform a pair (aggsig_pair_bytes, sig_bytes)
+    to (aggsig_pair, BLSSignature).
+    """
     aggsig = BLSSignature.aggsig_pair.from_bytes(pair[0])
     sig = BLSSignature.from_bytes(pair[1])
     return (aggsig, sig)
 
 
 def xform_list(item_xform):
+    """
+    Return a function that transforms a list of items by calling
+    item_xform(_) on each element _ in the list.
+    """
+
     def xform(item_list):
         return [item_xform(_) for _ in item_list]
 
     return xform
+
+
+def transform_dict(d, xformer):
+    """
+    Transform elements of the dict d using the xformer (also a dict,
+    where the keys match the keys in d and the values of d are transformed
+    by invoking the correspding values in xformer.
+    """
+    for k, v in xformer.items():
+        if k in d:
+            d[k] = v(d[k])
+    return d
 
 
 PST_TRANSFORMS = dict(
@@ -71,7 +101,8 @@ PST_TRANSFORMS = dict(
 
 
 def transform_pst(pst):
-    for k, v in PST_TRANSFORMS.items():
-        if k in pst:
-            pst[k] = v(pst[k])
-    return pst
+    """
+    Turn a pst dict with everything streamed into bytes into its
+    corresponding constituent parts.
+    """
+    return transform_dict(pst, PST_TRANSFORMS)

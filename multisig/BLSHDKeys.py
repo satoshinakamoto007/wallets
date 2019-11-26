@@ -6,10 +6,18 @@ from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 
 
 def fingerprint_for_pk(pk):
+    """
+    Take a public key and get the fingerprint for it.
+    It's just the last four bytes of the sha256 hash.
+    """
     return hashlib.sha256(bytes(pk)).digest()[-4:]
 
 
 class BLSPublicHDKey:
+    """
+    A class for public hierarchical deterministic bls keys.
+    """
+
     @classmethod
     def from_bytes(cls, blob):
         bls_public_hd_key = blspy.ExtendedPublicKey.from_bytes(blob)
@@ -43,6 +51,10 @@ class BLSPublicHDKey:
 
 
 class BLSPrivateHDKey:
+    """
+    A class for private hierarchical deterministic bls keys.
+    """
+
     @classmethod
     def from_seed(cls, seed_bytes):
         bls_private_hd_key = blspy.ExtendedPrivateKey.from_seed(seed_bytes)
