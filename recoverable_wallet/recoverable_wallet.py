@@ -320,7 +320,7 @@ class RecoverableWallet(Wallet):
 
             op_create_coin = ConditionOpcode.CREATE_COIN[0]
             puzzlehash = f'0x' + str(hexbytes(self.get_new_puzzlehash()))
-            solution_src = f'((q (({op_create_coin} {puzzlehash} {coin.amount}))) () 0)'
+            solution_src = sexp(quote(sexp(sexp(op_create_coin, puzzlehash, coin.amount))), sexp(), 0)
             solution = Program(binutils.assemble(solution_src))
 
             puzzle_solution_list = clvm.to_sexp_f([puzzle, solution])
