@@ -146,8 +146,9 @@ async def main():
         print('7: Recover Coins')
         print('8: View Escrow Coins')
         print('9: Recover Escrow Coins')
-        print('q: Quit')
+        print('q: Quit\n')
         selection = input()
+        print()
         if selection == '1':
             view_coins(wallet)
         elif selection == '2':
