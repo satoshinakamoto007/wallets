@@ -1,5 +1,5 @@
 import asyncio
-from recoverable_wallet.recoverable_wallet import RecoverableWallet
+from recoverable_wallet import RecoverableWallet
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
 from chiasim.hashable import Coin, Header, HeaderHash, Body

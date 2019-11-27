@@ -1,7 +1,11 @@
 import hashlib
 import clvm
-from recoverable_wallet.chialisp import *
 from standard_wallet.wallet import Wallet
+try:
+    from chialisp import *
+except Exception:
+    from recoverable_wallet.chialisp import *
+
 from chiasim.validation.Conditions import ConditionOpcode
 from chiasim.atoms import hexbytes
 from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BLSSignature
@@ -360,7 +364,7 @@ class RecoverableWallet(Wallet):
 
             op_create_coin = ConditionOpcode.CREATE_COIN[0]
             puzzlehash = f'0x' + str(hexbytes(self.get_new_puzzlehash()))
-            solution_src = f'((q (({op_create_coin} {puzzlehash} {coin.amount}))) () 1)'
+            solution_src = sexp(quote(sexp(sexp(op_create_coin, puzzlehash, coin.amount))), sexp(), 1)
             solution = Program(binutils.assemble(solution_src))
 
             puzzle_solution_list = clvm.to_sexp_f([puzzle, solution])
