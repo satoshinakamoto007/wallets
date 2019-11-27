@@ -1,5 +1,6 @@
 import hashlib
 import clvm
+from recoverable_wallet.chialisp import *
 from standard_wallet.wallet import Wallet
 from chiasim.validation.Conditions import ConditionOpcode
 from chiasim.atoms import hexbytes
@@ -7,18 +8,15 @@ from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BL
 from chiasim.hashable.CoinSolution import CoinSolutionList
 from clvm_tools import binutils
 from clvm import to_sexp_f
-from chiasim.validation.Conditions import (
-    conditions_by_opcode, make_create_coin_condition, make_assert_my_coin_id_condition, make_assert_min_time_condition
-)
-from chiasim.validation.consensus import (
-    conditions_for_solution, hash_key_pairs_for_conditions_dict, conditions_dict_for_solution
-)
+from chiasim.validation.Conditions import \
+    (conditions_by_opcode, make_create_coin_condition, make_assert_my_coin_id_condition, make_assert_min_time_condition)
+from chiasim.validation.consensus import\
+    (conditions_for_solution, hash_key_pairs_for_conditions_dict, conditions_dict_for_solution)
 from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from blspy import ExtendedPublicKey
 from fractions import Fraction
 from decimal import Decimal
 import math
-from .chialisp import *
 
 
 def hash_sha256(val):
