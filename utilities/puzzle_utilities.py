@@ -7,11 +7,15 @@ from chiasim.hashable import ProgramHash, BLSSignature
 def pubkey_format(pubkey):
     if isinstance(pubkey, str):
         if len(pubkey) == 96:
-            assert check(pubkey)
+            if not check_string_is_hex(pubkey):
+                raise ValueError
             ret = "0x" + pubkey
         elif len(pubkey) == 98:
-            assert check(pubkey[2:95])
-            assert pubkey[0:1] == "0x"
+            if not check_string_is_hex(pubkey[2:95]):
+                raise ValueError
+            if not pubkey[0:2] == "0x":
+                raise ValueError
+            ret = pubkey
         else:
             raise ValueError
     elif hasattr(pubkey, 'decode'):  # check if serialized
@@ -25,7 +29,7 @@ def serialized_key_to_string(pubkey):
     return "0x%s" % hexlify(pubkey).decode('ascii')
 
 
-def check(value):
+def check_string_is_hex(value):
     for letter in value:
         if letter not in string.hexdigits:
             return False
