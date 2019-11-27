@@ -45,12 +45,15 @@ async def process_blocks(wallet, ledger_api, last_known_header, current_header_h
     clawback_coins = [coin for coin in additions if wallet.is_in_escrow(coin)]
     if len(clawback_coins) != 0:
         print(f'WARNING! Coins from this wallet have been moved to escrow!\n'
-              f'Attempting to send a clawback for these coins:\n')
+              f'Attempting to send a clawback for these coins:')
         for coin in clawback_coins:
             print(f'{coin.name()}: {coin.amount}')
         transaction = wallet.generate_clawback_transaction(clawback_coins)
-        await ledger_api.push_tx(tx=transaction)
-        print('Clawback transaction submitted')
+        r = await ledger_api.push_tx(tx=transaction)
+        if type(r) is RemoteError:
+            print('Clawback failed')
+        else:
+            print('Clawback transaction submitted')
 
 
 async def farm_block(wallet, ledger_api, last_known_header):
