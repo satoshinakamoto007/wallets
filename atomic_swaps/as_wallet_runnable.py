@@ -351,7 +351,7 @@ async def set_partner(wallet, ledger_api, as_contacts, method):
             print()
             print("You have entered an invalid swap partner name. Please enter a valid name, or type 'menu' to cancel the atomic swap:")
             swap_partner = input(prompt)
-            if partner_pubkey == "menu":
+            if swap_partner == "menu":
                 return None, None, None, None
         else:
             choice = "continue"
@@ -566,34 +566,28 @@ def add_puzzlehash_init(wallet):
     return puzzlehash
 
 
-async def init_swap(wallet, ledger_api, as_contacts, as_swap_list):
+async def init_swap_start(wallet, ledger_api, as_contacts, as_swap_list):
     print()
     print(divider)
     print(" \u2447 Initiate Atomic Swap \u2447")
     my_swap_pubkey, swap_partner, partner_pubkey, amount, secret, secret_hash, timelock, menu = await set_parameters_init(wallet, ledger_api, as_contacts)
     if menu == "menu":
         print(divider)
-        return
+        return None, None, None
     tip = await ledger_api.get_tip()
     timelock_outgoing = timelock
     timelock_block_outgoing = int(timelock_outgoing + tip["tip_index"])
-    timelock_incoming = int(0.5 * timelock)
-    timelock_block_incoming = int(timelock_incoming + tip["tip_index"])
     puzzlehash_outgoing = wallet.as_get_new_puzzlehash(bytes.fromhex(my_swap_pubkey), bytes.fromhex(partner_pubkey), amount, timelock_block_outgoing, secret_hash)
     puzzlehash_incoming = "unknown"
+    timelock_incoming = int(0.5 * timelock)
+    timelock_block_incoming = "unknown"
     spend_bundle = wallet.generate_signed_transaction(amount, puzzlehash_outgoing)
-
     print()
     print("This is the puzzlehash of your outgoing coin:")
     print(hexlify(puzzlehash_outgoing).decode('ascii'))
     print()
     print("Please send your outgoing puzzlehash to your swap partner, and press 'return' to continue.")
     confirm = input(prompt)
-
-    puzzlehash_incoming = add_puzzlehash_init(wallet)
-    if puzzlehash_incoming == "menu":
-        return
-
     new_swap = {
             "swap partner" : swap_partner,
     		"partner pubkey" : partner_pubkey,
@@ -609,25 +603,47 @@ async def init_swap(wallet, ledger_api, as_contacts, as_swap_list):
             "timelock block height incoming" : timelock_block_incoming
     	}
     as_swap_list.append(new_swap)
-    as_contacts[swap_partner][1][0].append(hexlify(puzzlehash_outgoing).decode('ascii'))
-    as_contacts[swap_partner][1][1].append(puzzlehash_incoming)
-    new_swap["incoming puzzlehash"] = puzzlehash_incoming
+    return spend_bundle, puzzlehash_outgoing, tip
+
+
+async def init_swap_finish(wallet, ledger_api, most_recent_header, as_contacts, as_swap_list, puzzlehash_outgoing, tip_index):
+    for swap in as_swap_list:
+        if hexlify(puzzlehash_outgoing).decode('ascii') == str(swap["outgoing puzzlehash"]):
+            swap_index = as_swap_list.index(swap)
+    puzzlehash_incoming = add_puzzlehash_init(wallet)
+    if puzzlehash_incoming == "menu":
+        return
+    as_swap_list[swap_index]["incoming puzzlehash"] = puzzlehash_incoming
+    check = False
+    print()
+    print("Waiting for your incoming coin to appear on the blockchain . . .")
+    while not check:
+        await get_update(wallet, ledger_api, most_recent_header, as_contacts, as_swap_list)
+        tip = await ledger_api.get_tip()
+        for coin in wallet.as_pending_utxos:
+            if puzzlehash_incoming == hexlify(coin.puzzle_hash).decode('ascii'):
+                check = True
+    print()
+    print("Update complete.")
+    timelock_block_incoming = await sender_check(wallet, ledger_api, puzzlehash_incoming, as_swap_list[swap_index]["partner pubkey"], as_swap_list[swap_index]["my swap pubkey"], as_swap_list[swap_index]["amount"], as_swap_list[swap_index]["timelock time incoming"], as_swap_list[swap_index]["secret hash"], tip_index)
+    as_swap_list[swap_index]["timelock block height incoming"] = timelock_block_incoming
+    as_contacts[as_swap_list[swap_index]["swap partner"]][1][0].append(hexlify(puzzlehash_outgoing).decode('ascii'))
+    as_contacts[as_swap_list[swap_index]["swap partner"]][1][1].append(puzzlehash_incoming)
     print()
     print("Here are the parameters for your atomic swap:")
-    print("{} {}".format("Atomic swap partner:", new_swap["swap partner"]))
-    print("{} {}".format("Atomic swap partner pubkey:", new_swap["partner pubkey"]))
-    print("{} {}".format("Atomic swap amount:", new_swap["amount"]))
-    print("{} {}".format("Atomic swap secret:", new_swap["secret"]))
-    print("{} {}".format("Atomic swap secret hash:", new_swap["secret hash"]))
-    print("{} {}".format("Atomic swap my pubkey:", new_swap["my swap pubkey"]))
-    print("{} {}".format("Atomic swap outgoing puzzlehash:", new_swap["outgoing puzzlehash"]))
-    print("{} {}".format("Atomic swap timelock time (outgoing coin):", new_swap["timelock time outgoing"]))
-    print("{} {}".format("Atomic swap timelock block height (outgoing coin):", new_swap["timelock block height outgoing"]))
-    print("{} {}".format("Atomic swap incoming puzzlehash:", new_swap["incoming puzzlehash"]))
-    print("{} {}".format("Atomic swap timelock time (incoming coin):", new_swap["timelock time incoming"]))
-    print("{} {}".format("Atomic swap timelock block height (incoming coin):", new_swap["timelock block height incoming"]))
+    print("{} {}".format("Atomic swap partner:", as_swap_list[swap_index]["swap partner"]))
+    print("{} {}".format("Atomic swap partner pubkey:", as_swap_list[swap_index]["partner pubkey"]))
+    print("{} {}".format("Atomic swap amount:", as_swap_list[swap_index]["amount"]))
+    print("{} {}".format("Atomic swap secret:", as_swap_list[swap_index]["secret"]))
+    print("{} {}".format("Atomic swap secret hash:", as_swap_list[swap_index]["secret hash"]))
+    print("{} {}".format("Atomic swap my pubkey:", as_swap_list[swap_index]["my swap pubkey"]))
+    print("{} {}".format("Atomic swap outgoing puzzlehash:", as_swap_list[swap_index]["outgoing puzzlehash"]))
+    print("{} {}".format("Atomic swap timelock time (outgoing coin):", as_swap_list[swap_index]["timelock time outgoing"]))
+    print("{} {}".format("Atomic swap timelock block height (outgoing coin):", as_swap_list[swap_index]["timelock block height outgoing"]))
+    print("{} {}".format("Atomic swap incoming puzzlehash:", as_swap_list[swap_index]["incoming puzzlehash"]))
+    print("{} {}".format("Atomic swap timelock time (incoming coin):", as_swap_list[swap_index]["timelock time incoming"]))
+    print("{} {}".format("Atomic swap timelock block height (incoming coin):", as_swap_list[swap_index]["timelock block height incoming"]))
     print(divider)
-    return spend_bundle
 
 
 def add_secret_hash(wallet):
@@ -666,8 +682,9 @@ def add_secret_hash(wallet):
 
 
 def add_buffer(timelock):
+    max_buffer = (timelock // 2) - 1
     print()
-    print("Enter the minimum number of blocks you will accept as a buffer between the timeout times of your outgoing and incoming coins (buffer must be greater than 0 and less than or equal to half of your incoming coin's timelock time):")
+    print("{} {}".format("Enter the minimum number of blocks you will accept as a buffer between the timeout times of your outgoing and incoming coins (buffer must be greater than 0 and less than or equal to", max_buffer, "):"))
     buffer = input(prompt)
     try:
         buffer = int(buffer)
@@ -679,7 +696,7 @@ def add_buffer(timelock):
         print()
         print("Invalid input: Buffer time must be greater than 0.")
         return None
-    elif buffer > (timelock // 2):
+    elif buffer > max_buffer:
         print()
         print("Invalid input: Buffer time may not be greater than half of the timelock time of your incoming coin.")
     else:
@@ -724,12 +741,21 @@ async def receiver_check(wallet, ledger_api, puzzlehash, partner_pubkey, my_swap
                 print()
                 print("{} {}".format("Current block height: ", tip["tip_index"]))
                 print("{} {}".format("Incoming coin timelock block: ", timelock_block_incoming))
-                print("{} {}".format("Outgoing coin timelock block: ", timelock_block_outgoing_check))
+                print("{} {}".format("Outgoing coin minimum timelock block: ", timelock_block_outgoing_check))
                 print()
-                print("Timelock error: There are too few blocks between the timelock blocks of your incoming and outgoing coins. You may not proceed with this atomic swap, and your outgoing coin has been cancelled. Please coordinate with your partner to restart the atomic swap.")
+                print("Timelock error: There are too few blocks between the incoming coin's timelock block and the minimum possible timelock block of your outgoing coins. You may not proceed with this atomic swap, and your outgoing coin has been cancelled. Please coordinate with your partner to restart the atomic swap.")
                 return "timelock fail"
             else:
                 return timelock_block_incoming
+    return "search fail"
+
+
+async def sender_check(wallet, ledger_api, puzzlehash, partner_pubkey, my_swap_pubkey, amount, timelock, secret_hash, tip_index_at_start):
+    tip = await ledger_api.get_tip()
+    for t in range(tip_index_at_start, tip["tip_index"] + 1):
+        timelock_block_incoming = int(timelock + t)
+        if puzzlehash_from_string(puzzlehash) == wallet.as_get_new_puzzlehash(bytes.fromhex(partner_pubkey), bytes.fromhex(my_swap_pubkey), amount, timelock_block_incoming, secret_hash):
+            return timelock_block_incoming
     return "search fail"
 
 
@@ -739,7 +765,7 @@ async def set_parameters_add(wallet, ledger_api, as_contacts, as_swap_list):
     while choice == "partner":
         my_swap_pubkey, swap_partner, partner_pubkey, tip_index_at_start = await set_partner(wallet, ledger_api, as_contacts, "add")
         if my_swap_pubkey == None and swap_partner == None and partner_pubkey == None:
-            return None, None, None, None, None, None, None, None, None, "menu"
+            return None, None, None, None, None, None, None, None, None, None, "menu"
         else:
             choice = "continue"
     choice = "amount"
@@ -752,7 +778,7 @@ async def set_parameters_add(wallet, ledger_api, as_contacts, as_swap_list):
                 print("Type 'amount' to enter a new amount, or type 'menu' to cancel the atomic swap:")
                 choice = input(prompt)
                 if choice == "menu":
-                    return None, None, None, None, None, None, None, None, None, "menu"
+                    return None, None, None, None, None, None, None, None, None, None, "menu"
                 elif choice != "amount":
                     choice = "invalid"
                     print()
@@ -770,7 +796,7 @@ async def set_parameters_add(wallet, ledger_api, as_contacts, as_swap_list):
                 print("Type 'hash' to enter a new secret hash, or type 'menu' to cancel the atomic swap:")
                 choice = input(prompt)
                 if choice == "menu":
-                    return None, None, None, None, None, None, None, None, None, "menu"
+                    return None, None, None, None, None, None, None, None, None, None, "menu"
                 elif choice != "hash":
                     choice = "invalid"
                     print()
@@ -787,7 +813,7 @@ async def set_parameters_add(wallet, ledger_api, as_contacts, as_swap_list):
                 print("Type 'time' to enter a new timelock time, or type 'menu' to cancel the atomic swap:")
                 choice = input(prompt)
                 if choice == "menu":
-                    return None, None, None, None, None, None, None, None, None, "menu"
+                    return None, None, None, None, None, None, None, None, None, None, "menu"
                 elif choice != "time":
                     choice = "invalid"
                     print()
@@ -804,7 +830,7 @@ async def set_parameters_add(wallet, ledger_api, as_contacts, as_swap_list):
                 print("Type 'buffer' to enter a new timelock buffer, or type 'menu' to cancel the atomic swap:")
                 choice = input(prompt)
                 if choice == "menu":
-                    return None, None, None, None, None, None, None, None, None, "menu"
+                    return None, None, None, None, None, None, None, None, None, None, "menu"
                 elif choice != "buffer":
                     choice = "invalid"
                     print()
@@ -821,33 +847,29 @@ async def set_parameters_add(wallet, ledger_api, as_contacts, as_swap_list):
                 print("Type 'puzzlehash' to enter a new puzzlehash, or type 'menu' to cancel the atomic swap:")
                 choice = input(prompt)
                 if choice == "menu":
-                    return None, None, None, None, None, None, None, None, None, "menu"
+                    return None, None, None, None, None, None, None, None, None, None, "menu"
                 elif choice != "puzzlehash":
                     choice = "invalid"
                     print()
                     print("You entered an invalid selection.")
         elif timelock_block_incoming == "fail":
-            return None, None, None, None, None, None, None, None, None, "menu"
+            return None, None, None, None, None, None, None, None, None, None, "menu"
         else:
             choice = "continue"
-    return my_swap_pubkey, swap_partner, partner_pubkey, amount, secret, secret_hash, timelock, puzzlehash, timelock_block_incoming, menu
+    return my_swap_pubkey, swap_partner, partner_pubkey, amount, secret, secret_hash, timelock, puzzlehash, timelock_block_incoming, buffer, menu
 
 
-async def add_swap(wallet, ledger_api, as_contacts, as_swap_list):
+async def add_swap(wallet, ledger_api, most_recent_header, as_contacts, as_swap_list):
     print()
     print(divider)
     print(" \u2447 Add Atomic Swap \u2447")
-    my_swap_pubkey, swap_partner, partner_pubkey, amount, secret, secret_hash, timelock, puzzlehash_incoming, timelock_block_incoming, menu = await set_parameters_add(wallet, ledger_api, as_contacts, as_swap_list)
+    my_swap_pubkey, swap_partner, partner_pubkey, amount, secret, secret_hash, timelock, puzzlehash_incoming, timelock_block_incoming, buffer, menu = await set_parameters_add(wallet, ledger_api, as_contacts, as_swap_list)
     if menu == "menu":
         print(divider)
         return
-    tip = await ledger_api.get_tip()
-    timelock_incoming = int(timelock)
+    puzzlehash_outgoing = "pending"
     timelock_outgoing = int(0.5 * timelock)
-    timelock_block_outgoing = int(timelock_outgoing + tip["tip_index"])
-    puzzlehash_outgoing = wallet.as_get_new_puzzlehash(bytes.fromhex(my_swap_pubkey), bytes.fromhex(partner_pubkey), amount, timelock_block_outgoing, secret_hash)
-    spend_bundle = wallet.generate_signed_transaction(amount, puzzlehash_outgoing)
-
+    timelock_block_outgoing = "pending"
     new_swap = {
             "swap partner" : swap_partner,
     		"partner pubkey" : partner_pubkey,
@@ -855,36 +877,64 @@ async def add_swap(wallet, ledger_api, as_contacts, as_swap_list):
     		"secret" : secret,
             "secret hash" : secret_hash,
             "my swap pubkey" : my_swap_pubkey,
-            "outgoing puzzlehash" : hexlify(puzzlehash_outgoing).decode('ascii'),
+            "outgoing puzzlehash" : puzzlehash_outgoing,
             "timelock time outgoing" : timelock_outgoing,
             "timelock block height outgoing" : timelock_block_outgoing,
             "incoming puzzlehash" : puzzlehash_incoming,
-            "timelock time incoming" : timelock_incoming,
+            "timelock time incoming" : timelock,
             "timelock block height incoming" : timelock_block_incoming
     	}
     as_swap_list.append(new_swap)
-    as_contacts[swap_partner][1][0].append(hexlify(puzzlehash_outgoing).decode('ascii'))
-    as_contacts[swap_partner][1][1].append(puzzlehash_incoming)
+    check = False
+    print()
+    print("Waiting for your incoming coin to appear on the blockchain . . .")
+    while not check:
+        await get_update(wallet, ledger_api, most_recent_header, as_contacts, as_swap_list)
+        tip = await ledger_api.get_tip()
+        for coin in wallet.as_pending_utxos:
+            if puzzlehash_incoming == hexlify(coin.puzzle_hash).decode('ascii'):
+                check = True
+    print()
+    print("Update complete.")
+    timelock_block_outgoing = int(timelock_outgoing + tip["tip_index"])
+    if timelock_block_incoming < (timelock_block_outgoing + buffer):
+        print()
+        print("{} {}".format("Current block height: ", tip["tip_index"]))
+        print("{} {}".format("Incoming coin timelock block: ", timelock_block_incoming))
+        print("{} {}".format("Outgoing coin minimum timelock block: ", timelock_block_outgoing))
+        print()
+        print("Timelock error: There are too few blocks between the timelock blocks of your incoming and outgoing coins. You may not proceed with this atomic swap, and your outgoing coin has been cancelled. Please coordinate with your partner to restart the atomic swap.")
+        return None
+    puzzlehash_outgoing = wallet.as_get_new_puzzlehash(bytes.fromhex(my_swap_pubkey), bytes.fromhex(partner_pubkey), amount, timelock_block_outgoing, secret_hash)
+    spend_bundle = wallet.generate_signed_transaction(amount, puzzlehash_outgoing)
     print()
     print("This is the puzzlehash of your outgoing coin:")
     print(hexlify(puzzlehash_outgoing).decode('ascii'))
     print()
     print("Please send your outgoing puzzlehash to your swap partner, and press 'return' to continue.")
     confirm = input(prompt)
+    as_contacts[swap_partner][1][0].append(hexlify(puzzlehash_outgoing).decode('ascii'))
+    as_contacts[swap_partner][1][1].append(puzzlehash_incoming)
+    for swap in as_swap_list:
+        if puzzlehash_incoming == str(swap["incoming puzzlehash"]):
+            swap_index = as_swap_list.index(swap)
+    as_swap_list[swap_index]["outgoing puzzlehash"] = hexlify(puzzlehash_outgoing).decode('ascii')
+    as_swap_list[swap_index]["timelock block height outgoing"] = timelock_block_outgoing
+    as_swap_list[swap_index]["timelock block height incoming"] = timelock_block_incoming
     print()
     print("You have added the following atomic swap:")
-    print("{} {}".format("Atomic swap partner:", new_swap["swap partner"]))
-    print("{} {}".format("Atomic swap partner pubkey:", new_swap["partner pubkey"]))
-    print("{} {}".format("Atomic swap amount:", new_swap["amount"]))
-    print("{} {}".format("Atomic swap secret:", new_swap["secret"]))
-    print("{} {}".format("Atomic swap secret hash:", new_swap["secret hash"]))
-    print("{} {}".format("Atomic swap my pubkey:", new_swap["my swap pubkey"]))
-    print("{} {}".format("Atomic swap outgoing puzzlehash:", new_swap["outgoing puzzlehash"]))
-    print("{} {}".format("Atomic swap timelock time (outgoing coin):", new_swap["timelock time outgoing"]))
-    print("{} {}".format("Atomic swap timelock block height (outgoing coin):", new_swap["timelock block height outgoing"]))
-    print("{} {}".format("Atomic swap incoming puzzlehash:", new_swap["incoming puzzlehash"]))
-    print("{} {}".format("Atomic swap timelock time (incoming coin):", new_swap["timelock time incoming"]))
-    print("{} {}".format("Atomic swap timelock block height (incoming coin):", new_swap["timelock block height incoming"]))
+    print("{} {}".format("Atomic swap partner:", as_swap_list[swap_index]["swap partner"]))
+    print("{} {}".format("Atomic swap partner pubkey:", as_swap_list[swap_index]["partner pubkey"]))
+    print("{} {}".format("Atomic swap amount:", as_swap_list[swap_index]["amount"]))
+    print("{} {}".format("Atomic swap secret:", as_swap_list[swap_index]["secret"]))
+    print("{} {}".format("Atomic swap secret hash:", as_swap_list[swap_index]["secret hash"]))
+    print("{} {}".format("Atomic swap my pubkey:", as_swap_list[swap_index]["my swap pubkey"]))
+    print("{} {}".format("Atomic swap outgoing puzzlehash:", as_swap_list[swap_index]["outgoing puzzlehash"]))
+    print("{} {}".format("Atomic swap timelock time (outgoing coin):", as_swap_list[swap_index]["timelock time outgoing"]))
+    print("{} {}".format("Atomic swap timelock block height (outgoing coin):", as_swap_list[swap_index]["timelock block height outgoing"]))
+    print("{} {}".format("Atomic swap incoming puzzlehash:", as_swap_list[swap_index]["incoming puzzlehash"]))
+    print("{} {}".format("Atomic swap timelock time (incoming coin):", as_swap_list[swap_index]["timelock time incoming"]))
+    print("{} {}".format("Atomic swap timelock block height (incoming coin):", as_swap_list[swap_index]["timelock block height incoming"]))
     print(divider)
     return spend_bundle
 
@@ -1055,10 +1105,7 @@ def pull_preimage(wallet, as_swap_list, body, removals):
                         swap["secret"] = preimage
 
 
-async def update_ledger(wallet, ledger_api, most_recent_header, as_contacts, as_swap_list):
-    print()
-    print(divider)
-    print(" \u2447 Get Update \u2447")
+async def get_update(wallet, ledger_api, most_recent_header, as_contacts, as_swap_list):
     if most_recent_header is None:
         r = await ledger_api.get_all_blocks()
     else:
@@ -1072,6 +1119,13 @@ async def update_ledger(wallet, ledger_api, most_recent_header, as_contacts, as_
             pull_preimage(wallet, as_swap_list, body, removals)
         remove_swap_instances(wallet, as_contacts, as_swap_list, removals)
         wallet.notify(additions, removals, as_swap_list)
+
+
+async def update_ledger(wallet, ledger_api, most_recent_header, as_contacts, as_swap_list):
+    print()
+    print(divider)
+    print(" \u2447 Get Update \u2447")
+    await get_update(wallet, ledger_api, most_recent_header, as_contacts, as_swap_list)
     print()
     print("Update complete.")
     print(divider)
@@ -1149,13 +1203,16 @@ async def main_loop():
         elif selection == "6":
             view_current_atomic_swaps(as_swap_list)
         elif selection == "7":
-            spend_bundle = await init_swap(wallet, ledger_api, as_contacts, as_swap_list)
+            spend_bundle, puzzlehash_outgoing, tip = await init_swap_start(wallet, ledger_api, as_contacts, as_swap_list)
             if spend_bundle is not None:
                 await ledger_api.push_tx(tx=spend_bundle)
+                most_recent_header = await farm_block(wallet, ledger_api, as_contacts, as_swap_list)
+                await init_swap_finish(wallet, ledger_api, most_recent_header, as_contacts, as_swap_list, puzzlehash_outgoing, tip["tip_index"])
         elif selection == "8":
-            spend_bundle = await add_swap(wallet, ledger_api, as_contacts, as_swap_list)
+            spend_bundle = await add_swap(wallet, ledger_api, most_recent_header, as_contacts, as_swap_list)
             if spend_bundle is not None:
                 await ledger_api.push_tx(tx=spend_bundle)
+                most_recent_header = await farm_block(wallet, ledger_api, as_contacts, as_swap_list)
         elif selection == "9":
             spend_bundle = spend_coin(wallet, as_contacts, as_swap_list)
             if spend_bundle is not None:
