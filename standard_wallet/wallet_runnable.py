@@ -42,7 +42,7 @@ def print_my_details(wallet):
     print(f"{informative} Puzzle Generator: {wallet.puzzle_generator}")
     pubkey = f"{hexlify(wallet.get_next_public_key().serialize()).decode('ascii')}"
     print(f"{informative} New pubkey: {pubkey}")
-    print(f"{informative} Puzzlehash: {wallet.get_new_puzzlehash}")
+    print(f"{informative} Puzzlehash: {wallet.get_new_puzzlehash()}")
     print(f"{informative} Generator hash identifier: {wallet.puzzle_generator_id}")
     print(f"{informative} Single string: {wallet.name}:{wallet.puzzle_generator_id}:{pubkey}")
 
