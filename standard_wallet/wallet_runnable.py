@@ -42,6 +42,7 @@ def print_my_details(wallet):
     print(f"{informative} Puzzle Generator: {wallet.puzzle_generator}")
     pubkey = f"{hexlify(wallet.get_next_public_key().serialize()).decode('ascii')}"
     print(f"{informative} New pubkey: {pubkey}")
+    print(f"{informative} Puzzlehash: {wallet.get_new_puzzlehash}")
     print(f"{informative} Generator hash identifier: {wallet.puzzle_generator_id}")
     print(f"{informative} Single string: {wallet.name}:{wallet.puzzle_generator_id}:{pubkey}")
 
@@ -113,7 +114,7 @@ def set_name(wallet):
     wallet.set_name(selection)
 
 
-def make_payment(wallet):
+def make_payment(wallet, ledger_api):
     amount = -1
     if wallet.current_balance <= 0:
         print("You need some money first")
@@ -140,9 +141,9 @@ def make_payment(wallet):
     program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
         wallet.generator_lookups[type]), args))
     puzzlehash = ProgramHash(program)
-    # print(puzzlehash)
-    # breakpoint()
-    return wallet.generate_signed_transaction(amount, puzzlehash)
+    tx = wallet.generate_signed_transaction(amount, puzzlehash)
+    if tx is not None:
+        await ledger_api.push_tx(tx=tx)
 
 
 async def initiate_ap(wallet, ledger_api):
@@ -261,9 +262,7 @@ async def main_loop():
         print(close_list)
         selection = input(prompt)
         if selection == "1":
-            r = make_payment(wallet)
-            if r is not None:
-                await ledger_api.push_tx(tx=r)
+            r = await make_payment(wallet, ledger_api)
         elif selection == "2":
             await update_ledger(wallet, ledger_api, most_recent_header)
         elif selection == "3":
