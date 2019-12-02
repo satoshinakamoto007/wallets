@@ -114,7 +114,7 @@ def set_name(wallet):
     wallet.set_name(selection)
 
 
-def make_payment(wallet, ledger_api):
+async def make_payment(wallet, ledger_api):
     amount = -1
     if wallet.current_balance <= 0:
         print("You need some money first")
