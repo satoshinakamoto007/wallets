@@ -60,7 +60,7 @@ def view_contacts(approved_puzhash_sig_pairs):
 def print_my_details(wallet):
     print(divider)
     print(f"{informative} Name: {wallet.name}")
-    print(f"{informative} New pubkey: {wallet.get_next_public_key()}")
+    print(f"{informative} New pubkey: {hexlify(wallet.get_next_public_key().serialize()).decode('ascii')}")
     print(f"{informative} Puzzlehash: {ap_get_aggregation_puzzlehash(wallet.AP_puzzlehash)}")
 
 

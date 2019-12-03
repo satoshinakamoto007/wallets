@@ -40,7 +40,7 @@ def view_funds(wallet):
 
 def print_my_details(wallet):
     print(f"{informative} Name: {wallet.name}")
-    print(f"{informative} Pubkey: {wallet.get_next_public_key()}")
+    print(f"{informative} Pubkey: {hexlify(wallet.get_next_public_key().serialize()).decode('ascii')}")
     print(f"{informative} Puzzlehash: {wallet.get_new_puzzlehash()}")
 
 
@@ -52,14 +52,11 @@ def make_QR(wallet):
         box_size=10,
         border=4,
     )
-    qr.add_data(f"{str(wallet.get_new_puzzlehash())}")
+    qr.add_data(f"{wallet.get_new_puzzlehash()}")
     qr.make(fit=True)
     img = qr.make_image()
     fn = input("Input file name: ")
-    if fn.endswith(".jpg"):
-        img.save(fn)
-    else:
-        img.save(f"{fn}.jpg")
+    img.save(f"{fn}.jpg")
     print(f"QR code created in '{fn}.jpg'")
 
 
@@ -71,7 +68,7 @@ def read_qr(wallet):
     print("Input filename of QR code: ")
     fn = input(prompt)
     decoded = decode(Image.open(fn))
-    puzzlehash = puzzlehash_from_string(str(decoded[0].data))
+    puzzlehash = puzzlehash_from_string(decoded[0].data)
     while amount > wallet.temp_balance or amount <= 0:
         amount = input("Amount: ")
         if amount == "q":

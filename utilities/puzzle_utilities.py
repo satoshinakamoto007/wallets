@@ -37,9 +37,14 @@ def check_string_is_hex(value):
 
 
 def puzzlehash_from_string(puzhash):
+    if hasattr(puzhash, 'decode'):  # check if serialized
+        puz = puzhash.decode("utf-8")
+    else:
+        puz = puzhash
     try:
-        ret = ProgramHash(bytes.fromhex(puzhash))
+        ret = ProgramHash(bytes.fromhex(puz))
     except Exception:
+        breakpoint()
         raise Exception
     return ret
 
