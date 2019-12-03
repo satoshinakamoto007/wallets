@@ -220,6 +220,49 @@ def test_cp_with_permission():
     assert wallet_c.current_balance == 100
 
 
+def test_cp_without_permission():
+    remote = make_client_server()
+    run = asyncio.get_event_loop().run_until_complete
+
+    wallet_a = CPWallet()
+    wallet_b = CPWallet()
+    wallet_c = CPWallet()
+    wallets = [wallet_a, wallet_b, wallet_c]
+    pub_a = hexbytes(wallet_a.get_next_public_key().serialize())
+    pub_b = hexbytes(wallet_b.get_next_public_key().serialize())
+    unlock_time = 5
+    wallet_b.pubkey_permission = pub_a
+    wallet_b.lock_index = unlock_time
+    wallet_a.pubkey_approval = pub_a
+    b_puzzle = wallet_b.cp_puzzle(pub_b, pub_a, unlock_time)
+    b_puzzlehash = ProgramHash(b_puzzle)
+
+    commit_and_notify(remote, wallets, wallet_a)
+
+    assert wallet_a.current_balance == 1000000000
+    assert wallet_b.current_balance == 0
+    assert wallet_c.current_balance == 0
+
+    spend_bundle = wallet_a.generate_signed_transaction(1000, b_puzzlehash)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+
+    assert wallet_a.current_balance == 999999000
+    assert wallet_b.cp_balance == 1000
+    assert wallet_c.current_balance == 0
+
+    puzzlehash_c = wallet_c.get_new_puzzlehash()
+    amount = 100
+    mode = 2
+    transaction = wallet_b.cp_generate_unsigned_transaction(puzzlehash_c, amount, mode)
+    spend_bundle = wallet_b.cp_generate_signed_transaction_with_approval(puzzlehash_c, amount, None)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+
+    assert wallet_a.current_balance == 999999000
+    assert wallet_b.cp_balance == 1000
+    assert wallet_c.current_balance == 0
+
 """
 Copyright 2018 Chia Network Inc
 Licensed under the Apache License, Version 2.0 (the "License");
