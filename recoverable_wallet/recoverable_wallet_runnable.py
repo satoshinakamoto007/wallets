@@ -1,5 +1,6 @@
 import asyncio
 import cbor
+import sys
 from recoverable_wallet import RecoverableWallet
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
@@ -206,7 +207,7 @@ async def main():
             await restore(ledger_api, wallet)
         elif selection == '8':
             await recover_escrow_coins(ledger_api, wallet)
-
+    sys.exit(0)
 
 
 run = asyncio.get_event_loop().run_until_complete
