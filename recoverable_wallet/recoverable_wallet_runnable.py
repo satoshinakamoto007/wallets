@@ -126,10 +126,28 @@ async def restore(ledger_api, wallet):
         await ledger_api.push_tx(tx=signed_transaction)
 
 
-def view_escrow_coins(wallet):
+async def get_coin_age(coin, ledger_api, header_hash):
+    r = await ledger_api.get_tip()
+    if r['genesis_hash'] == header_hash:
+        return float('-inf')
+
+    r = await ledger_api.hash_preimage(hash=header_hash)
+    header = Header.from_bytes(r)
+    body = Body.from_bytes(await ledger_api.hash_preimage(hash=header.body_hash))
+    additions = list(additions_for_body(body))
+    if coin in additions:
+        return 0
+    return 1 + await get_coin_age(coin, ledger_api, header.previous_hash)
+
+
+async def view_escrow_coins(ledger_api, wallet, most_recent_header):
     for recovery_string, coin_set in wallet.escrow_coins.items():
+        recovery_dict = recovery_string_to_dict(recovery_string)
+        escrow_duration = recovery_dict['escrow_duration']
         for coin in coin_set:
-            print(f'{coin.name()}: {coin.amount}')
+            coin_age = await get_coin_age(coin, ledger_api, most_recent_header)
+            wait_period = escrow_duration - coin_age
+            print(f'Coin ID: {coin.name()}, Block wait: {wait_period}, Amount: {coin.amount}')
         print('Total value: ' + str(sum([coin.amount for coin in coin_set])))
 
 
@@ -187,7 +205,7 @@ async def main():
         elif selection == '7':
             await restore(ledger_api, wallet)
         elif selection == '8':
-            view_escrow_coins(wallet)
+            await view_escrow_coins(ledger_api, wallet, most_recent_header)
         elif selection == '9':
             await recover_escrow_coins(ledger_api, wallet)
 
