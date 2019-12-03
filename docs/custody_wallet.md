@@ -2,9 +2,10 @@
 
 ## About
 
-Custody smart transaction ensures that funds from custody can be moved only with approval of
-both "custodian" and "authorizer" until specified lock time has passed. Once the locked period has 
-passed, custodian can move funds without approval.
+Custody smart transaction ensures that funds in custody wallet can be moved only with approval of
+both the "custodian" and the "authorizer" until specified block lock height has been reached.    
+Once the block lock height has passed, custodian can move funds without the approval.     
+(Currently, lock time uses block height for time measurement, once the "wall clock" time is supported, custody wallet can be easily modified to support it)
 
 
 ## Setup
