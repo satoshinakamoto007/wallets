@@ -10,10 +10,22 @@ from decimal import Decimal
 from blspy import ExtendedPublicKey, PrivateKey
 
 
-def view_coins(wallet):
+async def view_coins(ledger_api, wallet, most_recent_header):
+    print('Recoverable coins:')
     for coin in wallet.my_utxos:
-        print(f'{coin.name()}: {coin.amount}')
+        print(f'Coin ID: {coin.name()}, Amount: {coin.amount}')
     print('Total value: ' + str(wallet.balance()))
+    print('\nEscrow coins:')
+    escrow_value = 0
+    for recovery_string, coin_set in wallet.escrow_coins.items():
+        recovery_dict = recovery_string_to_dict(recovery_string)
+        escrow_duration = recovery_dict['escrow_duration']
+        for coin in coin_set:
+            coin_age = await get_coin_age(coin, ledger_api, most_recent_header)
+            wait_period = max(escrow_duration - coin_age, 0)
+            print(f'Coin ID: {coin.name()}, Block wait: {wait_period}, Amount: {coin.amount}')
+        escrow_value += sum([coin.amount for coin in coin_set])
+    print('Escrow value: ' + str(escrow_value))
 
 
 def generate_puzzlehash(wallet):
@@ -140,17 +152,6 @@ async def get_coin_age(coin, ledger_api, header_hash):
     return 1 + await get_coin_age(coin, ledger_api, header.previous_hash)
 
 
-async def view_escrow_coins(ledger_api, wallet, most_recent_header):
-    for recovery_string, coin_set in wallet.escrow_coins.items():
-        recovery_dict = recovery_string_to_dict(recovery_string)
-        escrow_duration = recovery_dict['escrow_duration']
-        for coin in coin_set:
-            coin_age = await get_coin_age(coin, ledger_api, most_recent_header)
-            wait_period = escrow_duration - coin_age
-            print(f'Coin ID: {coin.name()}, Block wait: {wait_period}, Amount: {coin.amount}')
-        print('Total value: ' + str(sum([coin.amount for coin in coin_set])))
-
-
 async def recover_escrow_coins(ledger_api, wallet):
     removals = set()
     for recovery_string, coin_set in wallet.escrow_coins.items():
@@ -185,13 +186,12 @@ async def main():
         print('5: Generate Puzzle Hash')
         print('6: Print Backup')
         print('7: Recover Coins')
-        print('8: View Escrow Coins')
-        print('9: Recover Escrow Coins')
+        print('8: Recover Escrow Coins')
         print('q: Quit\n')
         selection = input()
         print()
         if selection == '1':
-            view_coins(wallet)
+            await view_coins(ledger_api, wallet, most_recent_header)
         elif selection == '2':
             await spend_coins(wallet, ledger_api)
         elif selection == '3':
@@ -205,8 +205,6 @@ async def main():
         elif selection == '7':
             await restore(ledger_api, wallet)
         elif selection == '8':
-            await view_escrow_coins(ledger_api, wallet, most_recent_header)
-        elif selection == '9':
             await recover_escrow_coins(ledger_api, wallet)
 
 
