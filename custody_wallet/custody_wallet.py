@@ -3,13 +3,10 @@ from standard_wallet.wallet import *
 import clvm
 from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BLSSignature
 from binascii import hexlify
-from chiasim.hashable.Coin import Coin
 from chiasim.hashable.CoinSolution import CoinSolutionList
 from clvm_tools import binutils
 from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from chiasim.validation.Conditions import ConditionOpcode
-from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
-import math
 
 # CPWallet is subclass of Wallet
 class CPWallet(Wallet):
