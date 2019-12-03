@@ -1,4 +1,6 @@
 import hashlib
+from collections import defaultdict
+import cbor
 import clvm
 from standard_wallet.wallet import Wallet
 try:
@@ -59,12 +61,12 @@ def aggsig_condition(key):
 class RecoverableWallet(Wallet):
     def __init__(self):
         super().__init__()
-        # self.backup_public_key = self.extended_secret_key.public_child(self.next_address).get_public_key()
         self.escrow_duration = 3
+        self.stake_factor = Decimal('1.1')
         self.backup_hd_root_public_key = self.extended_secret_key.get_extended_public_key()
         self.backup_private_key = self.extended_secret_key.private_child(self.next_address).get_private_key()
         self.next_address += 1
-        self.escrow_coins = set()
+        self.escrow_coins = defaultdict(set)
 
     def get_recovery_public_key(self):
         return self.backup_private_key.get_public_key()
@@ -74,6 +76,20 @@ class RecoverableWallet(Wallet):
 
     def get_recovery_hd_root_public_key(self):
         return self.backup_hd_root_public_key
+
+    def get_escrow_duration(self):
+        return self.escrow_duration
+
+    def get_stake_factor(self):
+        return self.stake_factor
+
+    def get_backup_string(self):
+        d = dict()
+        d['root public key'] = self.get_recovery_hd_root_public_key().serialize()
+        d['secret key'] = self.get_recovery_private_key().serialize()
+        d['escrow_duration'] = self.get_escrow_duration()
+        d['stake factor'] = self.get_stake_factor().as_tuple()
+        return str(hexbytes(cbor.dumps(d)))
 
     def get_escrow_puzzle_with_params(self, recovery_pubkey, pubkey, duration):
         op_block_age_exceeds = ConditionOpcode.ASSERT_BLOCK_AGE_EXCEEDS[0]
@@ -156,6 +172,10 @@ class RecoverableWallet(Wallet):
             if coin in self.my_utxos:
                 self.my_utxos.remove(coin)
                 self.current_balance -= coin.amount
+            for _, coin_set in self.escrow_coins.items():
+                if coin in coin_set:
+                    print(f'Notice: {coin.name()} was removed from escrow')
+                    coin_set.remove(coin)
         for coin in additions:
             if self.can_generate_puzzle_hash(coin.puzzle_hash):
                 self.current_balance += coin.amount

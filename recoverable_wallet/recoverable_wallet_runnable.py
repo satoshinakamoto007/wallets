@@ -1,4 +1,5 @@
 import asyncio
+import cbor
 from recoverable_wallet import RecoverableWallet
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
@@ -81,19 +82,30 @@ async def update_ledger(wallet, ledger_api, most_recent_header):
 
 
 def print_backup(wallet):
-    print(f'HD Root Public Key: {wallet.get_recovery_hd_root_public_key().serialize().hex()}\n'
-          f'Secret Key: {wallet.get_recovery_private_key().serialize().hex()}\n')
+    print(f'In the event you lose access to this wallet, the funds in this wallet can be restored '
+          f'to another wallet using the following recovery string:\n{wallet.get_backup_string()}')
+
+
+def recovery_string_to_dict(recovery_string):
+    recovery_dict = cbor.loads(bytes.fromhex(recovery_string))
+    recovery_dict['root public key'] = ExtendedPublicKey.from_bytes(recovery_dict['root public key'])
+    recovery_dict['secret key'] = PrivateKey.from_bytes(recovery_dict['secret key'])
+    recovery_dict['stake factor'] = Decimal(recovery_dict['stake factor'])
+    return recovery_dict
 
 
 async def restore(ledger_api, wallet):
-    root_public_key = bytes.fromhex(input('Enter the HD public key of the wallet to be restored: '))
-    recovery_pubkey = ExtendedPublicKey.from_bytes(root_public_key).public_child(0).get_public_key().serialize()
+    recovery_string = input('Enter the recovery string of the wallet to be restored: ')
+    recovery_dict = recovery_string_to_dict(recovery_string)
+    root_public_key_serialized = recovery_dict['root public key'].serialize()
+
+    recovery_pubkey = recovery_dict['root public key'].public_child(0).get_public_key().serialize()
     r = await ledger_api.all_unspents()
     recoverable_coins = []
     print('scanning', end='')
     for ptr in r['unspents']:
         coin = await ptr.obj(data_source=ledger_api)
-        if wallet.can_generate_puzzle_hash_with_root_public_key(coin.puzzle_hash, root_public_key):
+        if wallet.can_generate_puzzle_hash_with_root_public_key(coin.puzzle_hash, root_public_key_serialized):
             recoverable_coins.append(coin)
             print('*', end='', flush=True)
         else:
@@ -106,31 +118,39 @@ async def restore(ledger_api, wallet):
         return
     for coin in recoverable_coins:
         print(f'{coin.name()}: {coin.amount}')
-        pubkey = wallet.find_pubkey_for_hash(coin.puzzle_hash, root_public_key, Decimal('1.1'))
+        pubkey = wallet.find_pubkey_for_hash(coin.puzzle_hash, root_public_key_serialized, Decimal('1.1'))
         signed_transaction, destination_puzzlehash, amount = \
             wallet.generate_signed_recovery_to_escrow_transaction(coin, recovery_pubkey, pubkey, Decimal('1.1'))
         child = Coin(coin.name(), destination_puzzlehash, amount)
-        wallet.escrow_coins.add(child)
+        wallet.escrow_coins[recovery_string].add(child)
         await ledger_api.push_tx(tx=signed_transaction)
 
 
 def view_escrow_coins(wallet):
-    for coin in wallet.escrow_coins:
-        print(f'{coin.name()}: {coin.amount}')
-    print('Total value: ' + str(sum([coin.amount for coin in wallet.escrow_coins])))
+    for recovery_string, coin_set in wallet.escrow_coins.items():
+        for coin in coin_set:
+            print(f'{coin.name()}: {coin.amount}')
+        print('Total value: ' + str(sum([coin.amount for coin in coin_set])))
 
 
 async def recover_escrow_coins(ledger_api, wallet):
-    root_public_key_serialized = bytes.fromhex(input('Enter the HD Root Public key of the wallet to be restored: '))
-    root_public_key = ExtendedPublicKey.from_bytes(root_public_key_serialized)
-    secret_key_serialized = bytes.fromhex(input('Enter the Secret Key of the wallet to be restored: '))
-    secret_key = PrivateKey.from_bytes(secret_key_serialized)
-    signed_transaction = wallet.generate_recovery_transaction(wallet.escrow_coins, root_public_key, secret_key)
-    r = await ledger_api.push_tx(tx=signed_transaction)
-    if type(r) is RemoteError:
-        print('Too soon to recover coins')
-    else:
-        print('Recovery transaction submitted')
+    removals = set()
+    for recovery_string, coin_set in wallet.escrow_coins.items():
+        for coin in coin_set:
+            print("Attempting to recover " + str(coin.name()))
+        recovery_dict = recovery_string_to_dict(recovery_string)
+        root_public_key = recovery_dict['root public key']
+        secret_key = recovery_dict['secret key']
+
+        signed_transaction = wallet.generate_recovery_transaction(coin_set, root_public_key, secret_key)
+        r = await ledger_api.push_tx(tx=signed_transaction)
+        if type(r) is RemoteError:
+            print('Too soon to recover coin')
+        else:
+            print('Recovery transaction submitted')
+            removals.add(recovery_string)
+    for recovery_string in removals:
+        wallet.escrow_coins.pop(recovery_string)
 
 
 async def main():
