@@ -1,6 +1,7 @@
 import asyncio
 import clvm
 from utilities.decorations import print_leaf, divider, prompt, start_list, close_list, selectable, informative
+from utilities.puzzle_utilities import puzzlehash_from_string
 from chiasim.hashable import Coin
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
@@ -39,24 +40,19 @@ def view_funds(wallet):
 
 def print_my_details(wallet):
     print(f"{informative} Name: {wallet.name}")
-    print(f"{informative} Puzzle Generator: {wallet.puzzle_generator}")
-    pubkey = f"{hexlify(wallet.get_next_public_key().serialize()).decode('ascii')}"
-    print(f"{informative} New pubkey: {pubkey}")
+    print(f"{informative} Pubkey: {wallet.get_next_public_key()}")
     print(f"{informative} Puzzlehash: {wallet.get_new_puzzlehash()}")
-    print(f"{informative} Generator hash identifier: {wallet.puzzle_generator_id}")
-    print(f"{informative} Single string: {wallet.name}:{wallet.puzzle_generator_id}:{pubkey}")
 
 
 def make_QR(wallet):
     print(divider)
-    pubkey = hexlify(wallet.get_next_public_key().serialize()).decode('ascii')
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_H,
         box_size=10,
         border=4,
     )
-    qr.add_data(f"{wallet.name}:{wallet.puzzle_generator_id}:{pubkey}")
+    qr.add_data(f"{str(wallet.get_new_puzzlehash())}")
     qr.make(fit=True)
     img = qr.make_image()
     fn = input("Input file name: ")
@@ -73,18 +69,9 @@ def read_qr(wallet):
         print("You need some money first")
         return None
     print("Input filename of QR code: ")
-    fn = input()
+    fn = input(prompt)
     decoded = decode(Image.open(fn))
-    name, type, pubkey = QR_string_parser(str(decoded[0].data))
-    if type not in wallet.generator_lookups:
-        print("Unknown generator - please input the source.")
-        source = input("Source: ")
-        if str(ProgramHash(Program(binutils.assemble(source)))) != f"0x{type}":
-            print("source not equal to ID")
-            breakpoint()
-            return
-        else:
-            wallet.generator_lookups[type] = source
+    puzzlehash = puzzlehash_from_string(str(decoded[0].data))
     while amount > wallet.temp_balance or amount <= 0:
         amount = input("Amount: ")
         if amount == "q":
@@ -92,21 +79,7 @@ def read_qr(wallet):
         if not amount.isdigit():
             amount = -1
         amount = int(amount)
-    args = binutils.assemble(f"(0x{pubkey})")
-    program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
-        wallet.generator_lookups[type]), args))
-    puzzlehash = ProgramHash(program)
     return wallet.generate_signed_transaction(amount, puzzlehash)
-
-
-def QR_string_parser(input):
-    arr = input.split(":")
-    name = arr[0]
-    generatorID = arr[1]
-    pubkey = arr[2]
-    if pubkey.endswith("'"):
-        pubkey = pubkey[:-1]
-    return name, generatorID, pubkey
 
 
 def set_name(wallet):
@@ -119,28 +92,16 @@ async def make_payment(wallet, ledger_api):
     if wallet.current_balance <= 0:
         print("You need some money first")
         return None
-    qr = input("Enter recipients details singlestring: ")
-    name, type, pubkey = QR_string_parser(qr)
-    if type not in wallet.generator_lookups:
-        print("Unknown generator - please input the source.")
-        source = input("Source: ")
-        if str(ProgramHash(Program(binutils.assemble(source)))) != type:
-            print("source not equal to ID")
-            breakpoint()
-            return
-        else:
-            wallet.generator_lookups[type] = source
     while amount > wallet.temp_balance or amount < 0:
-        amount = input("Amount: ")
+        amount = input(f"{prompt} Enter amount to give recipient: ")
         if amount == "q":
             return
         if not amount.isdigit():
             amount = -1
         amount = int(amount)
-    args = binutils.assemble(f"(0x{pubkey})")
-    program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
-        wallet.generator_lookups[type]), args))
-    puzzlehash = ProgramHash(program)
+
+    puzhashstring = input(f"{prompt} Enter puzzlehash: ")
+    puzzlehash = puzzlehash_from_string(puzhashstring)
     tx = wallet.generate_signed_transaction(amount, puzzlehash)
     if tx is not None:
         await ledger_api.push_tx(tx=tx)
@@ -179,29 +140,18 @@ async def initiate_ap(wallet, ledger_api):
 
     print()
     print("The next step is to approve some contacts for the AP wallet to send to.")
-    print("From another standard wallet press '4' to print out their single string for receiving money.")
+    print("From another standard wallet press '4' to print out their puzzlehash for receiving money.")
     choice = ""
     while choice != "q":
-        singlestr = input("Enter approved recipient contact's single string: ")
+        singlestr = input("Enter approved puzzlehash: ")
         if singlestr == "q":
             return
-        name, type, pubkey = QR_string_parser(singlestr)
-        if type not in wallet.generator_lookups:
-            print("Unknown generator - please input the source.")
-            source = input("Source: ")
-            if str(ProgramHash(Program(binutils.assemble(source)))) != type:
-                print("source not equal to ID")
-                return
-            else:
-                wallet.generator_lookups[type] = source
-        args = binutils.assemble("(0x" + pubkey + ")")
-        program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
-            wallet.generator_lookups[type]), args))
-        puzzlehash = ProgramHash(program)
+        puzzlehash = puzzlehash_from_string(singlestr)
         print()
         #print("Puzzle: " + str(puzzlehash))
         sig = wallet.sign(puzzlehash, a_pubkey)
         #print("Signature: " + str(sig.sig))
+        name = input("Add a name for this puzzlehash: ")
         print("Give the following contact string to the AP wallet.")
         print(f"{informative} Contact string for AP Wallet: {name}:{str(puzzlehash)}:{str(sig.sig)}")
         choice = input("Press 'c' to continue, or 'q' to quit to menu: ")
