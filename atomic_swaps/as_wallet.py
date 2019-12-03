@@ -127,6 +127,7 @@ class ASWallet(Wallet):
         sol += ")"
         return Program(binutils.assemble(sol))
 
+
     def as_solution_list(self, body_program):
         """
         Return a list of tuples of (coin_name, puzzle_hash, conditions_dict, puzzle_solution_program)

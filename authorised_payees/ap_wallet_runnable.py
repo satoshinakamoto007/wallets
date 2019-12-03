@@ -1,5 +1,6 @@
 import asyncio
 from authorised_payees.ap_wallet import APWallet
+from authorised_payees.ap_wallet_a_functions import ap_get_aggregation_puzzlehash
 from utilities.decorations import print_leaf, divider, prompt, start_list, close_list, selectable, informative
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
@@ -59,38 +60,8 @@ def view_contacts(approved_puzhash_sig_pairs):
 def print_my_details(wallet):
     print(divider)
     print(f"{informative} Name: {wallet.name}")
-    if wallet.puzzle_generator_id == "1ea50e9399e360c85c240e9d17c5d11ccb8fbf37b0ee6e551282ddd5b5613206":
-        print("Awaiting initial coin...")
-    else:
-        print(f"{informative} Puzzle Generator: {wallet.puzzle_generator}")
-        print(f"{informative} Generator hash identifier: {wallet.puzzle_generator_id}")
-    pubkey = hexlify(wallet.get_next_public_key().serialize()).decode('ascii')
-    print(f"{informative} New pubkey: {pubkey}")
-    print(f"{informative} Single string: {wallet.name}:{wallet.puzzle_generator_id}:{pubkey}")
-
-
-def make_QR(wallet):
-    try:
-        import qrcode
-        print(divider)
-        pubkey = hexlify(wallet.get_next_public_key().serialize()).decode('ascii')
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_H,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(f"{wallet.name}:{wallet.puzzle_generator_id}:{pubkey}")
-        qr.make(fit=True)
-        img = qr.make_image()
-        fn = input("Input file name: ")
-        if fn.endswith(".jpg"):
-            img.save(fn)
-        else:
-            img.save(f"{fn}.jpg")
-        print(f"QR code created in '{fn}.jpg'")
-    except Exception as err:
-        print(err)
+    print(f"{informative} New pubkey: {wallet.get_next_public_key()}")
+    print(f"{informative} Puzzlehash: {ap_get_aggregation_puzzlehash(wallet.AP_puzzlehash)}")
 
 
 def set_name(wallet):
@@ -219,8 +190,7 @@ async def main_loop():
         print(f"{selectable} 5: *GOD MODE* Commit Block")
         print(f"{selectable} 6: Print my details for somebody else")
         print(f"{selectable} 7: Set my wallet detail")
-        print(f"{selectable} 8: Make QR code")
-        print(f"{selectable} 9: AP Settings")
+        print(f"{selectable} 8: AP Settings")
         print(f"{selectable} q: Quit")
         print(close_list)
         selection = input(prompt)
@@ -241,8 +211,6 @@ async def main_loop():
         elif selection == "7":
             set_name(wallet)
         elif selection == "8":
-            make_QR(wallet)
-        elif selection == "9":
             ap_settings(wallet, approved_puzhash_sig_pairs)
 
 

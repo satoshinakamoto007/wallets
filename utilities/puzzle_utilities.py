@@ -37,21 +37,35 @@ def check_string_is_hex(value):
 
 
 def puzzlehash_from_string(puzhash):
-    return ProgramHash(bytes.fromhex(puzhash))
+    try:
+        ret = ProgramHash(bytes.fromhex(puzhash))
+    except Exception:
+        raise Exception
+    return ret
 
 
 def pubkey_from_string(pubkey):
-    return PublicKey.from_bytes(bytes.fromhex(pubkey))
+    try:
+        ret = PublicKey.from_bytes(bytes.fromhex(pubkey))
+    except Exception:
+        raise Exception
+    return ret
 
 
 def signature_from_string(signature):
-    sig = PrependSignature.from_bytes(bytes.fromhex(signature))
-    # sig.sig = bytes(signature)
+    try:
+        sig = PrependSignature.from_bytes(bytes.fromhex(signature))
+    except Exception:
+        raise Exception
     return sig
 
 
 def BLSSignature_from_string(signature):
-    return BLSSignature(bytes.fromhex(signature))
+    try:
+        sig = BLSSignature(bytes.fromhex(signature))
+    except Exception:
+        raise Exception
+    return sig
 
 
 """

@@ -79,11 +79,11 @@ The options available in a standard wallet are:
 # Smart Wallets
 
 The Smart Transactions currently available are:
-* **Atomic Swaps** - `$ as_wallet`
-* **Authorised Payees** - `$ ap_wallet`
-* **Recoverable Wallets** - `$ recoverable_wallet`
-* **Multi-sig Wallet**
-* **Rate-Limited Wallet** - `$ rl_wallet`
+* **Atomic Swaps** - `$ as_wallet` - [guide](./docs/atomic_swaps.md)
+* **Authorised Payees** - `$ ap_wallet` - [guide](./docs/authorised_payees.md)
+* **Recoverable Wallets** - `$ recoverable_wallet` - [guide](./docs/recoverable_wallet.md)
+* **Multi-sig Wallet** - `$ multisig_wallet` - [guide](./multisig/README.org)
+* **Rate-Limited Wallet** - `$ rl_wallet` - [guide](./docs/rate_limited_wallet.md)
 
 For more information about the smart wallets, check out our **[docs](./docs).**
 
