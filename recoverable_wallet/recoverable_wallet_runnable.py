@@ -61,7 +61,7 @@ async def process_blocks(wallet, ledger_api, last_known_header, current_header_h
         print(f'WARNING! Coins from this wallet have been moved to escrow!\n'
               f'Attempting to send a clawback for these coins:')
         for coin in clawback_coins:
-            print(f'{coin.name()}: {coin.amount}')
+            print(f'Coin ID: {coin.name()}, Amount: {coin.amount}')
         transaction = wallet.generate_clawback_transaction(clawback_coins)
         r = await ledger_api.push_tx(tx=transaction)
         if type(r) is RemoteError:
@@ -130,13 +130,17 @@ async def restore(ledger_api, wallet):
         print(f'Insufficient funds to stake the recovery process. {stake_amount} needed.')
         return
     for coin in recoverable_coins:
-        print(f'{coin.name()}: {coin.amount}')
+        print(f'Coin ID: {coin.name()}, Amount: {coin.amount}')
         pubkey = wallet.find_pubkey_for_hash(coin.puzzle_hash, root_public_key_serialized, Decimal('1.1'))
         signed_transaction, destination_puzzlehash, amount = \
             wallet.generate_signed_recovery_to_escrow_transaction(coin, recovery_pubkey, pubkey, Decimal('1.1'))
         child = Coin(coin.name(), destination_puzzlehash, amount)
-        wallet.escrow_coins[recovery_string].add(child)
-        await ledger_api.push_tx(tx=signed_transaction)
+        r = await ledger_api.push_tx(tx=signed_transaction)
+        if type(r) is RemoteError:
+            print(f'Failed to recover {coin.name()}')
+        else:
+            print(f'Recovery transaction submitted for Coin ID: {coin.name()}')
+            wallet.escrow_coins[recovery_string].add(child)
 
 
 async def get_coin_age(coin, ledger_api, header_hash):
