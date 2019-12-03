@@ -14,14 +14,15 @@ from binascii import hexlify
 def print_my_details(wallet):
     print()
     print(divider)
-    print(" \u2447 Wallet Details \u2447")
+    print(" \u2447 Wallet Details / Generate Puzzlehash \u2447")
     print()
     print("Name: " + wallet.name)
     print("New pubkey: "+ pubkey_format(wallet.get_next_public_key()))
+    print("{}{}".format("New puzzlehash: ", wallet.get_new_puzzlehash()))
     complete_edit = False
     while not complete_edit:
         print()
-        print("Would you like to edit your wallet's name (type 'name'), generate a new pubkey (type 'pubkey'), or return to the menu (type 'menu')?")
+        print("Would you like to edit your wallet's name (type 'name'), generate a new pubkey (type 'pubkey'), generate a new puzzlehash (type 'puzzlehash'), or return to the menu (type 'menu')?")
         choice = input(prompt)
         if choice == "name":
             complete_name = False
@@ -53,6 +54,9 @@ def print_my_details(wallet):
         elif choice == "pubkey":
             print()
             print("New pubkey: "+ pubkey_format(wallet.get_next_public_key()))
+        elif choice == "puzzlehash":
+            print()
+            print("{}{}".format("New puzzlehash: ", wallet.get_new_puzzlehash()))
         elif choice == "menu":
             print(divider)
             return
@@ -1161,7 +1165,7 @@ async def main_loop():
         print("Block: ", tip["tip_index"])
         print()
         print("Select a function:")
-        print("\u2448 1 Wallet Details")
+        print("\u2448 1 Wallet Details / Generate Puzzlehash ")
         print("\u2448 2 View Funds")
         print("\u2448 3 View Contacts")
         print("\u2448 4 Add Contact")
