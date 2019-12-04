@@ -42,6 +42,7 @@ class ASWallet(Wallet):
         if puzzlehashes != []:
             self.as_notify(additions, puzzlehashes)
 
+
     def as_notify(self, additions, puzzlehashes):
         counter = 0
         for coin in additions:
@@ -58,6 +59,7 @@ class ASWallet(Wallet):
             print("{} {}".format(counter, "new atomic swap coins are available to you."))
 
 
+    # finds a pending atomic swap coin to be spent
     def as_select_coins(self, amount, as_puzzlehash):
         if amount > self.current_balance:
             return None
@@ -74,6 +76,7 @@ class ASWallet(Wallet):
         return used_utxos
 
 
+    # generates the hash of the secret used for the atomic swap coin hashlocks
     def as_generate_secret_hash(self, secret):
         secret_hash_cl = "(sha256 (q %s))" % (secret)
         sec = "(%s)" % secret
@@ -85,10 +88,8 @@ class ASWallet(Wallet):
     def as_make_puzzle(self, as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_block, as_secret_hash):
         as_pubkey_sender_cl = "0x%s" % (hexlify(as_pubkey_sender).decode('ascii'))
         as_pubkey_receiver_cl = "0x%s" % (hexlify(as_pubkey_receiver).decode('ascii'))
-
         as_payout_puzzlehash_receiver = ProgramHash(puzzle_for_pk(as_pubkey_receiver))
         as_payout_puzzlehash_sender = ProgramHash(puzzle_for_pk(as_pubkey_sender))
-
         payout_receiver = "(c (q 0x%s) (c (q 0x%s) (c (q %d) (q ()))))" % (hexlify(ConditionOpcode.CREATE_COIN).decode('ascii'), hexlify(as_payout_puzzlehash_receiver).decode('ascii'), as_amount)
         payout_sender = "(c (q 0x%s) (c (q 0x%s) (c (q %d) (q ()))))" % (hexlify(ConditionOpcode.CREATE_COIN).decode('ascii'), hexlify(as_payout_puzzlehash_sender).decode('ascii'), as_amount)
         aggsig_receiver = "(c (q 0x%s) (c (q %s) (c (sha256 (wrap (a))) (q ()))))" % (hexlify(ConditionOpcode.AGG_SIG).decode('ascii'), as_pubkey_receiver_cl)
@@ -100,13 +101,6 @@ class ASWallet(Wallet):
         as_puz = "((c (i (= (f (a)) (q 33333)) (q " + receiver_puz + " (q " + as_puz_sender + ")) (a)))"
         return Program(binutils.assemble(as_puz))
 
-        # 33333 is the receiver solution code prefix
-        # 77777 is the sender solution code prefix
-        # current version of the puzzle: (e (i (= (f (a)) (q 33333)) (q (e (i (= (sha256 (f (r (a)))) (q 30370204479623163331157306773352227112579049797730721831667874080735946490555)) (q (c (c (q 0x32) (c (q 0x83b1e2c1c70fae2c1a48c35962ec951d7e616b200ebf27afe961d1d9f21e9c6ef9db1280cc595704cfee57b8f9dcacdb) (c (sha256 (wrap (a))) (q ())))) (c (c (q 0x33) (c (q 0x6032796617db6a7b455b2527265387b04b0d46af519984955a8b193d99edc2ea) (c (q 100) (q ())))) (q ())))) (q (x (q 'invalid secret')))) (a)) )  (q (e (i (= (f (a)) (q 77777)) (q (c (c (q 0x32) (c (q 0x13369799f40d48d5cca6d9411e5240ef3ede5b89736d60515434d8f6a9d16afe1ca4f2a2bc05cf1d78e2a297ad278c5c) (c (sha256 (wrap (a))) (q ())))) (c (c (q 0x36) (c (q 5) (q ())))  (c (c (q 0x33) (c (q 0x4710364bfda779090f5dd9be860f040bf8ece778f862e596c6e1ef96d37bf605) (c (q 100) (q ())))) (q ()))))) (q (x (q 'not a valid option'))) ) (a)))) (a))
-        # test receiver solution (successful): (33333 1234)
-        # test receiver solution (fail): (33333 1235)
-        # test sender solution: (77777)
-
 
     def as_get_new_puzzlehash(self, as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_block, as_secret_hash):
         as_puz = self.as_make_puzzle(as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_block, as_secret_hash)
@@ -114,6 +108,7 @@ class ASWallet(Wallet):
         return as_puzzlehash
 
 
+    # 33333 is the receiver solution code prefix
     def as_make_solution_receiver(self, as_sec_to_try):
         sol = "(33333 "
         sol += "%s" % (as_sec_to_try)
@@ -121,23 +116,20 @@ class ASWallet(Wallet):
         return Program(binutils.assemble(sol))
 
 
+    # 77777 is the sender solution code prefix
     def as_make_solution_sender(self):
         sol = "(77777 "
         sol += ")"
         return Program(binutils.assemble(sol))
 
 
+    # returns a list of tuples of the form (coin_name, puzzle_hash, conditions_dict, puzzle_solution_program)
     def as_solution_list(self, body_program):
-        """
-        Return a list of tuples of (coin_name, puzzle_hash, conditions_dict, puzzle_solution_program)
-        """
-
         try:
             sexp = clvm.eval_f(clvm.eval_f, body_program, [])
         except clvm.EvalError.EvalError:
             breakpoint()
             raise ConsensusError(Err.INVALID_BLOCK_SOLUTION, body_program)
-
         npc_list = []
         for name_solution in sexp.as_iter():
             _ = name_solution.as_python()
@@ -150,9 +142,7 @@ class ASWallet(Wallet):
             puzzle_solution_program = name_solution.rest().first()
             puzzle_program = puzzle_solution_program.first()
             puzzle_hash = ProgramHash(Program(puzzle_program))
-
             npc_list.append((puzzle_hash, puzzle_solution_program))
-
         return npc_list
 
 
