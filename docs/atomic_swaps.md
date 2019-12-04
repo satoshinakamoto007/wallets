@@ -50,7 +50,9 @@ Run a version of `ledger-sim` in a background terminal window.
   Terminal 1 represents Alice's wallet, and Terminal 2 represents Bob's wallet.
   
   1. **RUN**
-     - Open two terminal windows and run  `$ as_wallet`
+     - Open two terminal windows.
+     - In each window run `$ . .venv/bin/activate`.
+     - In each window run `$ as_wallet`.
 
   2. **Get Chia**
      - **Terminal 1** (Alice's wallet)
