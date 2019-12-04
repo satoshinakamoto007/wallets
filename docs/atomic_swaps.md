@@ -51,8 +51,8 @@ Run a version of `ledger-sim` in a background terminal window.
   
   1. **RUN**
      - Open two terminal windows.
-     - In each window run `$ . .venv/bin/activate`.
-     - In each window run `$ as_wallet`.
+     - In each window run `$ . .venv/bin/activate`
+     - In each window run `$ as_wallet`
 
   2. **Get Chia**
      - **Terminal 1** (Alice's wallet)
