@@ -31,11 +31,8 @@ In the case that Alice fails to spend _C2_ to her wallet before _C2_'s timeout t
 
 Run a version of `ledger-sim` in a background terminal window.
 
-YouTube walkthrough
-https://www.youtube.com/watch?v=oe5kcGsdJqY
-
 ### Commands
-  - 1 Wallet Details
+  - 1 Wallet Details / Generate Puzzlehash
   - 2 View Funds
   - 3 View Contacts
   - 4 Add Contacts
