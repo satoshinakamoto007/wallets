@@ -24,54 +24,54 @@ Run a version of `ledger-sim` in a background terminal window.
 - Open three terminals and run `$ recoverable_wallet` Accept the default parameters. Terminal 1 will run the wallet that will be recovered. Terminal 2 will run the wallet that recovers the funds. Terminal 3 will just be used to farm blocks to move time forward.
 
 - **Terminal 1**
-    - Type 4 to add funds to this wallet
-    - Type 6 to view the recovery string for this wallet. After you copy the recovery string you can close this terminal as this wallet will be considered lost.
+    - Enter **4** to add funds to this wallet
+    - Enter **6** to view the recovery string for this wallet. After you copy the recovery string you can close this terminal as this wallet will be considered lost.
 - **Terminal 2**
-    - Type 4 to add funds to this wallet
-    - Type 7 to begin the recovery process. The wallet will ask you for a recovery string
+    - Enter **4** to add funds to this wallet
+    - Enter **7** to begin the recovery process. The wallet will ask you for a recovery string
     - Enter the recovery string you received from the wallet in Terminal 1. A recovery transaction will be submitted for inclusion in the next farmed block
 - **Terminal 3**
-    - Type 4 to farm a new block
+    - Enter **4** to farm a new block
 - **Terminal 2**
-    - Type 3 to sync the current blockchain
-    - Type 1 to view your current coins. You will see that your coin balance has decreased by the staking amount and the escrow coins balance is equal to the value of the wallet being recovered plus the staking amount. You will also see how many additional blocks need to be farmed before the escrow funds can be retrieved. 
+    - Enter **3** to sync the current blockchain
+    - Enter **1** to view your current coins. You will see that your coin balance has decreased by the staking amount and the escrow coins balance is equal to the value of the wallet being recovered plus the staking amount. You will also see how many additional blocks need to be farmed before the escrow funds can be retrieved. 
 - **Terminal 3**
-    - Type 4 to farm a new block
+    - Enter **4** to farm a new block
     - Do this an appropriate number of times for the escrow period to conclude
 - **Terminal 2**
-    - Type 3 to sync the blockchain
-    - Type 1 to verify that the escrow period is over
-    - Type 8 to submit a transaction moving the escrow coins into your wallet in the next farmed block
+    - Enter **3** to sync the blockchain
+    - Enter **1** to verify that the escrow period is over
+    - Enter **8** to submit a transaction moving the escrow coins into your wallet in the next farmed block
 - **Terminal 3**
-    - Type 4 to farm a new block
+    - Enter **4** to farm a new block
 - **Terminal 2**
-    - Type 3 to sync the blockchain
-    - Type 1 to verify that the recovered coins and staking funds have been moved out of escrow and into this wallet
+    - Enter **3** to sync the blockchain
+    - Enter **1** to verify that the recovered coins and staking funds have been moved out of escrow and into this wallet
 
 
 ### Clawback Demonstration
 - Open three terminal windows and run `$ recoverable_wallet` Accept the default parameters. Terminal 1 will run a wallet with some funds in it. Terminal 2 will run the wallet of the attacker attempting to steal the funds from the wallet in Terminal 1 using the recovery string. Terminal 3 will just be used to farm blocks to move time forward.
 
 - **Terminal 1**
-    - Type 4 to add funds to this wallet
-    - Type 6 to view the recovery string for this wallet
+    - Enter **4** to add funds to this wallet
+    - Enter **6** to view the recovery string for this wallet
 - **Terminal 2**
-    - Type 4 to add funds to this wallet
-    - Type 7 to begin the illegitimate recovery process. The wallet will ask you for a recovery string
+    - Enter **4** to add funds to this wallet
+    - Enter **7** to begin the illegitimate recovery process. The wallet will ask you for a recovery string
     - Enter the recovery string you received from the wallet in Terminal 1. A recovery transaction will be submitted for addition to next farmed block
 - **Terminal 3**
-    - Type 4 to farm a new block
+    - Enter **4** to farm a new block
 - **Terminal 2**
-    - Type 3 to sync the current blockchain
-    - Type 1 to view your current coins. You will see that your coin balance has decreased by the staking amount and the escrow coins balance is equal to the value of the wallet being recovered plus the staking amount. Note that the escrow period has not yet concluded.
+    - Enter **3** to sync the current blockchain
+    - Enter **1** to view your current coins. You will see that your coin balance has decreased by the staking amount and the escrow coins balance is equal to the value of the wallet being recovered plus the staking amount. Note that the escrow period has not yet concluded.
 - **Terminal 1**
-    - Type 3 to sync the blockchain. You will see a warning that your funds have been moved to escrow. Because this wallet is still running, it will automatically submit a clawback transaction for inclusion in the next farmed block.
-    - Type 1 to see that your coins are currently gone because the wallet in Terminal 2 moved them to escrow
+    - Enter **3** to sync the blockchain. You will see a warning that your funds have been moved to escrow. Because this wallet is still running, it will automatically submit a clawback transaction for inclusion in the next farmed block.
+    - Enter **1** to see that your coins are currently gone because the wallet in Terminal 2 moved them to escrow
 - **Terminal 3**
-    - Type 4 to farm a new block
+    - Enter **4** to farm a new block
 - **Terminal 1**
-    - Type 3 to sync the blockchain
-    - Type 1 to verify that the original amount plus the staking amount was returned to this wallet by the clawback transaction
+    - Enter **3** to sync the blockchain
+    - Enter **1** to verify that the original amount plus the staking amount was returned to this wallet by the clawback transaction
 - **Terminal 2**
-    - Type 3 to sync the blockchain
-    - Type 1 to verify that the coins have left escrow and that the attacker lost the staking funds
+    - Enter **3** to sync the blockchain
+    - Enter **1** to verify that the coins have left escrow and that the attacker lost the staking funds
