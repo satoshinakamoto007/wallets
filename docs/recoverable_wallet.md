@@ -21,7 +21,7 @@ Run a version of `ledger-sim` in a background terminal window.
 
 
 ### Recovery Process Demonstration
-- Open three terminals and run `$ recoverable_wallet` Terminal 1 will run the wallet that will be recovered. Terminal 2 will run the wallet that recovers the funds. Terminal 3 will just be used to farm blocks to move time forward.     
+- Open three terminals and run `$ recoverable_wallet` Accept the default parameters. Terminal 1 will run the wallet that will be recovered. Terminal 2 will run the wallet that recovers the funds. Terminal 3 will just be used to farm blocks to move time forward.
 
 - **Terminal 1**
     - Type 4 to add funds to this wallet
@@ -50,7 +50,7 @@ Run a version of `ledger-sim` in a background terminal window.
 
 
 ### Clawback Demonstration
-- Open three terminal windows and run `$ recoverable_wallet` Terminal 1 will run a wallet with some funds in it. Terminal 2 will run the wallet of the attacker attempting to steal the funds from the wallet in Terminal 1 using the recovery string. Terminal 3 will just be used to farm blocks to move time forward.
+- Open three terminal windows and run `$ recoverable_wallet` Accept the default parameters. Terminal 1 will run a wallet with some funds in it. Terminal 2 will run the wallet of the attacker attempting to steal the funds from the wallet in Terminal 1 using the recovery string. Terminal 3 will just be used to farm blocks to move time forward.
 
 - **Terminal 1**
     - Type 4 to add funds to this wallet
