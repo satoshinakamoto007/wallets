@@ -47,7 +47,6 @@ class ASWallet(Wallet):
         for coin in additions:
             for puzzlehash in puzzlehashes:
                 if hexlify(coin.puzzle_hash).decode('ascii') == puzzlehash and coin.puzzle_hash not in self.overlook:
-                    # self.current_balance += coin.amount
                     self.as_pending_utxos.add(coin)
                     counter += 1
                     self.overlook.append(coin.puzzle_hash)
@@ -65,7 +64,7 @@ class ASWallet(Wallet):
         used_utxos = set()
         if isinstance(as_puzzlehash, str):
             as_puzzlehash = puzzlehash_from_string(as_puzzlehash)
-        print(self.my_utxos)
+        # print(self.my_utxos)
         coins = self.my_utxos.copy()
         for pcoin in self.as_pending_utxos:
             coins.add(pcoin)
