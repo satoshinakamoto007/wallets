@@ -129,6 +129,7 @@ async def spend_rl_coin(wallet, ledger_api):
 async def retrieve_rate_limited_coin(wallet, ledger_api):
     if wallet.clawback_origin is None:
         print("There is no retrievable RL Coins")
+        return 
     spend_bundle = wallet.clawback_rl_coin()
     _ = await ledger_api.push_tx(tx=spend_bundle)
     if _.get("response").startswith("accepted"):
