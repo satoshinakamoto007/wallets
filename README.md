@@ -50,13 +50,20 @@ It can send and receive transactions as well as generate QR codes and a few othe
 
 ### How to launch
 
-In a terminal window, launch an instance of ledger-sim with:
+In a terminal window, run:
+```
+$ . .venv/bin/activate
+```
+and then launch an instance of ledger-sim with:
 ```
 $ ledger-sim
 ```
 
-Then to start a new wallet, in a new terminal window, type:
-
+Then to start a new standard wallet, in a new terminal window, run:
+```
+$ . .venv/bin/activate
+```
+and then launch the standard wallet with:
 ```
 $ wallet
 ```
