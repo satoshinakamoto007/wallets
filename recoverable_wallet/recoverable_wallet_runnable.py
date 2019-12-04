@@ -107,17 +107,33 @@ def recovery_string_to_dict(recovery_string):
     return recovery_dict
 
 
-async def restore(ledger_api, wallet):
+async def get_unspent_coins(ledger_api, header_hash):
+    r = await ledger_api.get_tip()
+    if r['genesis_hash'] == header_hash:
+        return set()
+
+    r = await ledger_api.hash_preimage(hash=header_hash)
+    header = Header.from_bytes(r)
+    unspent_coins = await get_unspent_coins(ledger_api, header.previous_hash)
+    body = Body.from_bytes(await ledger_api.hash_preimage(hash=header.body_hash))
+    additions = list(additions_for_body(body))
+    unspent_coins.update(additions)
+    removals = removals_for_body(body)
+    removals = [Coin.from_bytes(await ledger_api.hash_preimage(hash=x)) for x in removals]
+    unspent_coins.difference_update(removals)
+    return unspent_coins
+
+
+async def restore(ledger_api, wallet, header_hash):
     recovery_string = input('Enter the recovery string of the wallet to be restored: ')
     recovery_dict = recovery_string_to_dict(recovery_string)
     root_public_key_serialized = recovery_dict['root_public_key'].serialize()
 
     recovery_pubkey = recovery_dict['root_public_key'].public_child(0).get_public_key().serialize()
-    r = await ledger_api.all_unspents()
+    unspent_coins = await get_unspent_coins(ledger_api, header_hash)
     recoverable_coins = []
     print('scanning', end='')
-    for ptr in r['unspents']:
-        coin = await ptr.obj(data_source=ledger_api)
+    for coin in unspent_coins:
         if wallet.can_generate_puzzle_hash_with_root_public_key(coin.puzzle_hash,
                                                                 root_public_key_serialized,
                                                                 recovery_dict['stake_factor'],
@@ -229,7 +245,7 @@ async def main():
         elif selection == '6':
             print_backup(wallet)
         elif selection == '7':
-            await restore(ledger_api, wallet)
+            await restore(ledger_api, wallet, most_recent_header)
         elif selection == '8':
             await recover_escrow_coins(ledger_api, wallet)
     sys.exit(0)
