@@ -46,11 +46,17 @@ Run a version of `ledger-sim` in a background terminal window.
   - q Quit
 
 ### Atomic Swap (step by step)
+
+  Terminal 1 represents Alice's wallet, and Terminal 2 represents Bob's wallet.
+  
   1. **RUN**
      - Open two terminal windows and run  `$ as_wallet`
 
   2. **Get Chia**
-     - In Both terminals type **"11"** and press **enter**. (This will give each wallet 1 billion Chia.)
+     - **Terminal 1** (Alice's wallet)
+       - Type **"11"** and press **enter**. (This gives Alice 1 billion Chia.)
+     - **Terminal 2** (Bob's wallet)
+       - Type **"11"** and press **enter**. (This gives Bob 1 billion Chia.)
 
   3. **Atomic Swap**
      - **Terminal 1** (Alice's wallet, which initializes the swap)
