@@ -21,7 +21,6 @@ from chiasim.validation.consensus import\
 from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from blspy import ExtendedPublicKey
 from fractions import Fraction
-from decimal import Decimal
 import math
 
 
@@ -29,7 +28,7 @@ def hash_sha256(val):
     return hashlib.sha256(val).digest()
 
 
-def make_solution(parent, puzzlehash, value, escrow_factor, primaries=[], min_time=0, me={}, recovery=False):
+def make_solution(parent, puzzlehash, value, stake_factor, primaries=[], min_time=0, me={}, recovery=False):
     conditions = []
     for primary in primaries:
         conditions.append(make_create_coin_condition(primary['puzzlehash'], primary['amount']))
@@ -38,7 +37,7 @@ def make_solution(parent, puzzlehash, value, escrow_factor, primaries=[], min_ti
     if me:
         conditions.append(make_assert_my_coin_id_condition(me['id']))
     conditions = [binutils.assemble("#q"), conditions]
-    solution = [conditions, [], 1 if recovery else 0, parent, puzzlehash, value, math.floor(value * escrow_factor)]
+    solution = [conditions, [], 1 if recovery else 0, parent, puzzlehash, value, math.floor(value * stake_factor)]
     program = Program(to_sexp_f(solution))
     return program
 
@@ -59,10 +58,10 @@ def aggsig_condition(key):
 
 
 class RecoverableWallet(Wallet):
-    def __init__(self):
+    def __init__(self, stake_factor, escrow_duration):
         super().__init__()
-        self.escrow_duration = 3
-        self.stake_factor = Decimal('1.1')
+        self.escrow_duration = escrow_duration
+        self.stake_factor = stake_factor
         self.backup_hd_root_public_key = self.extended_secret_key.get_extended_public_key()
         self.backup_private_key = self.extended_secret_key.private_child(self.next_address).get_private_key()
         self.next_address += 1
@@ -85,10 +84,10 @@ class RecoverableWallet(Wallet):
 
     def get_backup_string(self):
         d = dict()
-        d['root public key'] = self.get_recovery_hd_root_public_key().serialize()
-        d['secret key'] = self.get_recovery_private_key().serialize()
+        d['root_public_key'] = self.get_recovery_hd_root_public_key().serialize()
+        d['secret_key'] = self.get_recovery_private_key().serialize()
         d['escrow_duration'] = self.get_escrow_duration()
-        d['stake factor'] = self.get_stake_factor().as_tuple()
+        d['stake_factor'] = self.get_stake_factor().as_tuple()
         return str(hexbytes(cbor.dumps(d)))
 
     def get_escrow_puzzle_with_params(self, recovery_pubkey, pubkey, duration):
@@ -109,7 +108,7 @@ class RecoverableWallet(Wallet):
         program = Program(binutils.assemble(escrow_puzzle))
         return program
 
-    def get_new_puzzle_with_params_and_root(self, recovery_pubkey, pubkey, escrow_factor):
+    def get_new_puzzle_with_params_and_root(self, recovery_pubkey, pubkey, stake_factor, duration):
         op_create = ConditionOpcode.CREATE_COIN[0]
         op_consumed = ConditionOpcode.ASSERT_COIN_CONSUMED[0]
         solution = args(0)
@@ -122,14 +121,13 @@ class RecoverableWallet(Wallet):
         evaluate_solution = eval(solution, solution_args)
         standard_conditions = make_list(aggsig_condition(pubkey),
                                         terminator=evaluate_solution)
-        duration = 3
         escrow_program = self.get_escrow_puzzle_with_params(recovery_pubkey, pubkey, duration)
         escrow_puzzlehash = f'0x' + str(hexbytes(ProgramHash(escrow_program)))
-        f = Fraction(escrow_factor)
-        escrow_factor_numerator = quote(f.numerator)
-        escrow_factor_denominator = quote(f.denominator)
-        create_condition = make_if(equal(multiply(new_value, escrow_factor_denominator),
-                                         multiply(value, escrow_factor_numerator)),
+        f = Fraction(stake_factor)
+        stake_factor_numerator = quote(f.numerator)
+        stake_factor_denominator = quote(f.denominator)
+        create_condition = make_if(equal(multiply(new_value, stake_factor_denominator),
+                                         multiply(value, stake_factor_numerator)),
                                    make_list(quote(op_create), quote(escrow_puzzlehash), new_value),
                                    fail())
         coin_id = sha256(parent, puzzle_hash, uint64(value))
@@ -142,12 +140,15 @@ class RecoverableWallet(Wallet):
         program = Program(binutils.assemble(puzzle))
         return program
 
-    def get_new_puzzle_with_params(self, pubkey, escrow_factor):
-        return self.get_new_puzzle_with_params_and_root(self.get_recovery_public_key().serialize(), pubkey, escrow_factor)
+    def get_new_puzzle_with_params(self, pubkey, stake_factor, escrow_duration):
+        return self.get_new_puzzle_with_params_and_root(self.get_recovery_public_key().serialize(),
+                                                        pubkey,
+                                                        stake_factor,
+                                                        escrow_duration)
 
     def get_new_puzzle(self):
         pubkey = self.get_next_public_key().serialize()
-        program = self.get_new_puzzle_with_params(pubkey, Decimal('1.1'))
+        program = self.get_new_puzzle_with_params(pubkey, self.get_stake_factor(), self.get_escrow_duration())
         return program
 
     def get_new_puzzlehash(self):
@@ -157,7 +158,9 @@ class RecoverableWallet(Wallet):
 
     def can_generate_puzzle_hash(self, hash):
         return any(map(lambda child: hash == ProgramHash(self.get_new_puzzle_with_params(
-            self.extended_secret_key.public_child(child).get_public_key().serialize(), Decimal('1.1'))),
+            self.extended_secret_key.public_child(child).get_public_key().serialize(),
+            self.get_stake_factor(),
+            self.get_escrow_duration())),
                 reversed(range(self.next_address))))
 
     def is_in_escrow(self, coin):
@@ -184,21 +187,26 @@ class RecoverableWallet(Wallet):
         self.temp_utxos = self.my_utxos.copy()
         self.temp_balance = self.current_balance
 
-    def can_generate_puzzle_hash_with_root_public_key(self, hash, root_public_key_serialized):
+    def can_generate_puzzle_hash_with_root_public_key(self,
+                                                      hash,
+                                                      root_public_key_serialized,
+                                                      stake_factor,
+                                                      escrow_duration):
         root_public_key = ExtendedPublicKey.from_bytes(root_public_key_serialized)
         recovery_pubkey = root_public_key.public_child(0).get_public_key().serialize()
         return any(map(lambda child: hash == ProgramHash(self.get_new_puzzle_with_params_and_root(
             recovery_pubkey,
             root_public_key.public_child(child).get_public_key().serialize(),
-            Decimal('1.1'))),
+            stake_factor,
+            escrow_duration)),
                 reversed(range(20))))
 
-    def find_pubkey_for_hash(self, hash, root_public_key_serialized, escrow_factor):
+    def find_pubkey_for_hash(self, hash, root_public_key_serialized, stake_factor, escrow_duration):
         root_public_key = ExtendedPublicKey.from_bytes(root_public_key_serialized)
         recovery_pubkey = root_public_key.public_child(0).get_public_key().serialize()
         for child in reversed(range(20)):
             pubkey = root_public_key.public_child(child).get_public_key().serialize()
-            puzzle = self.get_new_puzzle_with_params_and_root(recovery_pubkey, pubkey, escrow_factor)
+            puzzle = self.get_new_puzzle_with_params_and_root(recovery_pubkey, pubkey, stake_factor, escrow_duration)
             puzzlehash = ProgramHash(puzzle)
             if hash == puzzlehash:
                 return pubkey
@@ -206,11 +214,13 @@ class RecoverableWallet(Wallet):
     def get_keys(self, hash):
         for child in range(self.next_address):
             pubkey = self.extended_secret_key.public_child(child).get_public_key()
-            if hash == ProgramHash(self.get_new_puzzle_with_params(pubkey.serialize(), Decimal('1.1'))):
+            if hash == ProgramHash(self.get_new_puzzle_with_params(pubkey.serialize(),
+                                                                   self.get_stake_factor(),
+                                                                   self.get_escrow_duration())):
                 return pubkey, self.extended_secret_key.private_child(child).get_private_key()
 
     def generate_unsigned_transaction(self, amount, newpuzzlehash):
-        escrow_factor = Decimal('1.1')
+        stake_factor = self.get_stake_factor()
         utxos = self.select_coins(amount)
         spends = []
         output_id = None
@@ -220,22 +230,22 @@ class RecoverableWallet(Wallet):
             puzzle_hash = coin.puzzle_hash
 
             pubkey, secretkey = self.get_keys(puzzle_hash)
-            puzzle = self.get_new_puzzle_with_params(pubkey.serialize(), escrow_factor)
-            if output_id == None:
+            puzzle = self.get_new_puzzle_with_params(pubkey.serialize(), stake_factor)
+            if output_id is None:
                 primaries = [{'puzzlehash': newpuzzlehash, 'amount': amount}]
                 if change > 0:
                     changepuzzlehash = self.get_new_puzzlehash()
                     primaries.append({'puzzlehash': changepuzzlehash, 'amount': change})
-                solution = make_solution(coin.parent_coin_info, coin.puzzle_hash, coin.amount, escrow_factor, primaries=primaries)
+                solution = make_solution(coin.parent_coin_info, coin.puzzle_hash, coin.amount, stake_factor, primaries=primaries)
                 output_id = hash_sha256(coin.name() + newpuzzlehash)
             else:
-                solution = make_solution(coin.parent_coin_info, coin.puzzle_hash, coin.amount, escrow_factor)
+                solution = make_solution(coin.parent_coin_info, coin.puzzle_hash, coin.amount, stake_factor)
             spends.append((puzzle, CoinSolution(coin, solution)))
         return spends
 
 
     def generate_unsigned_transaction_without_recipient(self, amount):
-        escrow_factor = Decimal('1.1')
+        stake_factor = self.get_stake_factor()
         utxos = self.select_coins(amount)
         spends = []
         output_id = None
@@ -245,16 +255,18 @@ class RecoverableWallet(Wallet):
             puzzle_hash = coin.puzzle_hash
 
             pubkey, secretkey = self.get_keys(puzzle_hash)
-            puzzle = self.get_new_puzzle_with_params(pubkey.serialize(), escrow_factor)
-            if output_id == None:
+            puzzle = self.get_new_puzzle_with_params(pubkey.serialize(),
+                                                     self.get_stake_factor(),
+                                                     self.get_escrow_duration())
+            if output_id is None:
                 primaries = []
                 if change > 0:
                     changepuzzlehash = self.get_new_puzzlehash()
                     primaries.append({'puzzlehash': changepuzzlehash, 'amount': change})
-                solution = make_solution(coin.parent_coin_info, coin.puzzle_hash, coin.amount, escrow_factor, primaries=primaries)
+                solution = make_solution(coin.parent_coin_info, coin.puzzle_hash, coin.amount, stake_factor, primaries=primaries)
                 output_id = True
             else:
-                solution = make_solution(coin.parent_coin_info, coin.puzzle_hash, coin.amount, escrow_factor)
+                solution = make_solution(coin.parent_coin_info, coin.puzzle_hash, coin.amount, stake_factor)
             spends.append((puzzle, CoinSolution(coin, solution)))
         return spends
 
@@ -275,20 +287,25 @@ class RecoverableWallet(Wallet):
         spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle
 
-    def generate_recovery_to_escrow_transaction(self, coin, recovery_pubkey, pubkey, escrow_factor):
-        solution = make_solution(coin.parent_coin_info, coin.puzzle_hash, coin.amount, escrow_factor, recovery=True)
-        puzzle = self.get_new_puzzle_with_params_and_root(recovery_pubkey, pubkey, escrow_factor)
+    def generate_recovery_to_escrow_transaction(self, coin, recovery_pubkey, pubkey, stake_factor, escrow_duration):
+        solution = make_solution(coin.parent_coin_info, coin.puzzle_hash, coin.amount, stake_factor, recovery=True)
+        puzzle = self.get_new_puzzle_with_params_and_root(recovery_pubkey, pubkey, stake_factor, escrow_duration)
 
         sexp = clvm.to_sexp_f([puzzle, solution])
         destination_puzzle_hash = get_destination_puzzle_hash(sexp)
-        staked_amount = math.ceil(coin.amount * (escrow_factor - 1))
+        staked_amount = math.ceil(coin.amount * (stake_factor - 1))
         spends = self.generate_unsigned_transaction_without_recipient(staked_amount)
         spends.append((puzzle, CoinSolution(coin, solution)))
         return spends, destination_puzzle_hash, coin.amount + staked_amount
 
-    def generate_signed_recovery_to_escrow_transaction(self, coin, recovery_pubkey, pubkey, escrow_factor):
+    def generate_signed_recovery_to_escrow_transaction(self,
+                                                       coin,
+                                                       recovery_pubkey,
+                                                       pubkey,
+                                                       stake_factor,
+                                                       escrow_duration):
         transaction, destination_puzzlehash, amount = \
-            self.generate_recovery_to_escrow_transaction(coin, recovery_pubkey, pubkey, escrow_factor)
+            self.generate_recovery_to_escrow_transaction(coin, recovery_pubkey, pubkey, stake_factor, escrow_duration)
         signed_transaction = self.sign_transaction(transaction)
         return signed_transaction, destination_puzzlehash, amount
 
@@ -357,8 +374,7 @@ class RecoverableWallet(Wallet):
         spend_bundle = SpendBundle(coin_solution_list, aggsig)
         return spend_bundle
 
-    def find_pubkey_for_escrow_puzzle(self, coin, root_public_key):
-        duration = 3
+    def find_pubkey_for_escrow_puzzle(self, coin, root_public_key, duration):
         recovery_pubkey = root_public_key.public_child(0).get_public_key().serialize()
 
         child = 0
@@ -371,16 +387,16 @@ class RecoverableWallet(Wallet):
                 return pubkey
             child += 1
 
-    def generate_recovery_transaction(self, coins, root_public_key, secret_key):
+    def generate_recovery_transaction(self, coins, root_public_key, secret_key, escrow_duration):
         recovery_pubkey = root_public_key.public_child(0).get_public_key().serialize()
         signatures = []
         coin_solutions = []
         secret_key = BLSPrivateKey(secret_key)
         for coin in coins:
-            pubkey = self.find_pubkey_for_escrow_puzzle(coin, root_public_key)
+            pubkey = self.find_pubkey_for_escrow_puzzle(coin, root_public_key, escrow_duration)
             puzzle = self.get_escrow_puzzle_with_params(recovery_pubkey,
                                                         pubkey.serialize(),
-                                                        self.escrow_duration)
+                                                        escrow_duration)
 
             op_create_coin = ConditionOpcode.CREATE_COIN[0]
             puzzlehash = f'0x' + str(hexbytes(self.get_new_puzzlehash()))
