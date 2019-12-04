@@ -221,7 +221,7 @@ class RecoverableWallet(Wallet):
 
             pubkey, secretkey = self.get_keys(puzzle_hash)
             puzzle = self.get_new_puzzle_with_params(pubkey.serialize(), escrow_factor)
-            if output_id == None:
+            if output_id is None:
                 primaries = [{'puzzlehash': newpuzzlehash, 'amount': amount}]
                 if change > 0:
                     changepuzzlehash = self.get_new_puzzlehash()
@@ -246,7 +246,7 @@ class RecoverableWallet(Wallet):
 
             pubkey, secretkey = self.get_keys(puzzle_hash)
             puzzle = self.get_new_puzzle_with_params(pubkey.serialize(), escrow_factor)
-            if output_id == None:
+            if output_id is None:
                 primaries = []
                 if change > 0:
                     changepuzzlehash = self.get_new_puzzlehash()
