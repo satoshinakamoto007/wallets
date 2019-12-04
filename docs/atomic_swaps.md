@@ -53,55 +53,81 @@ https://www.youtube.com/watch?v=oe5kcGsdJqY
      - Open two terminal windows and run  `$ as_wallet`
 
   2. **Get Chia**
-     - In Both terminals type **"11"** and press **enter** (This will give each wallet 1 billion Chia)
+     - In Both terminals type **"11"** and press **enter**. (This will give each wallet 1 billion Chia.)
 
   3. **Atomic Swap**
-     - **Terminal 1** (Initializes)
+     - **Terminal 1** (Alice's wallet, which initializes the swap)
        - Type "**7**" and press **enter**.
-       - Type "**Alice**" and press **enter**.
-     - **Terminal 2** (Adds)
-       - Type "**8**" and press **enter**.
        - Type "**Bob**" and press **enter**.
+     - **Terminal 2** (Bob's wallet, which adds the swap)
+       - Type "**8**" and press **enter**.
+       - Type "**Alice**" and press **enter**.
      - **Terminal 1**
        - Copy PubKey from **Terminal 1** and then paste it to **Terminal 2** and press **enter**. Go back to **Terminal 1** and press **enter**.
      - **Terminal 2**
        - Copy PubKey from **Terminal 2** and then paste it to **Terminal 1** and press **enter**. Go back to **Terminal 2** and press **enter**.
      - **Terminal 1**
-       - Type "**1000**" and press **enter**. (Select Amount to be swapped.)
+       - Type "**1000**" and press **enter**. (This sets 1000 coins as the amount to be swapped.)
      - **Terminal 2**
-       - Type "**1000**" and press **enter**. (Select Amount to be swapped.)
+       - Type "**1000**" and press **enter**. (This sets 1000 coins as the amount to be swapped.)
      - **Terminal 1**
-       - Copy hash of the secret from **Terminal 1** and then paste it to **Terminal 2** and press **enter**. Go back to **Terminal 1** and press **enter**.
-       - Type "**10**" and press **enter**. (Select time lock of the swap.)
+       - Copy the hash of the secret from **Terminal 1** and then paste it to **Terminal 2** and press **enter** in **Terminal 2**. Go back to **Terminal 1** and press **enter**.
+       - Type "**10**" and press **enter**. (This sets 10 blocks as the timelock for Alice's outgoing coin [Bob's incoming coin] and inherently sets 5 blocks as the timelock for Alice's incoming coin [Bob's outgoing coin].)
      - **Terminal 2**
-       - Type "**10**" and press **enter**. (Select time lock of the swap.)
-       - Type "**5**" and press **enter**. (Select timelock buffer of the swap.)
+       - Type "**10**" and press **enter**. (This sets 10 blocks as the timelock for Bob's incoming coin [Alice's outgoing coin] and inherently sets 5 blocks as the timelock for Bob's outgoing coin [Alice's incoming coin].)
+       - Type "**4**" and press **enter**. (The sets 4 blocks as the minimum buffer time between the timeout blocks of Bob's incoming and outgoing coins.)
      - **Terminal 1**
        - Copy puzzlehash from **Terminal 1** and then paste it to **Terminal 2** and press **enter**. Go back to **Terminal 1** and press **enter**.
      - **Terminal 2**
        - Copy puzzlehash from **Terminal 2** and then paste it to **Terminal 1** and press **enter**. Go back to **Terminal 2** and press **enter**.
 
-  4. **Get Update**
+  4. **View Swap Info**
      - **Terminal 1**
-       - type "**11**" and press **enter** (Farms a new block & transaction is included in that block)
-       - type "**2**" and press **enter** (View Funds)
+       - Type "**2**" and press **enter**. (This views the available funds in Alice's wallet. The pending atomic swap coins are marked with an asterisk (*).)
      - **Terminal 2**
-       - type "**10**" and press **enter** (Updates lates block info)
-       - type "**2**" and press **enter** (View Funds)
+       - Type "**2**" and press **enter**. (This views the available funds in Bob's wallet. The pending atomic swap coins are marked with an asterisk (*).)
+     - **Terminal 1**
+       - Type "**3**" and press **enter**.
+       - Type "Bob" and press **enter**. (This views the atomic swap puzzlehashes associated with the Alice's contact "Bob".)
+       - Type "**menu**" and press **enter**.
+     - **Terminal 2**
+       - Type "**3**" and press **enter**.
+       - Type "Alice" and press **enter**. (This views the atomic swap puzzlehashes associated with the Bob's contact "Alice".)
+       - Type "**menu**" and press **enter**.
+     - **Terminal 1**
+       - Type "**6**" and press **enter**. (This views the atomic swaps in which Alice is currently participating.)
+     - **Terminal 2**
+       - Type "**6**" and press **enter**. (This views the atomic swaps in which Bob is currently participating.)
        
   5. **Spend Coins**
      - **Terminal 1**
-       - type "**9**" and press **enter**
-       - Copy the value of "**Atomic swap incoming puzzlehash:**" from **Terminal 1** and paste it into **Terminal 1**. Press **enter**.
-       - Type "**y**" and press **enter**. (Use stored secret to spend that coin, At this moment secret is revealed publicly and **Terminal 2** can use it to spend other coin involved in swap)
-       - Type "**11**" and press **enter**. (Farms new block)
+       - Type "**9**" and press **enter**.
+       - Copy the value of "**Atomic swap incoming puzzlehash**" from **Terminal 1** and paste it into **Terminal 1**. Press **enter**.
+       - Type "**y**" and press **enter**. (This uses Alice's stored secret to spend Alice's incoming coin.)
+       - Type "**11**" and press **enter**. (This farms a new block and includes Alice's spend in that block. At this moment, the secret is revealed publicly and Bob can use it to spend Bob's incoming coin.)
      - **Terminal 2**
-       - type "**10**" and press **enter** (Updates lates block info)
-       - type "**9**" and press **enter**
-       - copy the value of "**Atomic swap incoming puzzlehash:**" from **Terminal 2** and paste it to **Terminal 2**.Press **enter**.
+       - Type "**10**" and press **enter**. (This updates the latest block information. Bob's wallet pulls from the blockchain the secret from the solution Alice used to spend Alice's incoming coin.)
+       - Type "**9**" and press **enter**.
+       - Copy the value of "**Atomic swap incoming puzzlehash**" from **Terminal 2** and paste it to **Terminal 2**. Press **enter**.
        - Type "**y**" and press **enter**.
-       - type "**11**" and press **enter** (Farms a new block & transaction is included in that block)
-       - type "**2**" and press **enter** (View Funds)
+       - type "**11**" and press **enter** (This farms a new block and includes Bob's spend in that block.)
      - **Terminal 1**
        - type "**10**" and press **enter** (Updates lates block info)
-       - type "**2**" and press **enter** (View Funds)
+
+  6. **View Swap Info**
+     - **Terminal 1**
+       - Type "**2**" and press **enter**. (This views the available funds in Alice's wallet. The pending atomic swap coins are gone, and the coin created by Alice's incoming atomic swap coin is there.)
+     - **Terminal 2**
+       - Type "**2**" and press **enter**. (This views the available funds in Bob's wallet. The pending atomic swap coins are gone, and the coin created by Bob's incoming atomic swap coin is there.)
+     - **Terminal 1**
+       - Type "**3**" and press **enter**.
+       - Type "Bob" and press **enter**. (This views the atomic swap puzzlehashes associated with the Alice's contact "Bob". Alice has no current atomic swap puzzlehashes associated with "Bob".)
+       - Type "**menu**" and press **enter**.
+     - **Terminal 2**
+       - Type "**3**" and press **enter**.
+       - Type "Alice" and press **enter**. (This views the atomic swap puzzlehashes associated with the Bob's contact "Alice". Bob has no current atomic swap puzzlehashes associated with "Alice".)
+       - Type "**menu**" and press **enter**.
+     - **Terminal 1**
+       - Type "**6**" and press **enter**. (This views the atomic swaps in which Alice is currently participating. Alice is no longer participating in any atomic swaps.)
+     - **Terminal 2**
+       - Type "**6**" and press **enter**. (This views the atomic swaps in which Bob is currently participating. Bob is no longer participating in any atomic swaps.)
