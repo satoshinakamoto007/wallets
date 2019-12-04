@@ -2,7 +2,7 @@
 
 ## Background
 
-A Chia recoverable wallet is a wallet whose funds can be recovered in the event that the wallet is lost by providing a recovery string to another wallet. In contrast to a BIP 39 backup seed, a Chia recovery string is a low security piece of information. A thief who finds the string can't use it to steal funds from a wallet they don't own. This is accomplished by the recovery process locking up the funds in escrow along with some mandatory staking funds. If the recovery process was initiated by an attacker, the attacker will lose the staking funds as the original wallet has the ability to clawback the escrow coins during the escrow period. If the recovery process was legitimate however, the owner can retrieve their funds from escrow at the end of the escrow period, along with the staking funds.
+A Chia recoverable wallet is a wallet whose funds can be recovered in the event that the wallet is lost by providing a recovery string to another wallet. In contrast to a BIP 39 backup seed, a Chia recovery string is a low security piece of information. A thief who finds the string can't use it to steal funds from a wallet they don't own. This is accomplished by the recovery process locking up the funds in escrow along with some mandatory staking funds. If the recovery process was initiated by an attacker, the attacker will lose the staking funds as the original wallet has the ability to clawback the escrow coins during the escrow period. If the recovery process was legitimate however, the owner can retrieve their funds from escrow at the end of the escrow period, along with the staking funds. In this demonstration the staking amount is 10% and the escrow period is 3 blocks.
 
 ## Usage
 
