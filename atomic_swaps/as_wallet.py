@@ -156,6 +156,7 @@ class ASWallet(Wallet):
     def as_create_spend_bundle(self, as_puzzlehash, as_amount, as_timelock_block, as_secret_hash, as_pubkey_sender = None, as_pubkey_receiver = None, who = None, as_sec_to_try = None):
         utxos = self.as_select_coins(as_amount, as_puzzlehash)
         spends = []
+        breakpoint()
         for coin in utxos:
             puzzle = self.as_make_puzzle(as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_block, as_secret_hash)
             if who == "sender":
