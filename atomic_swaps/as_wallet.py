@@ -51,12 +51,6 @@ class ASWallet(Wallet):
                     self.as_pending_utxos.add(coin)
                     counter += 1
                     self.overlook.append(coin.puzzle_hash)
-        if counter == 1:
-            print()
-            print("{} {}".format(counter, "new atomic swap coin is available to you."))
-        elif counter > 1:
-            print()
-            print("{} {}".format(counter, "new atomic swap coins are available to you."))
 
 
     # finds a pending atomic swap coin to be spent

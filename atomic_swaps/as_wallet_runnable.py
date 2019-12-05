@@ -1187,13 +1187,13 @@ async def main_loop():
             spend_bundle, puzzlehash_outgoing, tip = await init_swap_start(wallet, ledger_api, as_contacts, as_swap_list)
             if spend_bundle is not None:
                 await ledger_api.push_tx(tx=spend_bundle)
-                most_recent_header = await farm_block(wallet, ledger_api, as_contacts, as_swap_list)
+                await farm_block(wallet, ledger_api, as_contacts, as_swap_list)
                 await init_swap_finish(wallet, ledger_api, most_recent_header, as_contacts, as_swap_list, puzzlehash_outgoing, tip["tip_index"])
         elif selection == "8":
             spend_bundle = await add_swap(wallet, ledger_api, most_recent_header, as_contacts, as_swap_list)
             if spend_bundle is not None:
                 await ledger_api.push_tx(tx=spend_bundle)
-                most_recent_header = await farm_block(wallet, ledger_api, as_contacts, as_swap_list)
+                await farm_block(wallet, ledger_api, as_contacts, as_swap_list)
         elif selection == "9":
             spend_bundle = spend_coin(wallet, as_contacts, as_swap_list)
             if spend_bundle is not None:
