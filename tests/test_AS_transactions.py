@@ -48,7 +48,6 @@ def commit_and_notify(remote, wallets, reward_recipient, as_list_list):
     removals = removals_for_body(body)
     removals = [Coin.from_bytes(run(remote.hash_preimage(hash=x)))
                               for x in removals]
-    breakpoint()
     i = 0
     for wallet in wallets:
         if isinstance(wallet, ASWallet):
@@ -130,17 +129,17 @@ def test_AS_standardcase():
             "secret": secret,
             "secret hash": secret_hash,
             "my swap pubkey": b_pubkey,
-            "outgoing puzzlehash": puzzlehash_outgoing,
+            "outgoing puzzlehash": hexlify(puzzlehash_outgoing).decode('ascii'),
             "timelock time outgoing": timelock_outgoing,
             "timelock block height outgoing": timelock_block_outgoing,
-            "incoming puzzlehash": puzzlehash_incoming,
+            "incoming puzzlehash": hexlify(puzzlehash_incoming).decode('ascii'),
             "timelock time incoming": as_swap_list_a[0]["timelock time outgoing"],
             "timelock block height incoming": timelock_block_incoming
     }
     as_swap_list_b.append(new_swap)
 
     # Finish information for wallet_a
-    as_swap_list_a[0]["incoming puzzlehash"] = puzzlehash_outgoing
+    as_swap_list_a[0]["incoming puzzlehash"] = hexlify(puzzlehash_outgoing).decode('ascii')
     as_swap_list_a[0]["timelock block height incoming"] = timelock_block_outgoing
 
     # Commit B's transaction
@@ -153,7 +152,6 @@ def test_AS_standardcase():
     # Wallet A claim swap
     swap = as_swap_list_a[0]
     spend_bundle = wallet_a.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount"], int(swap["timelock block height incoming"]), secret_hash, as_pubkey_sender = swap["partner pubkey"].serialize(), as_pubkey_receiver = swap["my swap pubkey"].serialize(), who = "receiver", as_sec_to_try = swap["secret"])
-    breakpoint()
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
     assert wallet_b.current_balance == 999999000
