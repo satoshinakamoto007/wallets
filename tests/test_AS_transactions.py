@@ -92,7 +92,7 @@ def test_AS_standardcase():
     puzzlehash_outgoing = wallet_a.as_get_new_puzzlehash(a_pubkey.serialize(), b_pubkey.serialize(), amount_a, timelock_block_outgoing, secret_hash)
     spend_bundle = wallet_a.generate_signed_transaction(amount_a, puzzlehash_outgoing)
     _ = run(remote.push_tx(tx=spend_bundle))
-    commit_and_notify(remote, wallets, ASWallet(), as_list_list)
+
     puzzlehash_incoming = "unknown"
     timelock_incoming = int(0.5 * timelock_outgoing)
     timelock_block_incoming = "unknown"
@@ -149,7 +149,6 @@ def test_AS_standardcase():
 
     assert wallet_a.current_balance == 999999000
     assert wallet_b.current_balance == 999999000
-    breakpoint()
     assert len(wallet_a.as_pending_utxos) == 2
     assert len(wallet_b.as_pending_utxos) == 2
     assert puzzlehash_outgoing in [coin.puzzle_hash for coin in wallet_a.as_pending_utxos]
