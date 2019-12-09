@@ -31,7 +31,7 @@ class ASWallet(Wallet):
                 if hash == ProgramHash(self.as_make_puzzle(as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_t, as_secret_hash)):
                     return (pubkey, self.extended_secret_key.private_child(child).get_private_key())
 
-    def notify(self, additions, deletions, as_swap_list):
+    def notify(self, additions, deletions, as_swap_list=[]):
         super().notify(additions, deletions)
         puzzlehashes = []
         for swap in as_swap_list:
