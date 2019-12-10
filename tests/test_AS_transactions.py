@@ -236,9 +236,9 @@ def test_as_claim_back():
     # Setup for B
     puzzlehash_incoming = puzzlehash_outgoing
     timelock_block_incoming = timelock_block_outgoing
-    # my_swap_pubkey, swap_partner, partner_pubkey, amount, secret, secret_hash, timelock, puzzlehash_incoming, timelock_block_incoming, buffer, menu = await set_parameters_add(wallet, ledger_api, as_contacts, as_swap_list)
     tip = run(remote.get_tip())
-    timelock_block_outgoing = int(timelock_outgoing + tip["tip_index"])
+    # Buffer of 2 so that Wallet B can retrieve before Wallet A
+    timelock_block_outgoing = int(timelock_outgoing + tip["tip_index"])-2
     puzzlehash_outgoing = wallet_b .as_get_new_puzzlehash(b_pubkey.serialize(), a_pubkey.serialize(), amount_b, timelock_block_outgoing, secret_hash)
     spend_bundle = wallet_b.generate_signed_transaction(amount_b, puzzlehash_outgoing)
 
@@ -285,17 +285,30 @@ def test_as_claim_back():
     assert wallet_b.current_balance == 999999000
     assert wallet_a.current_balance == 999999000  # no new money
 
-    # Wait 10 blocks
-    for i in range(10):
+    # Wait 6 blocks
+    for i in range(6):
         commit_and_notify(remote, wallets, ASWallet(), as_list_list)
 
-    # Wallet A tries to claim their own coin and B's coin in the same block
-    # Wallet A is able to do so hmmmm
+    # Wallet B should be able to claim back at this point and Wallet A should not be able to
     swap = as_swap_list_a[0]
     spend_bundle = wallet_a.as_create_spend_bundle(swap["outgoing puzzlehash"], swap["amount"], int(swap["timelock block height outgoing"]), swap["secret hash"], as_pubkey_sender = swap["my swap pubkey"].serialize(), as_pubkey_receiver = swap["partner pubkey"].serialize(), who = "sender", as_sec_to_try = swap["secret"])
     _ = run(remote.push_tx(tx=spend_bundle))
-    spend_bundle = wallet_a.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount"], int(swap["timelock block height incoming"]), secret_hash, as_pubkey_sender = swap["partner pubkey"].serialize(), as_pubkey_receiver = swap["my swap pubkey"].serialize(), who = "receiver", as_sec_to_try = swap["secret"])
+    swap = as_swap_list_b[0]
+    spend_bundle = wallet_b.as_create_spend_bundle(swap["outgoing puzzlehash"], swap["amount"], int(swap["timelock block height outgoing"]), swap["secret hash"], as_pubkey_sender = swap["my swap pubkey"].serialize(), as_pubkey_receiver = swap["partner pubkey"].serialize(), who = "sender", as_sec_to_try = swap["secret"])
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
-    assert wallet_b.current_balance == 999999000
-    assert wallet_a.current_balance == 1000001000
+    assert wallet_b.current_balance == 1000000000
+    assert wallet_a.current_balance == 999999000  # no new money
+
+    commit_and_notify(remote, wallets, ASWallet(), as_list_list)
+    commit_and_notify(remote, wallets, ASWallet(), as_list_list)
+    commit_and_notify(remote, wallets, ASWallet(), as_list_list)
+    commit_and_notify(remote, wallets, ASWallet(), as_list_list)
+
+    # Wallet A tries to claim their own coin
+    swap = as_swap_list_a[0]
+    spend_bundle = wallet_a.as_create_spend_bundle(swap["outgoing puzzlehash"], swap["amount"], int(swap["timelock block height outgoing"]), swap["secret hash"], as_pubkey_sender = swap["my swap pubkey"].serialize(), as_pubkey_receiver = swap["partner pubkey"].serialize(), who = "sender", as_sec_to_try = swap["secret"])
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, ASWallet(), as_list_list)
+    assert wallet_b.current_balance == 1000000000
+    assert wallet_a.current_balance == 1000000000
