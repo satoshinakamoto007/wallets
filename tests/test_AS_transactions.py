@@ -1,6 +1,7 @@
 import asyncio
 import pathlib
 import tempfile
+import os
 from aiter import map_aiter
 from chiasim.utils.log import init_logging
 from chiasim.remote.api_server import api_server
@@ -12,6 +13,7 @@ from chiasim.storage import RAM_DB
 from chiasim.utils.server import start_unix_server_aiter
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
 from atomic_swaps.as_wallet import ASWallet
+from atomic_swaps.as_wallet_runnable import pull_preimage
 from binascii import hexlify
 
 
@@ -36,7 +38,7 @@ def make_client_server():
     return remote
 
 
-def commit_and_notify(remote, wallets, reward_recipient, as_list_list):
+def commit_and_notify(remote, wallets, reward_recipient, as_list_list, get_secret=False):
     run = asyncio.get_event_loop().run_until_complete
     coinbase_puzzle_hash = reward_recipient.get_new_puzzlehash()
     fees_puzzle_hash = reward_recipient.get_new_puzzlehash()
@@ -58,6 +60,8 @@ def commit_and_notify(remote, wallets, reward_recipient, as_list_list):
             for bun in spend_bundle:
                 _ = run(remote.push_tx(tx=bun))
         i = i + 1
+    if get_secret:
+        pull_preimage(wallets[1], as_list_list[1], body, removals)
 
 
 def test_AS_standardcase():
@@ -84,7 +88,7 @@ def test_AS_standardcase():
     amount_b = 1000
 
     # Setup for A
-    secret = "123456"
+    secret = hexlify(os.urandom(256)).decode('ascii')
     secret_hash = wallet_a.as_generate_secret_hash(secret)
     tip = run(remote.get_tip())
     timelock_outgoing = 10
@@ -115,11 +119,11 @@ def test_AS_standardcase():
     # Setup for B
     puzzlehash_incoming = puzzlehash_outgoing
     timelock_block_incoming = timelock_block_outgoing
-    # my_swap_pubkey, swap_partner, partner_pubkey, amount, secret, secret_hash, timelock, puzzlehash_incoming, timelock_block_incoming, buffer, menu = await set_parameters_add(wallet, ledger_api, as_contacts, as_swap_list)
     tip = run(remote.get_tip())
-    timelock_block_outgoing = int(timelock_outgoing + tip["tip_index"])
-    puzzlehash_outgoing = wallet_b .as_get_new_puzzlehash(b_pubkey.serialize(), a_pubkey.serialize(), amount_b, timelock_block_outgoing, secret_hash)
+    timelock_block_outgoing = int(timelock_outgoing + tip["tip_index"])-2  # buffer
+    puzzlehash_outgoing = wallet_b.as_get_new_puzzlehash(b_pubkey.serialize(), a_pubkey.serialize(), amount_b, timelock_block_outgoing, secret_hash)
     spend_bundle = wallet_b.generate_signed_transaction(amount_b, puzzlehash_outgoing)
+    secret = "unknown"
 
     assert puzzlehash_incoming != puzzlehash_outgoing
 
@@ -160,17 +164,10 @@ def test_AS_standardcase():
     swap = as_swap_list_a[0]
     spend_bundle = wallet_a.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount"], int(swap["timelock block height incoming"]), secret_hash, as_pubkey_sender = swap["partner pubkey"].serialize(), as_pubkey_receiver = swap["my swap pubkey"].serialize(), who = "receiver", as_sec_to_try = swap["secret"])
     _ = run(remote.push_tx(tx=spend_bundle))
-    commit_and_notify(remote, wallets, ASWallet(), as_list_list)
+    commit_and_notify(remote, wallets, ASWallet(), as_list_list, get_secret=True)
     assert wallet_b.current_balance == 999999000
     assert wallet_a.current_balance == 1000000000
-
-    # Wallet A tries to claim their own coin before waiting period has passed
-    swap = as_swap_list_a[0]
-    spend_bundle = wallet_a.as_create_spend_bundle(swap["outgoing puzzlehash"], swap["amount"], int(swap["timelock block height outgoing"]), swap["secret hash"], as_pubkey_sender = swap["my swap pubkey"].serialize(), as_pubkey_receiver = swap["partner pubkey"].serialize(), who = "sender", as_sec_to_try = swap["secret"])
-    _ = run(remote.push_tx(tx=spend_bundle))
-    commit_and_notify(remote, wallets, ASWallet(), as_list_list)
-    assert wallet_b.current_balance == 999999000
-    assert wallet_a.current_balance == 1000000000  # no new money
+    assert as_swap_list_b[0]["secret"] == as_swap_list_a[0]["secret"]
 
     # Wallet B claim swap
     swap = as_swap_list_b[0]
@@ -241,6 +238,7 @@ def test_as_claim_back():
     timelock_block_outgoing = int(timelock_outgoing + tip["tip_index"])-2
     puzzlehash_outgoing = wallet_b .as_get_new_puzzlehash(b_pubkey.serialize(), a_pubkey.serialize(), amount_b, timelock_block_outgoing, secret_hash)
     spend_bundle = wallet_b.generate_signed_transaction(amount_b, puzzlehash_outgoing)
+    secret = "unknown"
 
     assert puzzlehash_incoming != puzzlehash_outgoing
 
@@ -300,6 +298,7 @@ def test_as_claim_back():
     assert wallet_b.current_balance == 1000000000
     assert wallet_a.current_balance == 999999000  # no new money
 
+    # Some time passes
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
