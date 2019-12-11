@@ -13,6 +13,8 @@ from chiasim.hashable import (
 )
 from chiasim.validation import validate_spend_bundle_signature
 from chiasim.validation.Conditions import make_create_coin_condition
+
+from .full_node import generate_coins, ledger_sim_proxy
 from .pst import PartiallySignedTransaction
 from .storage import Storage
 from .BLSHDKeys import BLSPublicHDKey, fingerprint_for_pk
@@ -74,14 +76,6 @@ def load_wallet(path) -> MultisigHDWallet:
     return wallet
 
 
-async def generate_coins(wallet, storage, coinbase_puzzle_hash, fees_puzzle_hash):
-    remote = storage.ledger_sim()
-    await remote.next_block(
-        coinbase_puzzle_hash=coinbase_puzzle_hash, fees_puzzle_hash=fees_puzzle_hash
-    )
-    await do_sync(wallet, storage)
-
-
 async def do_generate_address(wallet, storage, input):
     index_str = input("Choose index (integer >= 0)> ")
     try:
@@ -94,6 +88,7 @@ async def do_generate_address(wallet, storage, input):
     if r.lower().startswith("y"):
         puzzle_hash = wallet.puzzle_hash_for_index(index)
         await generate_coins(wallet, storage, puzzle_hash, puzzle_hash)
+        await do_sync(wallet, storage)
     return address
 
 
@@ -255,15 +250,6 @@ def finalize_pst(wallet, pst, sigs):
             pass
 
     return None, summary_list
-
-
-async def ledger_sim_proxy():
-    from chiasim.clients import ledger_sim
-    from chiasim.remote.client import request_response_proxy
-
-    reader, writer = await asyncio.open_connection(host="localhost", port=9868)
-    proxy = request_response_proxy(reader, writer, ledger_sim.REMOTE_SIGNATURES)
-    return proxy
 
 
 async def all_coins_and_unspents(storage):
