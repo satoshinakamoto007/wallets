@@ -178,7 +178,14 @@ def test_ui_process():
         "q",
     ]
 
-    run(main_loop(PATH, storage=storage, full_node=full_node, input=input_for(CREATE_WALLET_INPUTS)))
+    run(
+        main_loop(
+            PATH,
+            storage=storage,
+            full_node=full_node,
+            input=input_for(CREATE_WALLET_INPUTS),
+        )
+    )
     wallet = load_wallet(PATH)
 
     assert (
@@ -193,7 +200,14 @@ def test_ui_process():
         "q",
     ]
 
-    run(main_loop(PATH, storage=storage, input=input_for(GENERATE_ADDRESS_INPUTS)))
+    run(
+        main_loop(
+            PATH,
+            storage=storage,
+            full_node=full_node,
+            input=input_for(GENERATE_ADDRESS_INPUTS),
+        )
+    )
 
     coins, unspents = run(all_coins_and_unspents(storage))
     SPEND_COIN_INPUTS = [
@@ -208,4 +222,11 @@ def test_ui_process():
         "q",
     ]
 
-    run(main_loop(PATH, storage=storage, input=input_for(SPEND_COIN_INPUTS)))
+    run(
+        main_loop(
+            PATH,
+            storage=storage,
+            full_node=full_node,
+            input=input_for(SPEND_COIN_INPUTS),
+        )
+    )
