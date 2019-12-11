@@ -165,14 +165,16 @@ async def farm_block(wallet, ledger_api, last_known_header):
 
 
 async def update_ledger(wallet, ledger_api, most_recent_header):
-    r = await ledger_api.get_tip()
-    if r['tip_hash'] != most_recent_header:
-        await process_blocks(wallet,
-                             ledger_api,
-                             r['genesis_hash'] if most_recent_header is None else most_recent_header,
-                             r['tip_hash'])
-    return r['tip_hash']
-
+    try:
+        r = await ledger_api.get_tip()
+        if r['tip_hash'] != most_recent_header:
+            await process_blocks(wallet,
+                                 ledger_api,
+                                 r['genesis_hash'] if most_recent_header is None else most_recent_header,
+                                 r['tip_hash'])
+        return r['tip_hash']
+    except Exception:
+        print("Update failed, make sure has at least one block.")
 
 
 async def main_loop():
