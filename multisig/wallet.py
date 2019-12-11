@@ -300,8 +300,9 @@ async def menu(wallet, storage, full_node, input):
     return choice != "q"
 
 
-async def main_loop(path, storage=None, input=input):
-    full_node = await ledger_sim_proxy()
+async def main_loop(path, storage=None, full_node=None, input=input):
+    if full_node is None:
+        full_node = await ledger_sim_proxy()
     if storage is None:
         storage = Storage("junk path")
 

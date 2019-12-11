@@ -165,6 +165,7 @@ def test_ui_process():
     PATH = Path(tempfile.mktemp())
 
     storage = Storage("junk path")
+    full_node = make_client_server()
 
     # create the wallet
 
@@ -177,7 +178,7 @@ def test_ui_process():
         "q",
     ]
 
-    run(main_loop(PATH, storage=storage, input=input_for(CREATE_WALLET_INPUTS)))
+    run(main_loop(PATH, storage=storage, full_node=full_node, input=input_for(CREATE_WALLET_INPUTS)))
     wallet = load_wallet(PATH)
 
     assert (
