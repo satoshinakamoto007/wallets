@@ -174,7 +174,6 @@ async def update_ledger(wallet, ledger_api, most_recent_header):
     return r['tip_hash']
 
 
-
 async def main_loop():
     ledger_api = await connect_to_ledger_sim("localhost", 9868)
     selection = ""
