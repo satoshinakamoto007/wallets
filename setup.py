@@ -12,7 +12,8 @@ setuptools.setup(
         "authorised_payees",
         "atomic_swaps",
         "rate_limit",
-        "recoverable_wallet"
+        "recoverable_wallet",
+        "util",
     ],
     license="Apache License",
     python_requires=">=3.7, <4",
@@ -24,7 +25,7 @@ setuptools.setup(
             "multisig_wallet = multisig.wallet:main",
             "signer = multisig.signer:main",
             "rl_wallet = rate_limit.rl_wallet_runnable:main",
-            "recoverable_wallet = recoverable_wallet.recoverable_wallet_runnable:main"
+            "recoverable_wallet = recoverable_wallet.recoverable_wallet_runnable:main",
         ]
     },
     setup_requires=["setuptools_scm"],

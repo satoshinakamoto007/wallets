@@ -49,7 +49,9 @@ async def sync(storage, full_node):
             if _.puzzle_hash in storage._interested_puzzled_hashes
         ]
         removals = [
-            _ for _ in removals_for_body(body) if _ in storage._interested_puzzled_hashes
+            _
+            for _ in removals_for_body(body)
+            if _ in storage._interested_puzzled_hashes
         ]
         await apply_deltas(header_index, additions, removals, storage, storage)
         storage._header_list.append(header)

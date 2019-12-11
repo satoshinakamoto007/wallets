@@ -4,8 +4,8 @@ import json
 import os
 from pathlib import Path
 
-from .BLSHDKeys import BLSPrivateHDKey, fingerprint_for_pk
-from .pst import PartiallySignedTransaction
+from util.BLSHDKeys import BLSPrivateHDKey, fingerprint_for_pk
+from util.pst import PartiallySignedTransaction
 
 from chiasim.validation.consensus import (
     conditions_dict_for_solution,
