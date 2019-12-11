@@ -1,13 +1,10 @@
 import asyncio
-import clvm
 from utilities.decorations import print_leaf, divider, prompt, start_list, close_list, selectable, informative
 from utilities.puzzle_utilities import puzzlehash_from_string
-from chiasim.hashable import Coin
+from chiasim.hashable import Coin, Header, HeaderHash
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
-from chiasim.hashable.Body import BodyList
-from clvm_tools import binutils
-from chiasim.hashable import Program, ProgramHash
+from chiasim.hashable.Body import Body
 from binascii import hexlify
 from authorised_payees import ap_wallet_a_functions
 from standard_wallet.wallet import Wallet
@@ -22,20 +19,6 @@ except ImportError:
 def view_funds(wallet):
     print(f"Current balance: {str(wallet.temp_balance)}")
     print(f"UTXOs: {[x.amount for x in wallet.temp_utxos]}")
-
-
-# def add_contact(wallet):
-#     name = input(f"{prompt} What is the new contact's name? ")
-#     puzzlegeneratorstring = input(f"{prompt} What is their ChiaLisp puzzlegenerator: ")
-#     puzzlegenerator = binutils.assemble(puzzlegeneratorstring)
-#     wallet.add_contact(name, puzzlegenerator, 0, None)
-
-
-# def view_contacts(wallet):
-#     print(start_list)
-#     for name, details in wallet.contacts:
-#         print(name)
-#     print(close_list)
 
 
 def print_my_details(wallet):
@@ -154,33 +137,41 @@ async def initiate_ap(wallet, ledger_api):
         choice = input("Press 'c' to continue, or 'q' to quit to menu: ")
 
 
-async def new_block(wallet, ledger_api):
-    coinbase_puzzle_hash = wallet.get_new_puzzlehash()
-    fees_puzzle_hash = wallet.get_new_puzzlehash()
-    r = await ledger_api.next_block(coinbase_puzzle_hash=coinbase_puzzle_hash, fees_puzzle_hash=fees_puzzle_hash)
-    body = r["body"]
-    # breakpoint()
-    most_recent_header = r['header']
-    # breakpoint()
+async def process_blocks(wallet, ledger_api, last_known_header, current_header_hash):
+    r = await ledger_api.hash_preimage(hash=current_header_hash)
+    header = Header.from_bytes(r)
+    body = Body.from_bytes(await ledger_api.hash_preimage(hash=header.body_hash))
+    if header.previous_hash != last_known_header:
+        await process_blocks(wallet, ledger_api, last_known_header, header.previous_hash)
+    print(f'processing block {HeaderHash(header)}')
     additions = list(additions_for_body(body))
     removals = removals_for_body(body)
     removals = [Coin.from_bytes(await ledger_api.hash_preimage(hash=x)) for x in removals]
     wallet.notify(additions, removals)
-    return most_recent_header
+
+
+async def farm_block(wallet, ledger_api, last_known_header):
+    coinbase_puzzle_hash = wallet.get_new_puzzlehash()
+    fees_puzzle_hash = wallet.get_new_puzzlehash()
+    r = await ledger_api.next_block(coinbase_puzzle_hash=coinbase_puzzle_hash, fees_puzzle_hash=fees_puzzle_hash)
+    header = r['header']
+    header_hash = HeaderHash(header)
+    tip = await ledger_api.get_tip()
+    await process_blocks(wallet,
+                         ledger_api,
+                         tip['genesis_hash'] if last_known_header is None else last_known_header,
+                         header_hash)
+    return header_hash
 
 
 async def update_ledger(wallet, ledger_api, most_recent_header):
-    if most_recent_header is None:
-        r = await ledger_api.get_all_blocks()
-    else:
-        r = await ledger_api.get_recent_blocks(most_recent_header=most_recent_header)
-    update_list = BodyList.from_bytes(r)
-    for body in update_list:
-        additions = list(additions_for_body(body))
-        print(additions)
-        removals = removals_for_body(body)
-        removals = [Coin.from_bytes(await ledger_api.hash_preimage(hash=x)) for x in removals]
-        wallet.notify(additions, removals)
+    r = await ledger_api.get_tip()
+    if r['tip_hash'] != most_recent_header:
+        await process_blocks(wallet,
+                             ledger_api,
+                             r['genesis_hash'] if most_recent_header is None else most_recent_header,
+                             r['tip_hash'])
+    return r['tip_hash']
 
 
 async def main_loop():
@@ -189,7 +180,8 @@ async def main_loop():
     wallet = Wallet()
     print(divider)
     print_leaf()
-    most_recent_header = None
+    r = await ledger_api.get_tip()
+    most_recent_header = r['genesis_hash']
     while selection != "q":
         print(divider)
         view_funds(wallet)
@@ -198,7 +190,7 @@ async def main_loop():
         print("Select a function:")
         print(f"{selectable} 1: Make Payment")
         print(f"{selectable} 2: Get Update")
-        print(f"{selectable} 3: *GOD MODE* Commit Block / Get Money")
+        print(f"{selectable} 3: Farm Block")
         print(f"{selectable} 4: Print my details for somebody else")
         print(f"{selectable} 5: Set my wallet name")
         print(f"{selectable} 6: Initiate Authorised Payee")
@@ -211,9 +203,9 @@ async def main_loop():
         if selection == "1":
             r = await make_payment(wallet, ledger_api)
         elif selection == "2":
-            await update_ledger(wallet, ledger_api, most_recent_header)
+            most_recent_header = await update_ledger(wallet, ledger_api, most_recent_header)
         elif selection == "3":
-            most_recent_header = await new_block(wallet, ledger_api)
+            most_recent_header = await farm_block(wallet, ledger_api, most_recent_header)
         elif selection == "4":
             print_my_details(wallet)
         elif selection == "5":
