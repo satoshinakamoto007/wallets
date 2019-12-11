@@ -148,13 +148,14 @@ class RLWallet(Wallet):
         TEMPLATE_SINGLETON_RL_2 = f"((c (i (i (= {TEMPLATE_MY_PARENT_ID_2} (f (r (r (r (r (r (a)))))))) (q 1) (= (f (r (r (r (r (r (a))))))) (q 0x{origin_id}))) (q (c (q 1) (q ()))) (q (x (q \"Parent doesnt satisfy RL conditions\")))) (a)))"
         CREATE_CONSOLIDATED = f"(c (q 0x{opcode_create}) (c (f (r (a))) (c (+ (f (r (r (r (r (a)))))) (f (r (r (r (r (r (r (a))))))))) (q ()))))"
         MODE_TWO_ME_STRING = f"(c (q 0x{opcode_myid}) (c (sha256 (f (r (r (r (r (r (a))))))) (f (r (a))) (uint64 (f (r (r (r (r (r (r (a)))))))))) (q ())))"
-        CREATE_LOCK = f"(c (q 0x{opcode_create}) (c (sha256 (wrap (c (q 7) (c (c (q 5) (c (c (q 1) (c (sha256 (f (r (r (a)))) (f (r (r (r (a))))) (uint64 (f (r (r (r (r (a)))))))) (q ()))) (c (q (q ())) (q ())))) (q ()))))) (c (uint64 (q 0)) (q ()))))"
+        CREATE_LOCK = f"(c (q 0x{opcode_create}) (c (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (sha256 (f (r (r (a)))) (f (r (r (r (a))))) (uint64 (f (r (r (r (r (a)))))))) (q ()))) (c (q (q ())) (q ())))) (q ())))) (c (uint64 (q 0)) (q ()))))"
+
         MODE_TWO = f"(c {TEMPLATE_SINGLETON_RL_2} (c {MODE_TWO_ME_STRING} (c {CREATE_LOCK} (c {CREATE_CONSOLIDATED} (q ())))))"
 
-        AGGSIG_ENTIRE_SOLUTION = f"(c (q 0x{opcode_aggsig}) (c (q 0x{hex_pk}) (c (sha256 (wrap (a))) (q ()))))"
+        AGGSIG_ENTIRE_SOLUTION = f"(c (q 0x{opcode_aggsig}) (c (q 0x{hex_pk}) (c (sha256tree (a)) (q ()))))"
 
         WHOLE_PUZZLE = f"(c {AGGSIG_ENTIRE_SOLUTION} ((c (i (= (f (a)) (q 1)) (q ((c (q {RATE_LIMIT_PUZZLE}) (r (a))))) (q {MODE_TWO})) (a))) (q ()))"
-        CLAWBACK = f"(c (c (q 0x{opcode_aggsig}) (c (q 0x{clawback_pk}) (c (sha256 (wrap (a))) (q ())))) (r (a)))"
+        CLAWBACK = f"(c (c (q 0x{opcode_aggsig}) (c (q 0x{clawback_pk}) (c (sha256tree (a)) (q ())))) (r (a)))"
         WHOLE_PUZZLE_WITH_CLAWBACK = f"((c (i (= (f (a)) (q 3)) (q {CLAWBACK}) (q {WHOLE_PUZZLE})) (a)))"
 
         return Program(binutils.assemble(WHOLE_PUZZLE_WITH_CLAWBACK))
@@ -167,7 +168,7 @@ class RLWallet(Wallet):
         me_is_my_id = f"(c (q 0x{opcode_myid}) (c (f (a)) (q ())))"
 
         # lock_puzzle is the hash of '(r (c (q "merge in ID") (q ())))'
-        lock_puzzle = "(sha256 (wrap (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (c (q (q ())) (q ())))) (q ())))))"
+        lock_puzzle = "(sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (c (q (q ())) (q ())))) (q ()))))"
         parent_coin_id = f"(sha256 (f (r (a))) (q 0x{wallet_puzzle}) (uint64 (f (r (r (a))))))"
         input_of_lock = f"(c (q 0x{opcode_consumed}) (c (sha256 {parent_coin_id} {lock_puzzle} (uint64 (q 0))) (q ())))"
         puz = f"(c {me_is_my_id} (c {input_of_lock} (q ())))"
