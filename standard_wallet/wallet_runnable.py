@@ -181,7 +181,8 @@ async def main_loop():
     wallet = Wallet()
     print(divider)
     print_leaf()
-    most_recent_header = None
+    r = await ledger_api.get_tip()
+    most_recent_header = r['genesis_hash']
     while selection != "q":
         print(divider)
         view_funds(wallet)
