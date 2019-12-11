@@ -11,13 +11,14 @@ from chiasim.ledger import ledger_api
 from chiasim.storage import RAM_DB
 from chiasim.utils.server import start_unix_server_aiter
 
-from multisig.address import puzzle_hash_for_address
-from multisig.pst import PartiallySignedTransaction
 from multisig.signer import generate_signatures
-from multisig.storage import Storage
 from multisig.wallet import spend_coin, finalize_pst, main_loop, all_coins_and_unspents
 from multisig.wallet import MultisigHDWallet
-from multisig.BLSHDKeys import BLSPrivateHDKey
+
+from util.address import puzzle_hash_for_address
+from util.pst import PartiallySignedTransaction
+from util.storage import Storage
+from util.BLSHDKeys import BLSPrivateHDKey
 
 
 async def proxy_for_unix_connection(path):
@@ -162,7 +163,6 @@ def test_ui_process():
     run = asyncio.get_event_loop().run_until_complete
 
     PATH = Path(tempfile.mktemp())
-    remote = make_client_server()
 
     storage = Storage("junk path")
 
