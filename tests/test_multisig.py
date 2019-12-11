@@ -164,7 +164,7 @@ def test_ui_process():
     PATH = Path(tempfile.mktemp())
     remote = make_client_server()
 
-    storage = Storage("junk path", remote)
+    storage = Storage("junk path")
 
     # create the wallet
 

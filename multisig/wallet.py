@@ -14,7 +14,7 @@ from chiasim.hashable import (
 from chiasim.validation import validate_spend_bundle_signature
 from chiasim.validation.Conditions import make_create_coin_condition
 
-from .full_node import generate_coins, ledger_sim_proxy
+from .full_node import generate_coins, ledger_sim_proxy, sync
 from .pst import PartiallySignedTransaction
 from .storage import Storage
 from .BLSHDKeys import BLSPublicHDKey, fingerprint_for_pk
@@ -76,7 +76,7 @@ def load_wallet(path) -> MultisigHDWallet:
     return wallet
 
 
-async def do_generate_address(wallet, storage, input):
+async def do_generate_address(wallet, storage, full_node, input):
     index_str = input("Choose index (integer >= 0)> ")
     try:
         index = int(index_str)
@@ -87,12 +87,12 @@ async def do_generate_address(wallet, storage, input):
     r = input(f"Generate coins with this address? (y/n)> ")
     if r.lower().startswith("y"):
         puzzle_hash = wallet.puzzle_hash_for_index(index)
-        await generate_coins(wallet, storage, puzzle_hash, puzzle_hash)
-        await do_sync(wallet, storage)
+        await generate_coins(wallet, full_node, puzzle_hash, puzzle_hash)
+        await do_sync(wallet, storage, full_node)
     return address
 
 
-async def do_spend_coin(wallet, storage, input):
+async def do_spend_coin(wallet, storage, full_node, input):
     coins = []
     while True:
         coin_str = input("Enter hex id of coin to spend> ")
@@ -135,7 +135,7 @@ async def do_spend_coin(wallet, storage, input):
     print("spend bundle = %s" % bytes(spend_bundle).hex())
     r = input(f"Send to ledgersim? (y/n)> ")
     if r.lower().startswith("y"):
-        r = await storage.ledger_sim().push_tx(tx=spend_bundle)
+        r = await full_node.push_tx(tx=spend_bundle)
     return spend_bundle
 
 
@@ -264,11 +264,11 @@ async def all_coins_and_unspents(storage):
     return coins, unspents
 
 
-async def do_sync(wallet, storage):
+async def do_sync(wallet, storage, full_node):
     storage.add_interested_puzzle_hashes(
         wallet.puzzle_hash_for_index(_) for _ in range(GAP_LIMIT)
     )
-    r = await storage.sync()
+    r = await sync(storage, full_node)
     noun = "block" if r == 1 else "blocks"
     print(f"{r} new {noun} loaded")
 
@@ -281,7 +281,7 @@ async def do_sync(wallet, storage):
             )
 
 
-async def menu(wallet, storage, input):
+async def menu(wallet, storage, full_node, input):
     print("Choose:")
     print("1. Generate an address")
     print("2. Spend a coin")
@@ -289,23 +289,24 @@ async def menu(wallet, storage, input):
     print("q. Quit")
     choice = input("> ")
     if choice == "1":
-        await do_generate_address(wallet, storage, input)
+        await do_generate_address(wallet, storage, full_node, input)
     if choice == "2":
-        await do_spend_coin(wallet, storage, input)
+        await do_spend_coin(wallet, storage, full_node, input)
     if choice == "3":
-        await do_sync(wallet, storage)
+        await do_sync(wallet, storage, full_node)
     return choice != "q"
 
 
 async def main_loop(path, storage=None, input=input):
+    full_node = await ledger_sim_proxy()
     if storage is None:
-        storage = Storage("junk path", await ledger_sim_proxy())
+        storage = Storage("junk path")
 
     if not path.exists():
         create_wallet(path, input)
     wallet = load_wallet(path)
     while True:
-        should_continue = await menu(wallet, storage, input)
+        should_continue = await menu(wallet, storage, full_node, input)
         if not should_continue:
             break
 
