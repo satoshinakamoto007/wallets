@@ -1082,7 +1082,7 @@ def pull_preimage(wallet, as_swap_list, body, removals):
                 for x in l:
                     if hexlify(x[0]).decode('ascii') == hexlify(coin.puzzle_hash).decode('ascii'):
                         pre1 = binutils.disassemble(x[1])
-                        preimage = pre1[851:(len(pre1) - 3)]
+                        preimage = pre1[(len(pre1) - 515):(len(pre1) - 3)]
                         swap["secret"] = preimage
                         #breakpoint()
 
