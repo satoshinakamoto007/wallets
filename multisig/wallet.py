@@ -22,7 +22,7 @@ from chiasim.validation.consensus import (
     hash_key_pairs_for_conditions_dict,
 )
 
-from util.full_node import generate_coins, ledger_sim_proxy, sync
+from util.full_node import ledger_sim_proxy, sync
 from util.pst import PartiallySignedTransaction
 from util.storage import Storage
 from util.BLSHDKeys import BLSPublicHDKey, fingerprint_for_pk
@@ -79,7 +79,7 @@ def load_wallet(path) -> MultisigHDWallet:
     return wallet
 
 
-async def do_generate_address(wallet, storage, full_node, input):
+def do_generate_address(wallet, storage, full_node, input):
     index_str = input("Choose index (integer >= 0)> ")
     try:
         index = int(index_str)
@@ -87,11 +87,7 @@ async def do_generate_address(wallet, storage, full_node, input):
         pass
     address = wallet.address_for_index(index)
     print(f"address #{index} is {address}")
-    r = input(f"Generate coins with this address? (y/n)> ")
-    if r.lower().startswith("y"):
-        puzzle_hash = wallet.puzzle_hash_for_index(index)
-        await generate_coins(wallet, full_node, puzzle_hash, puzzle_hash)
-        await do_sync(wallet, storage, full_node)
+    print("Use the generate-coins command-line tool to generate coins in ledger-sim.")
     return address
 
 
@@ -292,7 +288,7 @@ async def menu(wallet, storage, full_node, input):
     print("q. Quit")
     choice = input("> ")
     if choice == "1":
-        await do_generate_address(wallet, storage, full_node, input)
+        do_generate_address(wallet, storage, full_node, input)
     if choice == "2":
         await do_spend_coin(wallet, storage, full_node, input)
     if choice == "3":

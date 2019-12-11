@@ -7,6 +7,7 @@ setuptools.setup(
     description="Chis wallets that interact with ledger-sim",
     author="Chia Network",
     packages=[
+        "cmds",
         "standard_wallet",
         "utilities",
         "authorised_payees",
@@ -26,6 +27,7 @@ setuptools.setup(
             "signer = multisig.signer:main",
             "rl_wallet = rate_limit.rl_wallet_runnable:main",
             "recoverable_wallet = recoverable_wallet.recoverable_wallet_runnable:main",
+            "generate-coins = cmds.generate_coins:main",
         ]
     },
     setup_requires=["setuptools_scm"],

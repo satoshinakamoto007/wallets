@@ -13,7 +13,7 @@ async def ledger_sim_proxy():
     return proxy
 
 
-async def generate_coins(wallet, full_node, coinbase_puzzle_hash, fees_puzzle_hash):
+async def generate_coins(full_node, coinbase_puzzle_hash, fees_puzzle_hash):
     await full_node.next_block(
         coinbase_puzzle_hash=coinbase_puzzle_hash, fees_puzzle_hash=fees_puzzle_hash
     )

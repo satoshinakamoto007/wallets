@@ -16,6 +16,7 @@ from multisig.wallet import spend_coin, finalize_pst, main_loop, all_coins_and_u
 from multisig.wallet import MultisigHDWallet
 
 from util.address import puzzle_hash_for_address
+from util.full_node import generate_coins
 from util.pst import PartiallySignedTransaction
 from util.storage import Storage
 from util.BLSHDKeys import BLSPrivateHDKey
@@ -196,9 +197,12 @@ def test_ui_process():
     GENERATE_ADDRESS_INPUTS = [
         "1",  # generate address
         "10",
-        "y",
+        "3",  # sync
         "q",
     ]
+
+    puzzle_hash = wallet.puzzle_hash_for_index(10)
+    run(generate_coins(full_node, puzzle_hash, puzzle_hash))
 
     run(
         main_loop(
