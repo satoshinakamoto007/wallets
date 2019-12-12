@@ -1,9 +1,10 @@
 import asyncio
 import json
 import readline  # noqa
-from pathlib import Path
 
 # We import readline to allow extremely long cut & paste text strings
+
+from pathlib import Path
 
 from chiasim.hashable import (
     BLSSignature,
@@ -11,19 +12,23 @@ from chiasim.hashable import (
     CoinSolution,
     SpendBundle,
 )
-from chiasim.validation import validate_spend_bundle_signature
-from chiasim.validation.Conditions import make_create_coin_condition
-from .pst import PartiallySignedTransaction
-from .storage import Storage
-from .BLSHDKeys import BLSPublicHDKey, fingerprint_for_pk
-from .MultisigHDWallet import MultisigHDWallet
 
 from chiasim.puzzles.p2_m_of_n_delegate_direct import solution_for_delegated_puzzle
 from chiasim.puzzles.p2_conditions import puzzle_for_conditions, solution_for_conditions
+from chiasim.validation import validate_spend_bundle_signature
+from chiasim.validation.Conditions import make_create_coin_condition
 from chiasim.validation.consensus import (
     conditions_dict_for_solution,
     hash_key_pairs_for_conditions_dict,
 )
+
+from util.full_node import ledger_sim_proxy, sync
+from util.pst import PartiallySignedTransaction
+from util.storage import Storage
+from util.BLSHDKeys import BLSPublicHDKey, fingerprint_for_pk
+
+
+from .MultisigHDWallet import MultisigHDWallet
 
 
 # we hard-code a gap limit for now (ie. the number
@@ -92,18 +97,7 @@ def load_wallet(path) -> MultisigHDWallet:
     return wallet
 
 
-async def generate_coins(wallet, storage, coinbase_puzzle_hash, fees_puzzle_hash):
-    """
-    Invoke "next_block" on ledger sim with the given reward puzzle hashes.
-    """
-    remote = storage.ledger_sim()
-    await remote.next_block(
-        coinbase_puzzle_hash=coinbase_puzzle_hash, fees_puzzle_hash=fees_puzzle_hash
-    )
-    await do_sync(wallet, storage)
-
-
-async def do_generate_address(wallet, storage, input):
+def do_generate_address(wallet, storage, full_node, input):
     """
     UI to generate and return an address in the wallet and optionally
     generate coins.
@@ -115,14 +109,11 @@ async def do_generate_address(wallet, storage, input):
         pass
     address = wallet.address_for_index(index)
     print(f"address #{index} is {address}")
-    r = input(f"Generate coins with this address? (y/n)> ")
-    if r.lower().startswith("y"):
-        puzzle_hash = wallet.puzzle_hash_for_index(index)
-        await generate_coins(wallet, storage, puzzle_hash, puzzle_hash)
+    print("Use the generate-coins command-line tool to generate coins in ledger-sim.")
     return address
 
 
-async def do_spend_coin(wallet, storage, input):
+async def do_spend_coin(wallet, storage, full_node, input):
     """
     UI to spend a coin.
     """
@@ -174,7 +165,7 @@ async def do_spend_coin(wallet, storage, input):
     # optionally send to ledger sim
     r = input(f"Send to ledger sim? (y/n)> ")
     if r.lower().startswith("y"):
-        r = await storage.ledger_sim().push_tx(tx=spend_bundle)
+        r = await full_node.push_tx(tx=spend_bundle)
     return spend_bundle
 
 
@@ -319,18 +310,6 @@ def finalize_pst(wallet, pst, sigs):
     return None, summary_list
 
 
-async def ledger_sim_proxy():
-    """
-    Return an async proxy to the ledger sim instance running on 9868.
-    """
-    from chiasim.clients import ledger_sim
-    from chiasim.remote.client import request_response_proxy
-
-    reader, writer = await asyncio.open_connection(host="localhost", port=9868)
-    proxy = request_response_proxy(reader, writer, ledger_sim.REMOTE_SIGNATURES)
-    return proxy
-
-
 async def all_coins_and_unspents(storage):
     """
     Query the ledger sim instance for all coins and unspents.
@@ -346,7 +325,7 @@ async def all_coins_and_unspents(storage):
     return coins, unspents
 
 
-async def do_sync(wallet, storage):
+async def do_sync(wallet, storage, full_node):
     """
     Fetch the most recent blocks from the ledger sim instance
     and troll through them looking for relevant puzzle hashes.
@@ -354,7 +333,7 @@ async def do_sync(wallet, storage):
     storage.add_interested_puzzle_hashes(
         wallet.puzzle_hash_for_index(_) for _ in range(GAP_LIMIT)
     )
-    r = await storage.sync()
+    r = await sync(storage, full_node)
     noun = "block" if r == 1 else "blocks"
     print(f"{r} new {noun} loaded")
 
@@ -367,7 +346,7 @@ async def do_sync(wallet, storage):
             )
 
 
-async def menu(wallet, storage, input):
+async def menu(wallet, storage, full_node, input):
     """
     UI for the main menu.
     """
@@ -378,26 +357,28 @@ async def menu(wallet, storage, input):
     print("q. Quit")
     choice = input("> ")
     if choice == "1":
-        await do_generate_address(wallet, storage, input)
+        do_generate_address(wallet, storage, full_node, input)
     if choice == "2":
-        await do_spend_coin(wallet, storage, input)
+        await do_spend_coin(wallet, storage, full_node, input)
     if choice == "3":
-        await do_sync(wallet, storage)
+        await do_sync(wallet, storage, full_node)
     return choice != "q"
 
 
-async def main_loop(path, storage=None, input=input):
+async def main_loop(path, storage=None, full_node=None, input=input):
     """
     async version of main
     """
+    if full_node is None:
+        full_node = await ledger_sim_proxy()
     if storage is None:
-        storage = Storage("junk path", await ledger_sim_proxy())
+        storage = Storage("junk path")
 
     if not path.exists():
         create_wallet(path, input)
     wallet = load_wallet(path)
     while True:
-        should_continue = await menu(wallet, storage, input)
+        should_continue = await menu(wallet, storage, full_node, input)
         if not should_continue:
             break
 

@@ -11,13 +11,15 @@ from chiasim.ledger import ledger_api
 from chiasim.storage import RAM_DB
 from chiasim.utils.server import start_unix_server_aiter
 
-from multisig.address import puzzle_hash_for_address
-from multisig.pst import PartiallySignedTransaction
 from multisig.signer import generate_signatures
-from multisig.storage import Storage
 from multisig.wallet import spend_coin, finalize_pst, main_loop, all_coins_and_unspents
 from multisig.wallet import MultisigHDWallet
-from multisig.BLSHDKeys import BLSPrivateHDKey
+
+from util.address import puzzle_hash_for_address
+from util.full_node import generate_coins
+from util.pst import PartiallySignedTransaction
+from util.storage import Storage
+from util.BLSHDKeys import BLSPrivateHDKey
 
 
 async def proxy_for_unix_connection(path):
@@ -162,9 +164,9 @@ def test_ui_process():
     run = asyncio.get_event_loop().run_until_complete
 
     PATH = Path(tempfile.mktemp())
-    remote = make_client_server()
 
-    storage = Storage("junk path", remote)
+    storage = Storage("junk path")
+    full_node = make_client_server()
 
     # create the wallet
 
@@ -177,7 +179,14 @@ def test_ui_process():
         "q",
     ]
 
-    run(main_loop(PATH, storage=storage, input=input_for(CREATE_WALLET_INPUTS)))
+    run(
+        main_loop(
+            PATH,
+            storage=storage,
+            full_node=full_node,
+            input=input_for(CREATE_WALLET_INPUTS),
+        )
+    )
     wallet = load_wallet(PATH)
 
     assert (
@@ -188,11 +197,21 @@ def test_ui_process():
     GENERATE_ADDRESS_INPUTS = [
         "1",  # generate address
         "10",
-        "y",
+        "3",  # sync
         "q",
     ]
 
-    run(main_loop(PATH, storage=storage, input=input_for(GENERATE_ADDRESS_INPUTS)))
+    puzzle_hash = wallet.puzzle_hash_for_index(10)
+    run(generate_coins(full_node, puzzle_hash, puzzle_hash))
+
+    run(
+        main_loop(
+            PATH,
+            storage=storage,
+            full_node=full_node,
+            input=input_for(GENERATE_ADDRESS_INPUTS),
+        )
+    )
 
     coins, unspents = run(all_coins_and_unspents(storage))
     SPEND_COIN_INPUTS = [
@@ -207,4 +226,11 @@ def test_ui_process():
         "q",
     ]
 
-    run(main_loop(PATH, storage=storage, input=input_for(SPEND_COIN_INPUTS)))
+    run(
+        main_loop(
+            PATH,
+            storage=storage,
+            full_node=full_node,
+            input=input_for(SPEND_COIN_INPUTS),
+        )
+    )
