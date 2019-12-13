@@ -5,4 +5,4 @@ activate
 .idea
 wallets.egg-info
 .venv
-.gitignore
+.DS_Store
