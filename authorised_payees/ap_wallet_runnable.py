@@ -196,7 +196,7 @@ async def main_loop():
         elif selection == "3":
             view_contacts(approved_puzhash_sig_pairs)
         elif selection == "4":
-            await update_ledger(wallet, ledger_api, most_recent_header)
+            most_recent_header = await update_ledger(wallet, ledger_api, most_recent_header)
         elif selection == "5":
             print_my_details(wallet)
         elif selection == "6":
