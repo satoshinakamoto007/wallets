@@ -6,3 +6,5 @@ activate
 wallets.egg-info
 .venv
 .gitignore
+.eggs
+.DS_Store

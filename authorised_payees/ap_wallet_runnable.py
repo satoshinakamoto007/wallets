@@ -4,8 +4,8 @@ from authorised_payees.ap_wallet_a_functions import ap_get_aggregation_puzzlehas
 from utilities.decorations import print_leaf, divider, prompt, start_list, close_list, selectable, informative
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
-from chiasim.hashable import Coin
-from chiasim.hashable.Body import BodyList
+from chiasim.hashable.Body import Body
+from chiasim.hashable import Coin, Header, HeaderHash
 from utilities.puzzle_utilities import pubkey_format, puzzlehash_from_string, BLSSignature_from_string
 from binascii import hexlify
 
@@ -96,36 +96,30 @@ def make_payment(wallet, approved_puzhash_sig_pairs):
     return wallet.ap_generate_signed_transaction([(puzzlehash, amount)], [approved_puzhash_sig_pairs[choice][1]])
 
 
-async def new_block(wallet, ledger_api):
-    coinbase_puzzle_hash = APWallet().get_new_puzzlehash()
-    fees_puzzle_hash = APWallet().get_new_puzzlehash()
-    r = await ledger_api.next_block(coinbase_puzzle_hash=coinbase_puzzle_hash, fees_puzzle_hash=fees_puzzle_hash)
-    body = r["body"]
-    most_recent_header = r['header']
+async def process_blocks(wallet, ledger_api, last_known_header, current_header_hash):
+    r = await ledger_api.hash_preimage(hash=current_header_hash)
+    header = Header.from_bytes(r)
+    body = Body.from_bytes(await ledger_api.hash_preimage(hash=header.body_hash))
+    if header.previous_hash != last_known_header:
+        await process_blocks(wallet, ledger_api, last_known_header, header.previous_hash)
+    print(f'processing block {HeaderHash(header)}')
     additions = list(additions_for_body(body))
     removals = removals_for_body(body)
     removals = [Coin.from_bytes(await ledger_api.hash_preimage(hash=x)) for x in removals]
-    wallet.notify(additions, removals)
-    return most_recent_header
+    spend_bundle_list = wallet.notify(additions, removals)
+    if spend_bundle_list is not None:
+        for spend_bundle in spend_bundle_list:
+            _ = await ledger_api.push_tx(tx=spend_bundle)
 
 
 async def update_ledger(wallet, ledger_api, most_recent_header):
-    if most_recent_header is None:
-        r = await ledger_api.get_all_blocks()
-    else:
-        r = await ledger_api.get_recent_blocks(most_recent_header=most_recent_header)
-    update_list = BodyList.from_bytes(r)
-    for body in update_list:
-        additions = list(additions_for_body(body))
-        print(additions)
-        removals = removals_for_body(body)
-        removals = [Coin.from_bytes(await ledger_api.hash_preimage(hash=x)) for x in removals]
-        spend_bundle_list = wallet.notify(additions, removals)
-        #breakpoint()
-        if spend_bundle_list is not None:
-            for spend_bundle in spend_bundle_list:
-                #breakpoint()
-                _ = await ledger_api.push_tx(tx=spend_bundle)
+    r = await ledger_api.get_tip()
+    if r['tip_hash'] != most_recent_header:
+        await process_blocks(wallet,
+                             ledger_api,
+                             r['genesis_hash'] if most_recent_header is None else most_recent_header,
+                             r['tip_hash'])
+    return r['tip_hash']
 
 
 def ap_settings(wallet, approved_puzhash_sig_pairs):
@@ -187,10 +181,9 @@ async def main_loop():
         print(f"{selectable} 2: Make Payment")
         print(f"{selectable} 3: View Payees")
         print(f"{selectable} 4: Get Update")
-        print(f"{selectable} 5: *GOD MODE* Commit Block")
-        print(f"{selectable} 6: Print my details for somebody else")
-        print(f"{selectable} 7: Set my wallet detail")
-        print(f"{selectable} 8: AP Settings")
+        print(f"{selectable} 5: Print my details for somebody else")
+        print(f"{selectable} 6: Set my wallet detail")
+        print(f"{selectable} 7: AP Settings")
         print(f"{selectable} q: Quit")
         print(close_list)
         selection = input(prompt)
@@ -205,12 +198,10 @@ async def main_loop():
         elif selection == "4":
             await update_ledger(wallet, ledger_api, most_recent_header)
         elif selection == "5":
-            most_recent_header = await new_block(wallet, ledger_api)
-        elif selection == "6":
             print_my_details(wallet)
-        elif selection == "7":
+        elif selection == "6":
             set_name(wallet)
-        elif selection == "8":
+        elif selection == "7":
             ap_settings(wallet, approved_puzhash_sig_pairs)
 
 

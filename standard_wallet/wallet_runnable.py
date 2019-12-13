@@ -150,20 +150,6 @@ async def process_blocks(wallet, ledger_api, last_known_header, current_header_h
     wallet.notify(additions, removals)
 
 
-async def farm_block(wallet, ledger_api, last_known_header):
-    coinbase_puzzle_hash = wallet.get_new_puzzlehash()
-    fees_puzzle_hash = wallet.get_new_puzzlehash()
-    r = await ledger_api.next_block(coinbase_puzzle_hash=coinbase_puzzle_hash, fees_puzzle_hash=fees_puzzle_hash)
-    header = r['header']
-    header_hash = HeaderHash(header)
-    tip = await ledger_api.get_tip()
-    await process_blocks(wallet,
-                         ledger_api,
-                         tip['genesis_hash'] if last_known_header is None else last_known_header,
-                         header_hash)
-    return header_hash
-
-
 async def update_ledger(wallet, ledger_api, most_recent_header):
     r = await ledger_api.get_tip()
     if r['tip_hash'] != most_recent_header:
@@ -190,13 +176,12 @@ async def main_loop():
         print("Select a function:")
         print(f"{selectable} 1: Make Payment")
         print(f"{selectable} 2: Get Update")
-        print(f"{selectable} 3: Farm Block")
-        print(f"{selectable} 4: Print my details for somebody else")
-        print(f"{selectable} 5: Set my wallet name")
-        print(f"{selectable} 6: Initiate Authorised Payee")
+        print(f"{selectable} 3: Print my details for somebody else")
+        print(f"{selectable} 4: Set my wallet name")
+        print(f"{selectable} 5: Initiate Authorised Payee")
         if qrcode:
-            print(f"{selectable} 7: Make QR code")
-            print(f"{selectable} 8: Payment to QR code")
+            print(f"{selectable} 6: Make QR code")
+            print(f"{selectable} 7: Payment to QR code")
         print(f"{selectable} q: Quit")
         print(close_list)
         selection = input(prompt)
@@ -205,17 +190,15 @@ async def main_loop():
         elif selection == "2":
             most_recent_header = await update_ledger(wallet, ledger_api, most_recent_header)
         elif selection == "3":
-            most_recent_header = await farm_block(wallet, ledger_api, most_recent_header)
-        elif selection == "4":
             print_my_details(wallet)
-        elif selection == "5":
+        elif selection == "4":
             set_name(wallet)
-        elif selection == "6":
+        elif selection == "5":
             await initiate_ap(wallet, ledger_api)
         if qrcode:
-            if selection == "7":
+            if selection == "6":
                 make_QR(wallet)
-            elif selection == "8":
+            elif selection == "7":
                 r = read_qr(wallet)
                 if r is not None:
                     await ledger_api.push_tx(tx=r)
