@@ -35,7 +35,7 @@ As always, make sure you have ledger-sim running in a terminal window before try
 Your public key will be shown, and you will be asked for some setup information.
 
 2. In another terminal window launch a standard wallet with `$ wallet`.
-Press `3` to get some money.
+Get this wallet some money by printing your contact details and in another terminal window typing `generate-coins *puzzlehash*`
 
 3. Then from the menu, still in the standard wallet, select `6: Initiate Authorised Payee`.
 Paste the AP wallet's public key into the terminal and enter an amount of Chia to send to the AP wallet.

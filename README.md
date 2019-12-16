@@ -72,12 +72,31 @@ $ wallet
 
 Feel free to run more than one instance of the wallet to test sending money between them.
 
+### Getting Money
+
+Money would normally be distributed to a wallet as a reward for farming, however as ledger-sim is detached from the real network we can simulate this reward with a terminal command.
+
+In a new terminal window enter the virtual environment with:
+
+```
+$ . .venv/bin/activate
+```
+
+In order to receive some money you need to generate a puzzlehash for the wallet that wants to receive the money.
+To do this enter `3` in the wallets' menu to view your contact details, and copy the puzzlehash that appears.
+
+Then from your new terminal window run:
+```
+generate-coins *puzzlehash*
+```
+
+Then update your wallet with `2` and your funds should be available.
+
 ### The Menu
 
 The options available in a standard wallet are:
 * **Make Payment** - This will take ask you for an amount to send, and a string of wallet information to generate the address.
 * **Get Update** - This will poll the ledger_sim network and find out if there have been any new transactions that concern your wallet.
-* **Commit Block / Get Money** - This will create a new block, therefore committing all the pending transactions and also giving your wallet 1000000000 Chia.
 * **Print My Details** - This will output a string of information that another wallet can use to send money to you.
 * **Set Wallet Name** - This will change how your wallet self-identifies when communicating with other wallets.
 * **Make Smart Contract** - This will allow you to communicate with the Authorised Payees wallet, and send a coin that can only be spent in approved ways. For more information read the [documentation here](./docs/authorised_payees.md).
