@@ -28,7 +28,7 @@ setuptools.setup(
         ]
     },
     setup_requires=["clvm_tools", "setuptools_scm"],
-    use_scm_version=True,
+    use_scm_version={"fallback_version": "unknown"},
     install_requires=dependencies,
     long_description=open("README.md").read(),
 )
