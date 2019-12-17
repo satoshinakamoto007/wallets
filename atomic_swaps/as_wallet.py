@@ -11,32 +11,20 @@ from utilities.puzzle_utilities import puzzlehash_from_string
 from utilities.keys import build_spend_bundle, sign_f_for_keychain
 
 
-#ASWallet is subclass of Wallet
+# ASWallet is subclass of Wallet
 class ASWallet(Wallet):
     def __init__(self):
         self.as_pending_utxos = set()
         self.overlook = []
+        self.as_swap_list = []
         super().__init__()
         return
 
 
-    # special AS version of the standard get_keys function which allows both ...
-    # ... parties in an atomic swap recreate an atomic swap puzzle which was ...
-    # ... created by the other party
-    def get_keys(self, hash, as_pubkey_sender = None, as_pubkey_receiver = None, as_amount = None, as_timelock_t = None, as_secret_hash = None):
-        for child in reversed(range(self.next_address)):
-            pubkey = self.extended_secret_key.public_child(child).get_public_key()
-            if hash == ProgramHash(puzzle_for_pk(pubkey.serialize())):
-                return (pubkey, self.extended_secret_key.private_child(child).get_private_key())
-            elif as_pubkey_sender is not None and as_pubkey_receiver is not None and as_amount is not None and as_timelock_t is not None and as_secret_hash is not None:
-                if hash == ProgramHash(self.as_make_puzzle(as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_t, as_secret_hash)):
-                    return (pubkey, self.extended_secret_key.private_child(child).get_private_key())
-
-
-    def notify(self, additions, deletions, as_swap_list):
+    def notify(self, additions, deletions):
         super().notify(additions, deletions)
         puzzlehashes = []
-        for swap in as_swap_list:
+        for swap in self.as_swap_list:
             puzzlehashes.append(swap["outgoing puzzlehash"])
             puzzlehashes.append(swap["incoming puzzlehash"])
         if puzzlehashes != []:
@@ -44,23 +32,20 @@ class ASWallet(Wallet):
 
 
     def as_notify(self, additions, puzzlehashes):
-        counter = 0
         for coin in additions:
             for puzzlehash in puzzlehashes:
                 if hexlify(coin.puzzle_hash).decode('ascii') == puzzlehash and coin.puzzle_hash not in self.overlook:
                     self.as_pending_utxos.add(coin)
-                    counter += 1
                     self.overlook.append(coin.puzzle_hash)
 
 
     # finds a pending atomic swap coin to be spent
     def as_select_coins(self, amount, as_puzzlehash):
-        if amount > self.current_balance:
+        if amount > self.current_balance or amount < 0:
             return None
         used_utxos = set()
         if isinstance(as_puzzlehash, str):
             as_puzzlehash = puzzlehash_from_string(as_puzzlehash)
-        # print(self.my_utxos)
         coins = self.my_utxos.copy()
         for pcoin in self.as_pending_utxos:
             coins.add(pcoin)
@@ -86,8 +71,8 @@ class ASWallet(Wallet):
         as_payout_puzzlehash_sender = ProgramHash(puzzle_for_pk(as_pubkey_sender))
         payout_receiver = "(c (q 0x%s) (c (q 0x%s) (c (q %d) (q ()))))" % (hexlify(ConditionOpcode.CREATE_COIN).decode('ascii'), hexlify(as_payout_puzzlehash_receiver).decode('ascii'), as_amount)
         payout_sender = "(c (q 0x%s) (c (q 0x%s) (c (q %d) (q ()))))" % (hexlify(ConditionOpcode.CREATE_COIN).decode('ascii'), hexlify(as_payout_puzzlehash_sender).decode('ascii'), as_amount)
-        aggsig_receiver = "(c (q 0x%s) (c (q %s) (c (sha256 (wrap (a))) (q ()))))" % (hexlify(ConditionOpcode.AGG_SIG).decode('ascii'), as_pubkey_receiver_cl)
-        aggsig_sender = "(c (q 0x%s) (c (q %s) (c (sha256 (wrap (a))) (q ()))))" % (hexlify(ConditionOpcode.AGG_SIG).decode('ascii'), as_pubkey_sender_cl)
+        aggsig_receiver = "(c (q 0x%s) (c (q %s) (c (sha256tree (a)) (q ()))))" % (hexlify(ConditionOpcode.AGG_SIG).decode('ascii'), as_pubkey_receiver_cl)
+        aggsig_sender = "(c (q 0x%s) (c (q %s) (c (sha256tree (a)) (q ()))))" % (hexlify(ConditionOpcode.AGG_SIG).decode('ascii'), as_pubkey_sender_cl)
         receiver_puz = ("((c (i (= (sha256 (f (r (a)))) (q %s)) (q (c " + aggsig_receiver + " (c " + payout_receiver + " (q ())))) (q (x (q 'invalid secret')))) (a))) ) ") % (as_secret_hash)
         timelock = "(c (q 0x%s) (c (q %d) (q ()))) " % (hexlify(ConditionOpcode.ASSERT_BLOCK_INDEX_EXCEEDS).decode('ascii'), as_timelock_block)
         sender_puz = "(c " + aggsig_sender + " (c " + timelock + " (c " + payout_sender + " (q ()))))"
@@ -117,22 +102,34 @@ class ASWallet(Wallet):
         return Program(binutils.assemble(sol))
 
 
+    # finds the secret used to spend a swap coin so that it can be used to spend the swap's other coin
+    def pull_preimage(self, body, removals):
+        for coin in removals:
+            for swap in self.as_swap_list:
+                if hexlify(coin.puzzle_hash).decode('ascii') == swap["outgoing puzzlehash"]:
+                    l = [(puzzle_hash, puzzle_solution_program) for (puzzle_hash, puzzle_solution_program) in self.as_solution_list(body.solution_program)]
+                    for x in l:
+                        if hexlify(x[0]).decode('ascii') == hexlify(coin.puzzle_hash).decode('ascii'):
+                            pre1 = binutils.disassemble(x[1])
+                            preimage = pre1[(len(pre1) - 515):(len(pre1) - 3)]
+                            swap["secret"] = preimage
+
+
     # returns a list of tuples of the form (coin_name, puzzle_hash, conditions_dict, puzzle_solution_program)
     def as_solution_list(self, body_program):
         try:
             sexp = clvm.eval_f(clvm.eval_f, body_program, [])
         except clvm.EvalError.EvalError:
-            breakpoint()
-            raise ConsensusError(Err.INVALID_BLOCK_SOLUTION, body_program)
+            raise ValueError(body_program)
         npc_list = []
         for name_solution in sexp.as_iter():
             _ = name_solution.as_python()
             if len(_) != 2:
-                raise ConsensusError(Err.INVALID_COIN_SOLUTION, name_solution)
+                raise ValueError(name_solution)
             if not isinstance(_[0], bytes) or len(_[0]) != 32:
-                raise ConsensusError(Err.INVALID_COIN_SOLUTION, name_solution)
+                raise ValueError(name_solution)
             if not isinstance(_[1], list) or len(_[1]) != 2:
-                raise ConsensusError(Err.INVALID_COIN_SOLUTION, name_solution)
+                raise ValueError(name_solution)
             puzzle_solution_program = name_solution.rest().first()
             puzzle_program = puzzle_solution_program.first()
             puzzle_hash = ProgramHash(Program(puzzle_program))
@@ -167,6 +164,24 @@ class ASWallet(Wallet):
             spend_bundle = build_spend_bundle(coin, Program(pair), sign_f=signer)
             spends.append(spend_bundle)
         return SpendBundle.aggregate(spends)
+
+
+    def as_remove_swap_instances(self, removals):
+        for coin in removals:
+            pcoins = self.as_pending_utxos.copy()
+            for pcoin in pcoins:
+                if coin.puzzle_hash == pcoin.puzzle_hash:
+                    self.as_pending_utxos.remove(pcoin)
+            for swap in self.as_swap_list:
+                if hexlify(coin.puzzle_hash).decode('ascii') == swap["outgoing puzzlehash"]:
+                    swap["outgoing puzzlehash"] = "spent"
+                    if swap["outgoing puzzlehash"] == "spent" and swap["incoming puzzlehash"] == "spent":
+                        self.as_swap_list.remove(swap)
+                if hexlify(coin.puzzle_hash).decode('ascii') == swap["incoming puzzlehash"]:
+                    swap["incoming puzzlehash"] = "spent"
+                    if swap["outgoing puzzlehash"] == "spent" and swap["incoming puzzlehash"] == "spent":
+                        self.as_swap_list.remove(swap)
+
 
 
 """

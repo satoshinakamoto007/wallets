@@ -25,6 +25,23 @@ def pubkey_format(pubkey):
     return ret
 
 
+def secret_hash_format(secret_hash):
+    if isinstance(secret_hash, str):
+        if len(secret_hash) == 64:
+            if not check_string_is_hex(secret_hash):
+                raise ValueError
+            ret = "0x" + secret_hash
+        elif len(secret_hash) == 66:
+            if not check_string_is_hex(secret_hash[2:67]):
+                raise ValueError
+            if not secret_hash[0:2] == "0x":
+                raise ValueError
+            ret = secret_hash
+        else:
+            raise ValueError
+    return ret
+
+
 def serialized_key_to_string(pubkey):
     return "0x%s" % hexlify(pubkey).decode('ascii')
 
