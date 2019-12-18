@@ -34,8 +34,8 @@ def ap_make_puzzle(a_pubkey_serialized, b_pubkey_serialized):
 
     aggsig_entire_solution = f"(c (q 0x{ConditionOpcode.AGG_SIG.hex()}) (c (q {b_pubkey}) (c (sha256tree (a)) (q ()))))"
     create_outputs = f"((c (f (r (a))) (f (r (r (a))))))"
-    aggsig_outputs = f"((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q ((c (i (= (f (f (f (r (a))))) (q 51)) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (c (c (q 50) (c (q {a_pubkey}) (c (f (r (f (f (r (a)))))) (q ())))) (f (r (r (a))))) (q ()))))))) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (f (r (r (a)))) (q ())))))))) (a)))) (q (f (r (r (a)))))) (a)))) (c {create_outputs} (c {create_outputs} (q ()))))))"
-    sum_outputs = f"((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q ((c (i (= (f (f (f (r (a))))) (q 51)) (q (+ (f (r (r (f (f (r (a))))))) ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (q ()))))))) (q (+ (q ()) ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (q ())))))))) (a)))) (q (q ()))) (a)))) (c {create_outputs} (q ())))))"
+    aggsig_outputs = f"((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q ((c (i (= (f (f (f (r (a))))) (q 0x{ConditionOpcode.CREATE_COIN.hex()})) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (c (c (q 0x{ConditionOpcode.AGG_SIG.hex()}) (c (q {a_pubkey}) (c (f (r (f (f (r (a)))))) (q ())))) (f (r (r (a))))) (q ()))))))) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (f (r (r (a)))) (q ())))))))) (a)))) (q (f (r (r (a)))))) (a)))) (c {create_outputs} (c {create_outputs} (q ()))))))"
+    sum_outputs = f"((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q ((c (i (= (f (f (f (r (a))))) (q 0x{ConditionOpcode.CREATE_COIN.hex()})) (q (+ (f (r (r (f (f (r (a))))))) ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (q ()))))))) (q (+ (q ()) ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (q ())))))))) (a)))) (q (q ()))) (a)))) (c {create_outputs} (q ())))))"
     mode_one_me_string = f"(c (q 0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()}) (c (sha256 (f (r (r (r (a))))) (f (r (r (r (r (a)))))) (uint64 {sum_outputs})) (q ())))"
     mode_one = f"(c {aggsig_entire_solution} (c {mode_one_me_string} {aggsig_outputs}))"
     #mode_one = merge_two_lists(create_outputs, mode_one)
