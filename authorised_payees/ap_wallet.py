@@ -125,9 +125,9 @@ class APWallet(Wallet):
     # creates the solution that will allow wallet B to spend the coin
     # Wallet B is allowed to make multiple spends but must spend the coin in its entirety
     def ap_make_solution_mode_1(self, outputs=[], my_primary_input=0x0000, my_puzzle_hash=0x0000):
-        sol = "(1 ("
+        sol = "(1 (a) ("
         for puzhash, amount in outputs:
-            sol += f"(0x{hexlify(puzhash).decode('ascii')} {amount})"
+            sol += f"(51 0x{hexlify(puzhash).decode('ascii')} {amount})"
         sol += f") 0x{hexlify(my_primary_input).decode('ascii')} 0x{hexlify(my_puzzle_hash).decode('ascii')})"
         return Program(binutils.assemble(sol))
 

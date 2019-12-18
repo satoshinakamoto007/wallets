@@ -50,7 +50,7 @@ def ap_make_puzzle(a_pubkey_serialized, b_pubkey_serialized):
          (c {create_lock} (c {create_consolidated} (q ())))))"
 
     puz = f"((c (i (= (f (a)) (q 1)) (q {mode_one}) (q {mode_two})) (a)))"
-    breakpoint()
+    #breakpoint()
     return Program(binutils.assemble(puz))
 
 
