@@ -104,8 +104,8 @@ ChiaLisp is very good at creating programs that create programs. We can use this
 The puzzle for a standard transaction remains the same except for the public key, so the we can create a program that generates standard puzzles which takes the public key as part of it's solution.
 
 ```
-$ brun '(c (q 5) (c (c (q 5) (c (q (q 50)) (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((c (sha256 (wrap (f (a)))) (q ())))))) (q ())))) (q (((c (f (a)) (f (r (a)))))))))' '("0xpubkey")'
-(c (c (q 50) (c (q "0xpubkey") (c (sha256 (wrap (f (a)))) (q ())))) ((c (f (a)) (f (r (a))))))
+$ brun '(c (q 5) (c (c (q 5) (c (q (q 50)) (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((c (sha256tree (f (a))) (q ())))))) (q ())))) (q (((c (f (a)) (f (r (a)))))))))' '("0xpubkey")'
+(c (c (q 50) (c (q "0xpubkey") (c (sha256tree (f (a))) (q ())))) ((c (f (a)) (f (r (a))))))
 ```
 
 This means that wallets can define themselves in terms of what their puzzle generator is.
