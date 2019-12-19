@@ -7,3 +7,4 @@ cbor==1.0.0
 qrcode==6.1
 pyzbar==0.1.8
 Pillow==6.2.1
+setuptools-scm==3.3.3
