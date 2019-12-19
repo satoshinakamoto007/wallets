@@ -82,6 +82,12 @@ Here is the complete list of OpCodes along with their format and behaviour.
 * **ASSERT_BLOCK_INDEX_EXCEEDS - [55] - (55 block_index)**: The spend is only valid if the given block_index has been reached.
 * **ASSERT_BLOCK_AGE_EXCEEDS - [56] - (56 block_age)**: The spend is only valid if the given block_age has surpassed the age of the coin being spent.
 
+These are returned as a list of lists in the form:
+```
+((51 0xabcd1234 200) (50 0x1234abcd) (53 0xdeadbeef))
+```
+Remember: this is what a puzzle should evaluate to when presented with a solution so that a full-node/ledger-sim can understand it.
+
 Let's create a few examples puzzles and solutions to demonstrate how this is used in practice.
 
 
@@ -193,15 +199,17 @@ This means that the coin cannot be spent by anybody else, but the outputs are en
 
 We can construct the following smart transaction where AGGSIG is 50 and the recipient's pubkey is 0xpubkey.
 ```
-(c (c (q 50) (c (q 0xpubkey) (c (sha256 (wrap (a))) (q ())))) (a))
+(c (c (q 50) (c (q 0xpubkey) (c (sha256tree (a)) (q ())))) (a))
 ```
+
+The `sha256tree` operator simply takes a program as a parameter and then creates a hash of that program (compared to `sha256` which would take a hash of the result of the program).
 
 This puzzle forces the resultant evaluation to contain `(50 0xpubkey *hash_of_solution*)` but then adds on all of the conditions presented in the solution.
 
 Let's test it out in clvm_tools - for this example the recipient's pubkey will be represented as 0xdeadbeef.
 The recipient wants to spend the coin to create a new coin which is locked up with the puzzle 0xfadeddab.
 ```
-$ brun '(c (c (q 50) (c (q 0xdeadbeef) (c (sha256 (wrap (a))) (q ())))) (a))' '((51 0xfadeddab 100))'
+$ brun '(c (c (q 50) (c (q 0xdeadbeef) (c (sha256tree (a)) (q ())))) (a))' '((51 0xfadeddab 100))'
 ((50 0xdeadbeef 0x34b88c869130fc1d50aafd392d8fa6797de4370b1969e5216bb076850ed3beae) (51 0xfadeddab 100))
 ```
 
@@ -254,7 +262,7 @@ The coupling inside the SpendBundle and the 80 value asserting its relationship 
 We can construct an even more powerful version of the signature locked coin to use as our standard transaction.
 
 ```
-(c (c (q 50) (c (q 0xpubkey) (c (sha256 (wrap (f (a)))) (q ())))) ((c (f (a)) (f (r (a))))))
+(c (c (q 50) (c (q 0xpubkey) (c (sha256tree (f (a))) (q ())))) ((c (f (a)) (f (r (a))))))
 ```
 
 The first part is mostly the same, the puzzle always returns an AGGSIG check for the recipients public key.
@@ -274,7 +282,7 @@ A basic solution for this standard transaction might look like:
 Running that in the clvm_tools looks like this:
 
 ```
-$ brun '(c (c (q 50) (c (q 0xfadeddab) (c (sha256 (wrap (f (a)))) (q ())))) ((c (f (a)) (f (r (a))))))' '((q ((0x51 0xdeadbeef 50) (0x51 0xf00dbabe 50))) (q ()))'
+$ brun '(c (c (q 50) (c (q 0xfadeddab) (c (sha256tree (f (a))) (q ())))) ((c (f (a)) (f (r (a))))))' '((q ((0x51 0xdeadbeef 50) (0x51 0xf00dbabe 50))) (q ()))'
 
 ((50 0xfadeddab 0x1f82d4d4c6a32459143cf8f8d27ca04be337a59f07238f1f2c31aaf0cd51d153) (81 0xdeadbeef 50) (81 0xf00dbabe 50))
 ```
