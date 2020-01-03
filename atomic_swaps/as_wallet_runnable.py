@@ -8,7 +8,6 @@ from chiasim.hashable.Body import BodyList
 from utilities.decorations import print_leaf, divider, prompt, start_list, close_list, selectable, informative
 from clvm_tools import binutils
 from utilities.puzzle_utilities import pubkey_format, secret_hash_format, puzzlehash_from_string
-from binascii import hexlify
 
 
 # prints wallet details, allows wallet name edit, generates new pubkeys and new puzzlehashes
@@ -18,7 +17,7 @@ def print_my_details(wallet):
     print(f" {informative} Wallet Details / Generate Puzzlehash {informative}")
     print()
     print(f"Name: {wallet.name}")
-    print(f"New pubkey: {hexlify(wallet.get_next_public_key().serialize()).decode('ascii')}")
+    print(f"New pubkey: {wallet.get_next_public_key().serialize().hex()}")
     print(f"New puzzlehash: {wallet.get_new_puzzlehash()}")
     complete_edit = False
     while not complete_edit:
@@ -54,7 +53,7 @@ def print_my_details(wallet):
                     complete_name = True
         elif choice == "pubkey":
             print()
-            print(f"New pubkey: {hexlify(wallet.get_next_public_key().serialize()).decode('ascii')}")
+            print(f"New pubkey: {wallet.get_next_public_key().serialize().hex()}")
         elif choice == "puzzlehash":
             print()
             print(f"New puzzlehash: {wallet.get_new_puzzlehash()}")
@@ -377,7 +376,7 @@ async def set_partner(wallet, ledger_api, as_contacts, method):
         as_contacts[swap_partner] = ["unknown", [[],[]]]
     if method == "init":
         print()
-        my_swap_pubkey = hexlify(wallet.get_next_public_key().serialize()).decode('ascii')
+        my_swap_pubkey = wallet.get_next_public_key().serialize().hex()
         print("This is your pubkey for this swap:")
         print(my_swap_pubkey)
         print()
@@ -429,7 +428,7 @@ async def set_partner(wallet, ledger_api, as_contacts, method):
                 if partner_pubkey == "menu":
                     return None, None, None, None
         print()
-        my_swap_pubkey = hexlify(wallet.get_next_public_key().serialize()).decode('ascii')
+        my_swap_pubkey = wallet.get_next_public_key().serialize().hex()
         print("This is your pubkey for this swap:")
         print(my_swap_pubkey)
         print()
@@ -530,7 +529,7 @@ async def set_parameters_init(wallet, ledger_api, as_contacts):
                     print("You entered an invalid selection.")
         else:
             complete_set_amount = True
-    secret = hexlify(os.urandom(256)).decode('ascii')
+    secret = os.urandom(256).hex()
     secret_hash = wallet.as_generate_secret_hash(secret)
     print()
     print("The hash of the secret for this swap is:")
@@ -606,7 +605,7 @@ async def init_swap_start(wallet, ledger_api, as_contacts):
     spend_bundle = wallet.generate_signed_transaction(amount_outgoing, puzzlehash_outgoing)
     print()
     print("This is the puzzlehash of your outgoing coin:")
-    print(hexlify(puzzlehash_outgoing).decode('ascii'))
+    print(puzzlehash_outgoing.hex())
     print()
     print("Please send your outgoing puzzlehash to your swap partner, and press 'return' to continue.")
     confirm = input(prompt)
@@ -618,7 +617,7 @@ async def init_swap_start(wallet, ledger_api, as_contacts):
     		"secret" : secret,
             "secret hash" : secret_hash,
             "my swap pubkey" : my_swap_pubkey,
-            "outgoing puzzlehash" : hexlify(puzzlehash_outgoing).decode('ascii'),
+            "outgoing puzzlehash" : puzzlehash_outgoing.hex(),
             "timelock time outgoing" : timelock_outgoing,
             "timelock block height outgoing" : timelock_block_outgoing,
             "incoming puzzlehash" : puzzlehash_incoming,
@@ -632,7 +631,7 @@ async def init_swap_start(wallet, ledger_api, as_contacts):
 # finishes creating the swap initiator's swap
 async def init_swap_finish(wallet, ledger_api, most_recent_header, as_contacts, puzzlehash_outgoing, tip_index):
     for swap in wallet.as_swap_list:
-        if hexlify(puzzlehash_outgoing).decode('ascii') == str(swap["outgoing puzzlehash"]):
+        if puzzlehash_outgoing.hex() == str(swap["outgoing puzzlehash"]):
             swap_index = wallet.as_swap_list.index(swap)
     puzzlehash_incoming = add_puzzlehash_init(wallet)
     if puzzlehash_incoming == "menu":
@@ -645,13 +644,13 @@ async def init_swap_finish(wallet, ledger_api, most_recent_header, as_contacts, 
         await get_update(wallet, ledger_api, most_recent_header, as_contacts)
         tip = await ledger_api.get_tip()
         for coin in wallet.as_pending_utxos:
-            if puzzlehash_incoming == hexlify(coin.puzzle_hash).decode('ascii'):
+            if puzzlehash_incoming == coin.puzzle_hash.hex():
                 check = True
     print()
     print("Update complete.")
     timelock_block_incoming = await sender_check(wallet, ledger_api, puzzlehash_incoming, wallet.as_swap_list[swap_index]["partner pubkey"], wallet.as_swap_list[swap_index]["my swap pubkey"], wallet.as_swap_list[swap_index]["amount_incoming"], wallet.as_swap_list[swap_index]["timelock time incoming"], wallet.as_swap_list[swap_index]["secret hash"], tip_index)
     wallet.as_swap_list[swap_index]["timelock block height incoming"] = timelock_block_incoming
-    as_contacts[wallet.as_swap_list[swap_index]["swap partner"]][1][0].append(hexlify(puzzlehash_outgoing).decode('ascii'))
+    as_contacts[wallet.as_swap_list[swap_index]["swap partner"]][1][0].append(puzzlehash_outgoing.hex())
     as_contacts[wallet.as_swap_list[swap_index]["swap partner"]][1][1].append(puzzlehash_incoming)
     print()
     print("You are now participating in the following atomic swap:")
@@ -894,7 +893,7 @@ async def add_swap(wallet, ledger_api, most_recent_header, as_contacts):
         await get_update(wallet, ledger_api, most_recent_header, as_contacts)
         tip = await ledger_api.get_tip()
         for coin in wallet.as_pending_utxos:
-            if puzzlehash_incoming == hexlify(coin.puzzle_hash).decode('ascii'):
+            if puzzlehash_incoming == coin.puzzle_hash.hex():
                 check = True
     print()
     print("Update complete.")
@@ -911,16 +910,16 @@ async def add_swap(wallet, ledger_api, most_recent_header, as_contacts):
     spend_bundle = wallet.generate_signed_transaction(amount_outgoing, puzzlehash_outgoing)
     print()
     print("This is the puzzlehash of your outgoing coin:")
-    print(hexlify(puzzlehash_outgoing).decode('ascii'))
+    print(puzzlehash_outgoing.hex()
     print()
     print("Please send your outgoing puzzlehash to your swap partner, and press 'return' to continue.")
     confirm = input(prompt)
-    as_contacts[swap_partner][1][0].append(hexlify(puzzlehash_outgoing).decode('ascii'))
+    as_contacts[swap_partner][1][0].append(puzzlehash_outgoing.hex())
     as_contacts[swap_partner][1][1].append(puzzlehash_incoming)
     for swap in wallet.as_swap_list:
         if puzzlehash_incoming == str(swap["incoming puzzlehash"]):
             swap_index = wallet.as_swap_list.index(swap)
-    wallet.as_swap_list[swap_index]["outgoing puzzlehash"] = hexlify(puzzlehash_outgoing).decode('ascii')
+    wallet.as_swap_list[swap_index]["outgoing puzzlehash"] = puzzlehash_outgoing.hex()
     wallet.as_swap_list[swap_index]["timelock block height outgoing"] = timelock_block_outgoing
     wallet.as_swap_list[swap_index]["timelock block height incoming"] = timelock_block_incoming
     print()
@@ -1055,9 +1054,9 @@ def spend_with_timelock(wallet, swap_index):
 def remove_swap_instances(wallet, as_contacts, removals):
     for coin in removals:
         for swap in wallet.as_swap_list:
-            if hexlify(coin.puzzle_hash).decode('ascii') == swap["outgoing puzzlehash"]:
+            if coin.puzzle_hash.hex() == swap["outgoing puzzlehash"]:
                 as_contacts[swap["swap partner"]][1][0].remove(swap["outgoing puzzlehash"])
-            if hexlify(coin.puzzle_hash).decode('ascii') == swap["incoming puzzlehash"]:
+            if coin.puzzle_hash.hex() == swap["incoming puzzlehash"]:
                 as_contacts[swap["swap partner"]][1][1].remove(swap["incoming puzzlehash"])
     wallet.as_remove_swap_instances(removals)
 
@@ -1137,7 +1136,7 @@ async def main_loop():
     print()
     print("Welcome to your Chia Atomic Swap Wallet.")
     print()
-    print(f"Your pubkey is: {hexlify(wallet.get_next_public_key().serialize()).decode('ascii')}")
+    print(f"Your pubkey is: {wallet.get_next_public_key().serialize().hex()}")
 
     while selection != "q":
         print()

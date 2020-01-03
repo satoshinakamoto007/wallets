@@ -13,7 +13,6 @@ from chiasim.storage import RAM_DB
 from chiasim.utils.server import start_unix_server_aiter
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
 from atomic_swaps.as_wallet import ASWallet
-from binascii import hexlify
 
 
 async def proxy_for_unix_connection(path):
@@ -28,7 +27,7 @@ def create_swap_for_two_wallet_numbers(remote, wallets, as_list_list, a, b, amou
     as_swap_list_a = as_list_list[a]
     as_swap_list_b = as_list_list[b]
     # Setup for A
-    secret = hexlify(os.urandom(256)).decode('ascii')
+    secret = os.urandom(256).hex()
     secret_hash = wallet_a.as_generate_secret_hash(secret)
     tip = run(remote.get_tip())
     timelock_a = 10
@@ -47,7 +46,7 @@ def create_swap_for_two_wallet_numbers(remote, wallets, as_list_list, a, b, amou
             "secret": secret,
             "secret hash": secret_hash,
             "my swap pubkey": a_pubkey,
-            "outgoing puzzlehash": hexlify(puzzlehash_a).decode('ascii'),
+            "outgoing puzzlehash": puzzlehash_a.hex(),
             "timelock time outgoing": timelock_a,
             "timelock block height outgoing": timelock_block_a,
             "incoming puzzlehash": puzzlehash_b,
@@ -55,8 +54,6 @@ def create_swap_for_two_wallet_numbers(remote, wallets, as_list_list, a, b, amou
             "timelock block height incoming": timelock_block_b
     }
     as_swap_list_a.append(new_swap)
-    print()
-    print(new_swap)
 
     # Setup for B
     tip = run(remote.get_tip())
@@ -75,19 +72,17 @@ def create_swap_for_two_wallet_numbers(remote, wallets, as_list_list, a, b, amou
             "secret": secret,
             "secret hash": secret_hash,
             "my swap pubkey": b_pubkey,
-            "outgoing puzzlehash": hexlify(puzzlehash_b).decode('ascii'),
+            "outgoing puzzlehash": puzzlehash_b.hex(),
             "timelock time outgoing": timelock_b,
             "timelock block height outgoing": timelock_block_b,
-            "incoming puzzlehash": hexlify(puzzlehash_a).decode('ascii'),
+            "incoming puzzlehash": puzzlehash_a.hex(),
             "timelock time incoming": timelock_a,
             "timelock block height incoming": timelock_block_a
     }
     as_swap_list_b.append(new_swap)
-    print()
-    print(new_swap)
 
     # Finish information for wallet_a
-    as_swap_list_a[len(as_swap_list_a)-1]["incoming puzzlehash"] = hexlify(puzzlehash_b).decode('ascii')
+    as_swap_list_a[len(as_swap_list_a)-1]["incoming puzzlehash"] = puzzlehash_b.hex()
     as_swap_list_a[len(as_swap_list_a)-1]["timelock block height incoming"] = timelock_block_b
     return spend_bundle_a, spend_bundle_b
 

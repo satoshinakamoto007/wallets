@@ -2,7 +2,6 @@ from standard_wallet.wallet import Wallet
 import clvm
 import sys
 from chiasim.hashable import Program, ProgramHash, SpendBundle
-from binascii import hexlify
 from clvm_tools import binutils
 from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from chiasim.validation.Conditions import ConditionOpcode
@@ -34,7 +33,7 @@ class ASWallet(Wallet):
     def as_notify(self, additions, puzzlehashes):
         for coin in additions:
             for puzzlehash in puzzlehashes:
-                if hexlify(coin.puzzle_hash).decode('ascii') == puzzlehash and coin.puzzle_hash not in self.overlook:
+                if coin.puzzle_hash.hex() == puzzlehash and coin.puzzle_hash not in self.overlook:
                     self.as_pending_utxos.add(coin)
                     self.overlook.append(coin.puzzle_hash)
 
@@ -65,16 +64,16 @@ class ASWallet(Wallet):
 
 
     def as_make_puzzle(self, as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_block, as_secret_hash):
-        as_pubkey_sender_cl = "0x%s" % (hexlify(as_pubkey_sender).decode('ascii'))
-        as_pubkey_receiver_cl = "0x%s" % (hexlify(as_pubkey_receiver).decode('ascii'))
+        as_pubkey_sender_cl = "0x%s" % (as_pubkey_sender.hex())
+        as_pubkey_receiver_cl = "0x%s" % (as_pubkey_receiver.hex())
         as_payout_puzzlehash_receiver = ProgramHash(puzzle_for_pk(as_pubkey_receiver))
         as_payout_puzzlehash_sender = ProgramHash(puzzle_for_pk(as_pubkey_sender))
-        payout_receiver = "(c (q 0x%s) (c (q 0x%s) (c (q %d) (q ()))))" % (hexlify(ConditionOpcode.CREATE_COIN).decode('ascii'), hexlify(as_payout_puzzlehash_receiver).decode('ascii'), as_amount)
-        payout_sender = "(c (q 0x%s) (c (q 0x%s) (c (q %d) (q ()))))" % (hexlify(ConditionOpcode.CREATE_COIN).decode('ascii'), hexlify(as_payout_puzzlehash_sender).decode('ascii'), as_amount)
-        aggsig_receiver = "(c (q 0x%s) (c (q %s) (c (sha256tree (a)) (q ()))))" % (hexlify(ConditionOpcode.AGG_SIG).decode('ascii'), as_pubkey_receiver_cl)
-        aggsig_sender = "(c (q 0x%s) (c (q %s) (c (sha256tree (a)) (q ()))))" % (hexlify(ConditionOpcode.AGG_SIG).decode('ascii'), as_pubkey_sender_cl)
+        payout_receiver = "(c (q 0x%s) (c (q 0x%s) (c (q %d) (q ()))))" % (ConditionOpcode.CREATE_COIN.hex(), as_payout_puzzlehash_receiver.hex(), as_amount)
+        payout_sender = "(c (q 0x%s) (c (q 0x%s) (c (q %d) (q ()))))" % (ConditionOpcode.CREATE_COIN.hex(), as_payout_puzzlehash_sender.hex(), as_amount)
+        aggsig_receiver = "(c (q 0x%s) (c (q %s) (c (sha256tree (a)) (q ()))))" % (ConditionOpcode.AGG_SIG.hex(), as_pubkey_receiver_cl)
+        aggsig_sender = "(c (q 0x%s) (c (q %s) (c (sha256tree (a)) (q ()))))" % (ConditionOpcode.AGG_SIG.hex(), as_pubkey_sender_cl)
         receiver_puz = ("((c (i (= (sha256 (f (r (a)))) (q %s)) (q (c " + aggsig_receiver + " (c " + payout_receiver + " (q ())))) (q (x (q 'invalid secret')))) (a))) ) ") % (as_secret_hash)
-        timelock = "(c (q 0x%s) (c (q %d) (q ()))) " % (hexlify(ConditionOpcode.ASSERT_BLOCK_INDEX_EXCEEDS).decode('ascii'), as_timelock_block)
+        timelock = "(c (q 0x%s) (c (q %d) (q ()))) " % (ConditionOpcode.ASSERT_BLOCK_INDEX_EXCEEDS.hex(), as_timelock_block)
         sender_puz = "(c " + aggsig_sender + " (c " + timelock + " (c " + payout_sender + " (q ()))))"
         as_puz_sender = "((c (i (= (f (a)) (q 77777)) (q " + sender_puz + ") (q (x (q 'not a valid option'))) ) (a)))"
         as_puz = "((c (i (= (f (a)) (q 33333)) (q " + receiver_puz + " (q " + as_puz_sender + ")) (a)))"
@@ -106,10 +105,10 @@ class ASWallet(Wallet):
     def pull_preimage(self, body, removals):
         for coin in removals:
             for swap in self.as_swap_list:
-                if hexlify(coin.puzzle_hash).decode('ascii') == swap["outgoing puzzlehash"]:
+                if coin.puzzle_hash.hex() == swap["outgoing puzzlehash"]:
                     l = [(puzzle_hash, puzzle_solution_program) for (puzzle_hash, puzzle_solution_program) in self.as_solution_list(body.solution_program)]
                     for x in l:
-                        if hexlify(x[0]).decode('ascii') == hexlify(coin.puzzle_hash).decode('ascii'):
+                        if x[0].hex() == coin.puzzle_hash.hex():
                             pre1 = binutils.disassemble(x[1])
                             preimage = pre1[(len(pre1) - 515):(len(pre1) - 3)]
                             swap["secret"] = preimage
@@ -173,11 +172,11 @@ class ASWallet(Wallet):
                 if coin.puzzle_hash == pcoin.puzzle_hash:
                     self.as_pending_utxos.remove(pcoin)
             for swap in self.as_swap_list:
-                if hexlify(coin.puzzle_hash).decode('ascii') == swap["outgoing puzzlehash"]:
+                if coin.puzzle_hash.hex() == swap["outgoing puzzlehash"]:
                     swap["outgoing puzzlehash"] = "spent"
                     if swap["outgoing puzzlehash"] == "spent" and swap["incoming puzzlehash"] == "spent":
                         self.as_swap_list.remove(swap)
-                if hexlify(coin.puzzle_hash).decode('ascii') == swap["incoming puzzlehash"]:
+                if coin.puzzle_hash.hex() == swap["incoming puzzlehash"]:
                     swap["incoming puzzlehash"] = "spent"
                     if swap["outgoing puzzlehash"] == "spent" and swap["incoming puzzlehash"] == "spent":
                         self.as_swap_list.remove(swap)
