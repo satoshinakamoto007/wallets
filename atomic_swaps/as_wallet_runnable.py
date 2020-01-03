@@ -1062,28 +1062,6 @@ def remove_swap_instances(wallet, as_contacts, removals):
     wallet.as_remove_swap_instances(removals)
 
 
-'''
-# removes atomic swap coins and info throughout the wallet after the swap's pending coins are spent
-def remove_swap_instances(wallet, as_contacts, removals):
-    for coin in removals:
-        pcoins = wallet.as_pending_utxos.copy()
-        for pcoin in pcoins:
-            if coin.puzzle_hash == pcoin.puzzle_hash:
-                wallet.as_pending_utxos.remove(pcoin)
-        for swap in wallet.as_swap_list:
-            if hexlify(coin.puzzle_hash).decode('ascii') == swap["outgoing puzzlehash"]:
-                as_contacts[swap["swap partner"]][1][0].remove(swap["outgoing puzzlehash"])
-                swap["outgoing puzzlehash"] = "spent"
-                if swap["outgoing puzzlehash"] == "spent" and swap["incoming puzzlehash"] == "spent":
-                    wallet.as_swap_list.remove(swap)
-            if hexlify(coin.puzzle_hash).decode('ascii') == swap["incoming puzzlehash"]:
-                as_contacts[swap["swap partner"]][1][1].remove(swap["incoming puzzlehash"])
-                swap["incoming puzzlehash"] = "spent"
-                if swap["outgoing puzzlehash"] == "spent" and swap["incoming puzzlehash"] == "spent":
-                    wallet.as_swap_list.remove(swap)
-'''
-
-
 # redeems a pending atomic swap coin
 def spend_coin(wallet, as_contacts):
     print()
