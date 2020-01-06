@@ -38,12 +38,13 @@ class CCWallet(Wallet):
         return core
 
     # This is for spending a recieved coloured coin
-    def cc_make_solution(self, core, parent_info, innerpuz, innersol):
+    def cc_make_solution(self, core, parent_info, amount, innerpuz, innersol):
         if isinstance(parent_info, list):
             parent_info = f"({parent_info[0]} {parent_info[1]} {parent_info[2]})"
-        elif parent_info == "'origin'"
+        elif parent_info == "'origin'":
+            parent_info = "('origin')"
 
-        sol = f"({core} {parent_info}"
+        sol = f"({core} {amount} {parent_info}"
         return sol
 
     # This is for spending a recieved coloured coin
