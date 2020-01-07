@@ -56,24 +56,24 @@ class ASWallet(Wallet):
 
     # generates the hash of the secret used for the atomic swap coin hashlocks
     def as_generate_secret_hash(self, secret):
-        secret_hash_cl = "(sha256 (q %s))" % (secret)
-        sec = "(%s)" % secret
+        secret_hash_cl = f"(sha256 (q {secret}))"
+        sec = f"({secret})" 
         secret_hash_preformat = clvm.eval_f(clvm.eval_f, binutils.assemble("(sha256 (f (a)))"), binutils.assemble(sec))
         secret_hash = binutils.disassemble(secret_hash_preformat)
         return secret_hash
 
 
     def as_make_puzzle(self, as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_block, as_secret_hash):
-        as_pubkey_sender_cl = "0x%s" % (as_pubkey_sender.hex())
-        as_pubkey_receiver_cl = "0x%s" % (as_pubkey_receiver.hex())
+        as_pubkey_sender_cl = f"0x{as_pubkey_sender.hex()}"
+        as_pubkey_receiver_cl = f"0x{as_pubkey_receiver.hex()}"
         as_payout_puzzlehash_receiver = ProgramHash(puzzle_for_pk(as_pubkey_receiver))
         as_payout_puzzlehash_sender = ProgramHash(puzzle_for_pk(as_pubkey_sender))
-        payout_receiver = "(c (q 0x%s) (c (q 0x%s) (c (q %d) (q ()))))" % (ConditionOpcode.CREATE_COIN.hex(), as_payout_puzzlehash_receiver.hex(), as_amount)
-        payout_sender = "(c (q 0x%s) (c (q 0x%s) (c (q %d) (q ()))))" % (ConditionOpcode.CREATE_COIN.hex(), as_payout_puzzlehash_sender.hex(), as_amount)
-        aggsig_receiver = "(c (q 0x%s) (c (q %s) (c (sha256tree (a)) (q ()))))" % (ConditionOpcode.AGG_SIG.hex(), as_pubkey_receiver_cl)
-        aggsig_sender = "(c (q 0x%s) (c (q %s) (c (sha256tree (a)) (q ()))))" % (ConditionOpcode.AGG_SIG.hex(), as_pubkey_sender_cl)
-        receiver_puz = ("((c (i (= (sha256 (f (r (a)))) (q %s)) (q (c " + aggsig_receiver + " (c " + payout_receiver + " (q ())))) (q (x (q 'invalid secret')))) (a))) ) ") % (as_secret_hash)
-        timelock = "(c (q 0x%s) (c (q %d) (q ()))) " % (ConditionOpcode.ASSERT_BLOCK_INDEX_EXCEEDS.hex(), as_timelock_block)
+        payout_receiver = f"(c (q 0x{ConditionOpcode.CREATE_COIN.hex()}) (c (q 0x{as_payout_puzzlehash_receiver.hex()}) (c (q {as_amount}) (q ()))))"
+        payout_sender = f"(c (q 0x{ConditionOpcode.CREATE_COIN.hex()}) (c (q 0x{as_payout_puzzlehash_sender.hex()}) (c (q {as_amount}) (q ()))))"
+        aggsig_receiver = f"(c (q 0x{ConditionOpcode.AGG_SIG.hex()}) (c (q {as_pubkey_receiver_cl}) (c (sha256tree (a)) (q ()))))"
+        aggsig_sender = f"(c (q 0x{ConditionOpcode.AGG_SIG.hex()}) (c (q {as_pubkey_sender_cl}) (c (sha256tree (a)) (q ()))))"
+        receiver_puz = (f"((c (i (= (sha256 (f (r (a)))) (q {as_secret_hash})) (q (c " + aggsig_receiver + " (c " + payout_receiver + " (q ())))) (q (x (q 'invalid secret')))) (a))) ) ")
+        timelock = f"(c (q 0x{ConditionOpcode.ASSERT_BLOCK_INDEX_EXCEEDS.hex()}) (c (q {as_timelock_block}) (q ()))) "
         sender_puz = "(c " + aggsig_sender + " (c " + timelock + " (c " + payout_sender + " (q ()))))"
         as_puz_sender = "((c (i (= (f (a)) (q 77777)) (q " + sender_puz + ") (q (x (q 'not a valid option'))) ) (a)))"
         as_puz = "((c (i (= (f (a)) (q 33333)) (q " + receiver_puz + " (q " + as_puz_sender + ")) (a)))"
@@ -89,7 +89,7 @@ class ASWallet(Wallet):
     # 33333 is the receiver solution code prefix
     def as_make_solution_receiver(self, as_sec_to_try):
         sol = "(33333 "
-        sol += "%s" % (as_sec_to_try)
+        sol += f"{as_sec_to_try}"
         sol += ")"
         return Program(binutils.assemble(sol))
 

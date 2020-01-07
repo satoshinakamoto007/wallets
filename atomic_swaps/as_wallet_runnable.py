@@ -910,7 +910,7 @@ async def add_swap(wallet, ledger_api, most_recent_header, as_contacts):
     spend_bundle = wallet.generate_signed_transaction(amount_outgoing, puzzlehash_outgoing)
     print()
     print("This is the puzzlehash of your outgoing coin:")
-    print(puzzlehash_outgoing.hex()
+    print(puzzlehash_outgoing.hex())
     print()
     print("Please send your outgoing puzzlehash to your swap partner, and press 'return' to continue.")
     confirm = input(prompt)
