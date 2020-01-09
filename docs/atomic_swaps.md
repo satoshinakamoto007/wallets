@@ -8,30 +8,36 @@ Atomic swaps are processes by which two parties exchange coins using hashed time
 
 ### Setting up an atomic swap
 
-Alice and Bob agree to swap _X_ coins. One party must arbitrarily act as the swap initiator.
+Alice and Bob agree to swap coins. Alice will send _X<sub>1</sub>_ Chia to Bob, and Bob will send _X<sub>2</sub>_ Chia to Alice. One party must arbitrarily act as the swap initiator.
 
-Alice initiates the swap by creating a coin _C1_ whose value is _X_ Chia and whose timeout time is _B_ blocks from the current (_NOW_) block height, i.e. at block height _NOW+B_. _C1_ is Alice's "outgoing coin" and Bob's "incoming coin".
+Alice initiates the swap by creating a coin _C<sub>1</sub>_ whose value is _X<sub>1</sub>_ Chia and whose timeout time is at block height _NOW<sub>1</sub>+B_, which is _B_ blocks away from the current block height _NOW<sub>1</sub>_. _C<sub>1</sub>_ is Alice's "outgoing coin" and Bob's "incoming coin".
 
-Bob adds the swap to his swap list while creating a reciprocal coin _C2_ whose value is _X_ Chia and whose timeout time is _B/2_ from the current (_NOW_) block height, i.e. at block height _(NOW+B)/2_. _C2_ is Bob's "outgoing coin" and Alice's "incoming coin".
+Bob adds the swap to his swap list while creating a reciprocal coin _C<sub>2</sub>_ whose value is _X<sub>2</sub>_ Chia and whose timeout time is at block height _NOW<sub>2</sub>+(B/2)_, which is _B/2_ blocks away from the current block height _NOW<sub>2</sub>_. _C<sub>2</sub>_ is Bob's "outgoing coin" and Alice's "incoming coin". Because _NOW<sub>1</sub>_ and _NOW<sub>2</sub>_ may be different (and in the case of our impletation are _always_ different), Bob also sets a buffer time _BUF_ which ensures that the timeout time of _C<sub>2</sub>_ will occur before the timeout time of _C<sub>1</sub>_. The buffer may be between _1_ and _(B/2)-1_ blocks, but otherwise the value of _BUF_ is left to the discretion of Bob. When Bob creates _C<sub>2</sub>_, a check is performed to ensure that _NOW<sub>1</sub>+B_ is greater than or equal to _NOW<sub>2</sub>+(B/2)+ BUF_.
 
-_C1_ and _C2_ are committed to the blockchain when the next block is farmed.
+_C<sub>1</sub>_ and _C<sub>2</sub>_ are committed to the blockchain when the next block is farmed.
 
 ### Redeeming atomic swap coins
 
 #### Standard case
 
-In the standard case, Alice will spend her incoming coin (_C2_) to her wallet using the secret _s_, which Alice used to lock her outgoing coin (_C1_). When Alice does this and the spend is posted to the blockchain, _s_ becomes public knowledge. Bob then uses _s_ to spend his incoming coin (_C1_) to his wallet.
+In the standard case, Alice will spend her incoming coin (_C<sub>2</sub>_) to her wallet using the secret _s_, which Alice used to lock her outgoing coin (_C<sub>1</sub>_). When Alice does this and the spend is posted to the blockchain, _s_ becomes public knowledge. Bob then uses _s_ to spend his incoming coin (_C<sub>1</sub>_) to his wallet.
 
 #### Timeout case
 
-In the case that Alice fails to spend _C2_ to her wallet before _C2_'s timeout time has elapsed (i.e. when block height _(NOW+B)/2_ is reached), Bob may spend _C2_ back to his wallet. Because Bob does not have the secret _s_, he is unable to spend _C1_ to his wallet. After _C1_'s timeout time has elapsed (i.e. when block height _NOW+B_ is reached), Alice may spend _C1_ back to her wallet.
+In the case that Alice fails to spend _C<sub>2</sub>_ to her wallet before _C<sub>2</sub>_'s timeout time has elapsed (i.e. when block height _NOW<sub>2</sub>+(B/2)_ is reached), Bob may spend _C<sub>2</sub>_ back to his wallet. Because Bob does not have the secret _s_, he is unable to spend _C<sub>1</sub>_ to his wallet. After _C<sub>1</sub>_'s timeout time has elapsed (i.e. when block height _NOW<sub>1</sub>+B_ is reached), Alice may spend _C<sub>1</sub>_ back to her wallet.
 
 
 ## Usage
 
-Run a version of `ledger-sim` in a background terminal window.
+  Run a version of `ledger-sim` in a background terminal window.
+  
+  1. **Run Ledger-Sim**
+  
+     - Open a terminal window.
+     - Run `$ . .venv/bin/activate`
+     - Run `$ ledger-sim`
 
-### Commands
+### Atomic Swap Wallet Commands
   - 1 Wallet Details / Generate Puzzlehash
   - 2 View Funds
   - 3 View Contacts
@@ -47,9 +53,9 @@ Run a version of `ledger-sim` in a background terminal window.
 
 ### Atomic Swap (step by step)
 
-  Terminal 1 represents Alice's wallet, and Terminal 2 represents Bob's wallet.
-  
-  1. **RUN**
+  Terminal 1 represents Alice's wallet, and Terminal 2 represents Bob's wallet. Alice sends 1000 Chia to Bob, and Bob sends 3000 Chia to Alice.
+
+  1. **Run Atomic Swap Wallets**
      - Open two terminal windows.
      - In each window run `$ . .venv/bin/activate`
      - In each window run `$ as_wallet`
@@ -68,23 +74,27 @@ Run a version of `ledger-sim` in a background terminal window.
        - Type "**8**" and press **enter**.
        - Type "**Alice**" and press **enter**.
      - **Terminal 1**
-       - Copy PubKey from **Terminal 1** and then paste it to **Terminal 2** and press **enter**. Go back to **Terminal 1** and press **enter**.
+       - Copy the PubKey from **Terminal 1** and then paste it to **Terminal 2** and press **enter**. Go back to **Terminal 1** and press **enter**.
      - **Terminal 2**
-       - Copy PubKey from **Terminal 2** and then paste it to **Terminal 1** and press **enter**. Go back to **Terminal 2** and press **enter**.
+       - Copy the PubKey from **Terminal 2** and then paste it to **Terminal 1** and press **enter**. Go back to **Terminal 2** and press **enter**.
      - **Terminal 1**
-       - Type "**1000**" and press **enter**. (This sets 1000 coins as the amount to be swapped.)
+       - Type "**1000**" and press **enter**. (This sets 1000 Chia as Alice's outgoing amount.)
      - **Terminal 2**
-       - Type "**1000**" and press **enter**. (This sets 1000 coins as the amount to be swapped.)
+       - Type "**3000**" and press **enter**. (This sets 3000 Chia as Bob's outgoing amount.)
+     - **Terminal 1**
+       - Type "**3000**" and press **enter**. (This sets 3000 Chia as Alice's incoming amount.)
+     - **Terminal 2**
+       - Type "**1000**" and press **enter**. (This sets 1000 Chia as Bob's incoming amount.)
      - **Terminal 1**
        - Copy the hash of the secret from **Terminal 1** and then paste it to **Terminal 2** and press **enter** in **Terminal 2**. Go back to **Terminal 1** and press **enter**.
-       - Type "**10**" and press **enter**. (This sets 10 blocks as the timelock for Alice's outgoing coin [Bob's incoming coin] and inherently sets 5 blocks as the timelock for Alice's incoming coin [Bob's outgoing coin].)
+       - Type "**10**" and press **enter**. (This sets 10 blocks as the timelock for Alice's outgoing coin [Bob's incoming coin] and consequently sets 10/2=5 blocks as the timelock for Alice's incoming coin [Bob's outgoing coin].)
      - **Terminal 2**
-       - Type "**10**" and press **enter**. (This sets 10 blocks as the timelock for Bob's incoming coin [Alice's outgoing coin] and inherently sets 5 blocks as the timelock for Bob's outgoing coin [Alice's incoming coin].)
+       - Type "**10**" and press **enter**. (This sets 10 blocks as the timelock for Bob's incoming coin [Alice's outgoing coin] and consequently sets 10/2=5 blocks as the timelock for Bob's outgoing coin [Alice's incoming coin].)
        - Type "**4**" and press **enter**. (The sets 4 blocks as the minimum buffer time between the timeout blocks of Bob's incoming and outgoing coins.)
      - **Terminal 1**
-       - Copy puzzlehash from **Terminal 1** and then paste it to **Terminal 2** and press **enter**. Go back to **Terminal 1** and press **enter**.
+       - Copy the puzzlehash from **Terminal 1** and then paste it to **Terminal 2** and press **enter**. Go back to **Terminal 1** and press **enter**. (In our toy model, Alice's wallet automatically farms a block and receives a block reward at this time in order to commit _C1_ to the blockchain.)
      - **Terminal 2**
-       - Copy puzzlehash from **Terminal 2** and then paste it to **Terminal 1** and press **enter**. Go back to **Terminal 2** and press **enter**.
+       - Copy the puzzlehash from **Terminal 2** and then paste it to **Terminal 1** and press **enter**. Go back to **Terminal 2** and press **enter**. (In our toy model, Bob's wallet automatically farms a block and receives a block reward at this time in order to commit _C2_ to the blockchain.)
 
   4. **View Swap Info**
      - **Terminal 1**
@@ -103,7 +113,7 @@ Run a version of `ledger-sim` in a background terminal window.
        - Type "**6**" and press **enter**. (This views the atomic swaps in which Alice is currently participating.)
      - **Terminal 2**
        - Type "**6**" and press **enter**. (This views the atomic swaps in which Bob is currently participating.)
-       
+
   5. **Spend Coins**
      - **Terminal 1**
        - Type "**9**" and press **enter**.
