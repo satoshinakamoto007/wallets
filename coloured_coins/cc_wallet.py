@@ -3,27 +3,30 @@ from chiasim.validation.Conditions import ConditionOpcode
 from chiasim.hashable import Program, ProgramHash
 from clvm_tools import binutils
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
+from chiasim.hashable import CoinSolution, SpendBundle, BLSSignature
+from chiasim.hashable.CoinSolution import CoinSolutionList
 import hashlib
 
 
 class CCWallet(Wallet):
-    cores = []
 
     def __init__(self):
         super().__init__()
         self.my_cores = []  # core is stored as a string
-        self.my_coloured_coins = set()
+        self.my_coloured_coins = dict()  # {coin: (innerpuzhash, core)}
         return
 
     def notify(self, additions, deletions):
         self.cc_notify(additions)
         super().notify(additions, deletions)
-        breakpoint()
 
     def cc_notify(self, additions):
         for coin in additions:
-            if self.cc_can_generate(coin.puzzle_hash):
-                self.my_coloured_coins.add(coin)
+            for i in reversed(range(self.next_address)):
+                innerpuz = puzzle_for_pk(self.extended_secret_key.public_child(i).get_public_key().serialize())
+                for core in self.my_cores:
+                    if ProgramHash(self.cc_make_puzzle(ProgramHash(innerpuz), core)) == coin.puzzle_hash:
+                        self.my_coloured_coins[coin] = (innerpuz, core)
         return
 
     def cc_can_generate(self, finalpuzhash):
@@ -67,6 +70,7 @@ class CCWallet(Wallet):
     # TODO: Ask Bram about this - core is "the colour"
     # Actually a colour specific filter program that checks parents - what format?
     def cc_make_core(self, originID):
+        # Confirmed working.
         create_outputs = f"((c (f (r (r (r (a))))) (f (r (r (r (r (a))))))))"
         sum_outputs = f"((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q ((c (i (= (f (f (f (r (a))))) (q 0x{ConditionOpcode.CREATE_COIN.hex()})) (q (+ (f (r (r (f (f (r (a))))))) ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (q ()))))))) (q (+ (q ()) ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (q ())))))))) (a)))) (q (q ()))) (a)))) (c {create_outputs} (q ())))))"
 
@@ -79,26 +83,27 @@ class CCWallet(Wallet):
 
         # python_loop = f"""
         #((c (i (f (r (a)))
-	    #   (q ((c (i (= (f (f (f (r (a))))) (q 51))
-		#         (q {new_createcoin})
-		#         (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (f (r (r (a)))) (c (c (f (f (r (a)))) (f (r (r (r (a)))))) (q ()))))))))
+        #   (q ((c (i (= (f (f (f (r (a))))) (q 51))
+    #         (q {new_createcoin})
+    #         (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (f (r (r (a)))) (c (c (f (f (r (a)))) (f (r (r (r (a)))))) (q ()))))))))
     #            ) (a)))
     #        )
     #        (q (f (r (r (r (a))))))
     #    ) (a)))"""
 
-        # below is confirmed working raw chialisp - to be converted to nice python above
+        # below is confirmed working raw chialisp - to be converted to nice python later
         replace_generated_createcoins = f"((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q ((c (i (= (f (f (f (r (a))))) (q 0x{ConditionOpcode.CREATE_COIN.hex()})) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (f (r (r (a)))) (c (c (c (q 0x{ConditionOpcode.CREATE_COIN.hex()}) (c (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (f (f (r (a)))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (r (r (a)))) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))) (c (f (r (r (f (f (r (a))))))) (q ())))) (f (r (r (r (a)))))) (q ())))))))) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (f (r (r (a)))) (c (c (f (f (r (a)))) (f (r (r (r (a)))))) (q ())))))))) ) (a))) ) (q (f (r (r (r (a)))))) ) (a)))) (c {create_outputs} (c (f (a)) (c (q ()) (q ())))))))"
+
+
 
         add_core_to_parent_innerpuzhash = "(c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (f (r (a))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))"
         add_core_to_my_innerpuz_reveal = "(c (q 7) (c (c (q 5) (c (c (q 1) (c (sha256tree (f (r (r (r (a)))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))"
 
-        assert_my_parent_origin = f"(c (q 0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()}) (c (sha256 (f (a)) (sha256tree {add_core_to_my_innerpuz_reveal}) {sum_outputs}) (q ())))"
-        assert_my_parent_follows_core_logic = f"(c (q 0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()}) (c (sha256 (sha256 (f (f (a))) (sha256tree {add_core_to_parent_innerpuzhash}) (f (r (r (f (a)))))) (sha256tree {add_core_to_my_innerpuz_reveal}) {sum_outputs})) (q ()))"
+        assert_my_parent_is_origin = f"(c (q 0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()}) (c (sha256 (f (r (a))) (sha256tree {add_core_to_my_innerpuz_reveal}) {sum_outputs}) (q ())))"
 
-        # assert_my_id_origin = f"(q (0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()} {originID}))"
-        heritage_check = f"((c (i (= (q 0x{originID}) (f (a))) {assert_my_parent_origin} {assert_my_parent_follows_core_logic}) (a)))"
-        # origin_check = f"((c (i (= (q 0x{originID}) (sha256 (sha256 (f (f (a))) (sha256tree {add_core_to_parent_innerpuzhash}) (f (r (r (f (a)))))) (sha256tree {add_core_to_my_innerpuz_reveal}) {sum_outputs})) (q {assert_my_id_origin}) (q {heritage_check})) (a)))"
+        assert_my_parent_follows_core_logic = f"(c (q 0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()}) (c (sha256 (sha256 (f (f (r (a)))) (sha256tree {add_core_to_parent_innerpuzhash}) (f (r (r (f (r (a))))))) (sha256tree {add_core_to_my_innerpuz_reveal}) {sum_outputs}) (q ())))"
+
+        heritage_check = f"((c (i (l (f (r (a)))) (q {assert_my_parent_follows_core_logic}) (q ((c (i (= (q 0x{originID}) (f (r (a)))) (q {assert_my_parent_is_origin}) (q (x))) (a)))) ) (a)))"
 
         core = f"(c {heritage_check} {replace_generated_createcoins})"
         breakpoint()
@@ -109,18 +114,25 @@ class CCWallet(Wallet):
         parent_str = ""
         # parent_info is a triplet or the originID
         # genesis coin isn't coloured, child of genesis uses originID, all subsequent children use triplets
-        # this is weird. check with bram in call
         if isinstance(parent_info, list):
             #  (parent primary input, parent inner puzzle hash, parent amount)
-            parent_str = f"({parent_info[0]} {parent_info[1]} {parent_info[2]})"
+            parent_str = f"(0x{parent_info[0]} 0x{parent_info[1]} {parent_info[2]})"
         else:
             parent_str = f"0x{parent_info.hex()}"
         sol = f"({core} {parent_str} {amount} {innerpuzreveal} {innersol})"
         return sol
 
     # This is for spending a recieved coloured coin
-    def cc_generate_signed_transaction(self):
+    def cc_generate_signed_transaction(self, coin, innersol, sigs=[]):
         spend_bundle = None
+        innerpuz = self.my_coloured_coins[coin][0]
+        core = self.my_coloured_coins[coin][1]
+        solution_list = CoinSolutionList(
+            [CoinSolution(coin_solution.coin, clvm.to_sexp_f([puzzle, [coin_solution.solution, []]])) for
+             (puzzle, coin_solution) in spends])
+
+        aggsig = BLSSignature.aggregate(sigs)
+        spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle
 
 

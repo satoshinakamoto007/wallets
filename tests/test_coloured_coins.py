@@ -1,19 +1,24 @@
 import asyncio
 import pathlib
 import tempfile
+import clvm
 from aiter import map_aiter
 from coloured_coins.cc_wallet import CCWallet
-from standard_wallet.wallet import Wallet
-from authorised_payees import ap_wallet_a_functions
+from standard_wallet.wallet import Wallet, make_solution
 from chiasim.utils.log import init_logging
 from chiasim.remote.api_server import api_server
 from chiasim.remote.client import request_response_proxy
 from chiasim.clients import ledger_sim
 from chiasim.ledger import ledger_api
 from chiasim.hashable import Coin
+from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from chiasim.storage import RAM_DB
 from chiasim.utils.server import start_unix_server_aiter
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
+from chiasim.validation.Conditions import conditions_by_opcode
+from chiasim.validation.consensus import (
+    conditions_for_solution, hash_key_pairs_for_conditions_dict
+)
 
 
 async def proxy_for_unix_connection(path):
@@ -66,10 +71,11 @@ def test_cc_standard():
 
     # Wallet B generates some genesis coins to itself.
     innerpuz = wallet_a.get_new_puzzlehash()
+    amount = 10000
 
-    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(10000, innerpuz)
+    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amount, innerpuz)
     _ = run(remote.push_tx(tx=spend_bundle))
-    # commit_and_notify(remote, wallets, Wallet())
+
     # manually commit and notify so we can run assert on additions
 
     coinbase_puzzle_hash = Wallet().get_new_puzzlehash()
@@ -79,16 +85,36 @@ def test_cc_standard():
     body = r.get("body")
 
     additions = list(additions_for_body(body))
-    add_cop = additions.copy()
+    add_copy = additions.copy()
     assert len(additions) == 4
-    inspector = add_cop.pop()
-    while inspector.amount != 10000 and len(add_cop) > 0:
-        inspector = add_cop.pop()
+    inspector = add_copy.pop()
+    while inspector.amount != 10000 and len(add_copy) > 0:
+        inspector = add_copy.pop()
     assert wallet_a.cc_can_generate(inspector.puzzle_hash)
 
     removals = removals_for_body(body)
-    removals = [Coin.from_bytes(run(remote.hash_preimage(hash=x)))
-                              for x in removals]
+    removals = [Coin.from_bytes(run(remote.hash_preimage(hash=x)))for x in removals]
 
     for wallet in wallets:
         wallet.notify(additions, removals)
+
+    assert len(wallet_a.my_coloured_coins) == 1
+
+    # Generate spend so that Wallet B can receive the coin
+
+    newinnerpuzhash = wallet_b.get_new_puzzlehash()
+    innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': amount}])
+
+    # need to have the aggsigs for the standard puzzle in innerpuz
+    sigs = []
+    pubkey, secretkey = wallet_a.get_keys(innerpuz)
+    secretkey = BLSPrivateKey(secretkey)
+    code_ = [innerpuz, [innersol, []]]
+    sexp = clvm.to_sexp_f(code_)
+    conditions_dict = conditions_by_opcode(
+        conditions_for_solution(sexp))
+    for _ in hash_key_pairs_for_conditions_dict(conditions_dict):
+        signature = secretkey.sign(_.message_hash)
+        sigs.append(signature)
+
+    spend_bundle = wallet_a.cc_generate_signed_transaction(coin, innersol, sigs=sigs)
