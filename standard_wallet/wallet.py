@@ -5,8 +5,8 @@ from os import urandom
 from blspy import ExtendedPrivateKey
 from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BLSSignature, Coin
 from chiasim.hashable.CoinSolution import CoinSolutionList
-from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
-from chiasim.puzzles.p2_conditions import puzzle_for_conditions
+from puzzles.p2_delegated_puzzle import puzzle_for_pk
+from puzzles.p2_conditions import puzzle_for_conditions
 from utilities.puzzle_utilities import pubkey_format
 from chiasim.validation.Conditions import (
     conditions_by_opcode, make_create_coin_condition, make_assert_my_coin_id_condition, make_assert_min_time_condition, make_assert_coin_consumed_condition
@@ -169,7 +169,7 @@ class Wallet:
         for puzzle, solution in spends:
             pubkey, secretkey = self.get_keys(solution.coin.puzzle_hash)
             secretkey = BLSPrivateKey(secretkey)
-            code_ = [puzzle, [solution.solution, []]]
+            code_ = [puzzle, solution.solution]
             sexp = clvm.to_sexp_f(code_)
             conditions_dict = conditions_by_opcode(
                 conditions_for_solution(sexp))
@@ -178,7 +178,7 @@ class Wallet:
                 sigs.append(signature)
         aggsig = BLSSignature.aggregate(sigs)
         solution_list = CoinSolutionList(
-            [CoinSolution(coin_solution.coin, clvm.to_sexp_f([puzzle, [coin_solution.solution, []]])) for
+            [CoinSolution(coin_solution.coin, clvm.to_sexp_f([puzzle, coin_solution.solution])) for
              (puzzle, coin_solution) in spends])
         spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle

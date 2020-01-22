@@ -12,7 +12,8 @@ setuptools.setup(
         "authorised_payees",
         "atomic_swaps",
         "rate_limit",
-        "recoverable_wallet"
+        "recoverable_wallet",
+        "puzzles"
     ],
     license="Apache License",
     python_requires=">=3.7, <4",
