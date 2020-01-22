@@ -117,7 +117,7 @@ class Wallet:
             ret.append(make_assert_min_time_condition(min_time))
         if me:
             ret.append(make_assert_my_coin_id_condition(me['id']))
-        return puzzle_for_conditions(ret)
+        return clvm.to_sexp_f([puzzle_for_conditions(ret), []])
 
     def generate_unsigned_transaction(self, amount, newpuzzlehash):
         if self.temp_balance < amount:
