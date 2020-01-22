@@ -40,9 +40,6 @@ class Wallet:
     seed = b'seed'
     next_address = 0
     pubkey_num_lookup = {}
-    puzzle_generator = f"(c (q 5) (c (c (q 5) (c (q (q 0x{ConditionOpcode.AGG_SIG.hex()})) (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((c (sha256 (wrap (f (a)))) (q ())))))) (q ())))) (q (((c (f (a)) (f (r (a)))))))))"
-    puzzle_generator_id = str(ProgramHash(
-        Program(binutils.assemble(puzzle_generator))))
 
     def __init__(self):
         self.current_balance = 0
@@ -52,7 +49,6 @@ class Wallet:
         # self.contacts = {}  # {'name': (puzzlegenerator, last, extradata)}
         self.generator_lookups = {}  # {generator_hash: generator}
         self.name = "MyChiaWallet"
-        self.generator_lookups[self.puzzle_generator_id] = self.puzzle_generator
         self.temp_utxos = set()
         self.temp_balance = 0
         self.all_additions = {}
@@ -83,7 +79,7 @@ class Wallet:
         for child in range(self.next_address):
             pubkey = self.extended_secret_key.public_child(
                 child).get_public_key()
-            if hash == ProgramHash(self.puzzle_for_pk(pubkey.serialize())):
+            if hash == ProgramHash(puzzle_for_pk(pubkey.serialize())):
                 return (pubkey, self.extended_secret_key.private_child(child).get_private_key())
 
     def notify(self, additions, deletions):
@@ -114,10 +110,7 @@ class Wallet:
         return used_utxos
 
     def puzzle_for_pk(self, pubkey):
-        args = f"({pubkey_format(pubkey)})"
-        puzzle = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
-            self.puzzle_generator), binutils.assemble(args)))
-        return puzzle
+        return puzzle_for_pk(pubkey)
 
     def get_new_puzzle(self):
         pubkey = self.get_next_public_key().serialize()
@@ -147,7 +140,7 @@ class Wallet:
             puzzle_hash = coin.puzzle_hash
 
             pubkey, secretkey = self.get_keys(puzzle_hash)
-            puzzle = self.puzzle_for_pk(pubkey.serialize())
+            puzzle = puzzle_for_pk(pubkey.serialize())
             if output_id is None:
                 primaries = [{'puzzlehash': newpuzzlehash, 'amount': amount}]
                 if change > 0:
