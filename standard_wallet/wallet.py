@@ -1,13 +1,10 @@
-import hashlib
 import clvm
-from clvm_tools import binutils
 from os import urandom
 from blspy import ExtendedPrivateKey
 from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BLSSignature, Coin
 from chiasim.hashable.CoinSolution import CoinSolutionList
 from puzzles.p2_delegated_puzzle import puzzle_for_pk
 from puzzles.p2_conditions import puzzle_for_conditions
-from utilities.puzzle_utilities import pubkey_format
 from chiasim.validation.Conditions import (
     conditions_by_opcode, make_create_coin_condition, make_assert_my_coin_id_condition, make_assert_min_time_condition, make_assert_coin_consumed_condition
 )
@@ -15,25 +12,6 @@ from chiasim.validation.consensus import (
     conditions_for_solution, hash_key_pairs_for_conditions_dict
 )
 from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
-from chiasim.validation.Conditions import ConditionOpcode
-
-
-def sha256(val):
-    return hashlib.sha256(val).digest()
-
-
-def make_solution(primaries=[], min_time=0, me={}, consumed=[]):
-    ret = []
-    for primary in primaries:
-        ret.append(make_create_coin_condition(
-            primary['puzzlehash'], primary['amount']))
-    for coin in consumed:
-        ret.append(make_assert_coin_consumed_condition(coin))
-    if min_time > 0:
-        ret.append(make_assert_min_time_condition(min_time))
-    if me:
-        ret.append(make_assert_my_coin_id_condition(me['id']))
-    return puzzle_for_conditions(ret)
 
 
 class Wallet:
@@ -128,12 +106,25 @@ class Wallet:
         blskey = BLSPrivateKey(privatekey)
         return blskey.sign(value)
 
+    def make_solution(self, primaries=[], min_time=0, me={}, consumed=[]):
+        ret = []
+        for primary in primaries:
+            ret.append(make_create_coin_condition(
+                primary['puzzlehash'], primary['amount']))
+        for coin in consumed:
+            ret.append(make_assert_coin_consumed_condition(coin))
+        if min_time > 0:
+            ret.append(make_assert_min_time_condition(min_time))
+        if me:
+            ret.append(make_assert_my_coin_id_condition(me['id']))
+        return puzzle_for_conditions(ret)
+
     def generate_unsigned_transaction(self, amount, newpuzzlehash):
         if self.temp_balance < amount:
             return None  # TODO: Should we throw a proper error here, or just return None?
         utxos = self.select_coins(amount)
         spends = []
-        output_id = None
+        output_created = False
         spend_value = sum([coin.amount for coin in utxos])
         change = spend_value - amount
         for coin in utxos:
@@ -141,7 +132,7 @@ class Wallet:
 
             pubkey, secretkey = self.get_keys(puzzle_hash)
             puzzle = puzzle_for_pk(pubkey.serialize())
-            if output_id is None:
+            if output_created is False:
                 primaries = [{'puzzlehash': newpuzzlehash, 'amount': amount}]
                 if change > 0:
                     changepuzzlehash = self.get_new_puzzlehash()
@@ -149,10 +140,10 @@ class Wallet:
                         {'puzzlehash': changepuzzlehash, 'amount': change})
                     # add change coin into temp_utxo set
                     self.temp_utxos.add(Coin(coin, changepuzzlehash, change))
-                solution = make_solution(primaries=primaries)
-                output_id = sha256(coin.name() + newpuzzlehash)
+                solution = self.make_solution(primaries=primaries)
+                output_created = True
             else:
-                solution = make_solution(consumed=[coin.name()])
+                solution = self.make_solution(consumed=[coin.name()])
             spends.append((puzzle, CoinSolution(coin, solution)))
         self.temp_balance -= amount
         return spends
