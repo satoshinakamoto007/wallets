@@ -1,3 +1,5 @@
+import hashlib
+import clvm
 from standard_wallet.wallet import Wallet
 from chiasim.validation.Conditions import ConditionOpcode
 from chiasim.hashable import Program, ProgramHash
@@ -5,7 +7,6 @@ from clvm_tools import binutils
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from chiasim.hashable import CoinSolution, SpendBundle, BLSSignature
 from chiasim.hashable.CoinSolution import CoinSolutionList
-import hashlib
 
 
 class CCWallet(Wallet):
@@ -65,6 +66,7 @@ class CCWallet(Wallet):
     # This is for spending an existing coloured coin
     def cc_make_puzzle(self, innerpuzhash, core):
         puzstring = f"(r (c (q 0x{innerpuzhash}) ((c (q {core}) (a)))))"
+        print(f"DEBUG Puzstring: {puzstring}")
         return Program(binutils.assemble(puzstring))
 
     # TODO: Ask Bram about this - core is "the colour"
@@ -120,17 +122,17 @@ class CCWallet(Wallet):
         else:
             parent_str = f"0x{parent_info.hex()}"
         sol = f"({core} {parent_str} {amount} {innerpuzreveal} {innersol})"
-        return sol
+        print(f"DEBUG solstring: {sol}")
+        return Program(binutils.assemble(sol))
 
     # This is for spending a recieved coloured coin
-    def cc_generate_signed_transaction(self, coin, innersol, sigs=[]):
-        spend_bundle = None
-        innerpuz = self.my_coloured_coins[coin][0]
-        core = self.my_coloured_coins[coin][1]
-        solution_list = CoinSolutionList(
-            [CoinSolution(coin_solution.coin, clvm.to_sexp_f([puzzle, [coin_solution.solution, []]])) for
-             (puzzle, coin_solution) in spends])
+    def cc_generate_signed_transaction(self, coin, parent_info, amount, innersol, sigs=[]):
+        innerpuz = binutils.disassemble(self.my_coloured_coins[coin][0])
 
+        core = self.my_coloured_coins[coin][1]
+        solution = self.cc_make_solution(core, parent_info, amount, innerpuz, binutils.disassemble(innersol))
+        solution_list = CoinSolutionList([CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution]))])
+        breakpoint()
         aggsig = BLSSignature.aggregate(sigs)
         spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle

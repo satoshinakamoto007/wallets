@@ -5,12 +5,13 @@ import clvm
 from aiter import map_aiter
 from coloured_coins.cc_wallet import CCWallet
 from standard_wallet.wallet import Wallet, make_solution
+from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from chiasim.utils.log import init_logging
 from chiasim.remote.api_server import api_server
 from chiasim.remote.client import request_response_proxy
 from chiasim.clients import ledger_sim
 from chiasim.ledger import ledger_api
-from chiasim.hashable import Coin
+from chiasim.hashable import Coin, CoinSolution
 from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from chiasim.storage import RAM_DB
 from chiasim.utils.server import start_unix_server_aiter
@@ -70,10 +71,13 @@ def test_cc_standard():
     commit_and_notify(remote, wallets, wallet_a)
 
     # Wallet B generates some genesis coins to itself.
-    innerpuz = wallet_a.get_new_puzzlehash()
+    innerpuzhash = wallet_a.get_new_puzzlehash()
     amount = 10000
-
-    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amount, innerpuz)
+    my_utxos_copy = wallet_a.temp_utxos.copy()
+    genesisCoin = my_utxos_copy.pop()
+    while genesisCoin.amount < amount and len(my_utxos_copy) > 0:
+        genesisCoin = my_utxos_copy.pop()
+    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amount, innerpuzhash, genesisCoin=genesisCoin)
     _ = run(remote.push_tx(tx=spend_bundle))
 
     # manually commit and notify so we can run assert on additions
@@ -104,12 +108,16 @@ def test_cc_standard():
 
     newinnerpuzhash = wallet_b.get_new_puzzlehash()
     innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': amount}])
+    breakpoint()
 
     # need to have the aggsigs for the standard puzzle in innerpuz
+
+    coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()  # this is a hack - design things properly
+
     sigs = []
-    pubkey, secretkey = wallet_a.get_keys(innerpuz)
+    pubkey, secretkey = wallet_a.get_keys(innerpuzhash)
     secretkey = BLSPrivateKey(secretkey)
-    code_ = [innerpuz, [innersol, []]]
+    code_ = [puzzle_for_pk(pubkey.serialize()), [innersol, []]]
     sexp = clvm.to_sexp_f(code_)
     conditions_dict = conditions_by_opcode(
         conditions_for_solution(sexp))
@@ -117,4 +125,12 @@ def test_cc_standard():
         signature = secretkey.sign(_.message_hash)
         sigs.append(signature)
 
-    spend_bundle = wallet_a.cc_generate_signed_transaction(coin, innersol, sigs=sigs)
+    assert sigs != []
+
+    # parent info is origin ID
+    parent_info = genesisCoin.name()
+
+    spend_bundle = wallet_a.cc_generate_signed_transaction(coin, parent_info, amount, innersol, sigs=sigs)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert len(wallet_b.my_coloured_coins) == 1
