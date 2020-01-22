@@ -1,4 +1,7 @@
 import setuptools
+from clvm_tools.setuptools import build_clvm, monkey_patch
+
+monkey_patch()
 
 dependencies = ["aiter", "blspy", "cbor"]
 
@@ -28,8 +31,22 @@ setuptools.setup(
             "recoverable_wallet = recoverable_wallet.recoverable_wallet_runnable:main"
         ]
     },
-    setup_requires=["setuptools_scm"],
+    setup_requires=["clvm_tools", "setuptools_scm"],
     use_scm_version=True,
     install_requires=dependencies,
     long_description=open("README.md").read(),
+    clvm_extensions=[
+        "puzzles/make_p2_delegated_puzzle_or_hidden_puzzle.clvm",
+        "puzzles/make_puzzle_m_of_n_direct.clvm",
+    ],
+    data_files=[
+        (
+            "puzzles",
+            [
+                "make_p2_delegated_puzzle_or_hidden_puzzle.clvm.hex",
+                "chiasim/puzzles/make_puzzle_m_of_n_direct.clvm.hex",
+            ],
+        )
+    ],
+    cmdclass={"build_clvm": build_clvm, }
 )
