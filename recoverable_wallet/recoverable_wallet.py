@@ -54,7 +54,7 @@ def aggsig_condition(key):
     op_aggsig = ConditionOpcode.AGG_SIG[0]
     return make_list(quote(op_aggsig),
                      quote(f'0x{hexbytes(key)}'),
-                     sha256(wrap(args(0))))
+                     sha256tree(args(0)))
 
 
 class RecoverableWallet(Wallet):
