@@ -1,8 +1,8 @@
 import hashlib
 import clvm
-from standard_wallet.wallet import Wallet
+from standard_wallet.wallet import Wallet, make_solution
 from chiasim.validation.Conditions import ConditionOpcode
-from chiasim.hashable import Program, ProgramHash
+from chiasim.hashable import Program, ProgramHash, Coin
 from clvm_tools import binutils
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from chiasim.hashable import CoinSolution, SpendBundle, BLSSignature
@@ -49,12 +49,30 @@ class CCWallet(Wallet):
             genesisCoin = my_utxos_copy.pop()
             while genesisCoin.amount < amount and len(my_utxos_copy) > 0:
                 genesisCoin = my_utxos_copy.pop()
+            if genesisCoin.amount < amount:
+                return None  # no reason why a coin couldn't have two parents, just want to make debugging simple for now
         core = self.cc_make_core(genesisCoin.name())
         self.cc_add_core(core)
+        spends = []
+        change = genesisCoin.amount - amount
         newpuzzle = self.cc_make_puzzle(innerpuzhash, core)
         newpuzzlehash = ProgramHash(newpuzzle)
-        spend_bundle = self.generate_signed_transaction(amount, newpuzzlehash)
-        return spend_bundle
+        # Aped from wallet.generate_unsigned_transaction()
+        puzzle_hash = genesisCoin.puzzle_hash
+        pubkey, secretkey = self.get_keys(puzzle_hash)
+        puzzle = self.puzzle_for_pk(pubkey.serialize())
+        primaries = [{'puzzlehash': newpuzzlehash, 'amount': amount}]
+        if change > 0:
+            changepuzzlehash = self.get_new_puzzlehash()
+            primaries.append(
+                {'puzzlehash': changepuzzlehash, 'amount': change})
+            # add change coin into temp_utxo set
+            self.temp_utxos.add(Coin(genesisCoin, changepuzzlehash, change))
+        solution = make_solution(primaries=primaries)
+        spends.append((puzzle, CoinSolution(genesisCoin, solution)))
+        self.temp_balance -= amount
+
+        return self.sign_transaction(spends)
 
     # we use it to merge the outputs of two programs that create lists
     def merge_two_lists(list1=None, list2=None):
@@ -130,7 +148,8 @@ class CCWallet(Wallet):
         innerpuz = binutils.disassemble(self.my_coloured_coins[coin][0])
 
         core = self.my_coloured_coins[coin][1]
-        solution = self.cc_make_solution(core, parent_info, amount, innerpuz, binutils.disassemble(innersol))
+        temp_fix_innersol = clvm.to_sexp_f([innersol, []])
+        solution = self.cc_make_solution(core, parent_info, amount, innerpuz, binutils.disassemble(temp_fix_innersol))
         solution_list = CoinSolutionList([CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution]))])
         breakpoint()
         aggsig = BLSSignature.aggregate(sigs)

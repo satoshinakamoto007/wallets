@@ -79,7 +79,7 @@ def test_cc_standard():
         genesisCoin = my_utxos_copy.pop()
     spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amount, innerpuzhash, genesisCoin=genesisCoin)
     _ = run(remote.push_tx(tx=spend_bundle))
-
+    breakpoint()
     # manually commit and notify so we can run assert on additions
 
     coinbase_puzzle_hash = Wallet().get_new_puzzlehash()
@@ -113,6 +113,8 @@ def test_cc_standard():
     # need to have the aggsigs for the standard puzzle in innerpuz
 
     coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()  # this is a hack - design things properly
+    assert inspector == coin
+    assert coin.parent_coin_info == genesisCoin.name()
 
     sigs = []
     pubkey, secretkey = wallet_a.get_keys(innerpuzhash)
