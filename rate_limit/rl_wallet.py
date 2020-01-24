@@ -8,7 +8,7 @@ from chiasim.hashable.CoinSolution import CoinSolutionList
 from clvm_tools import binutils
 from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from chiasim.validation.Conditions import ConditionOpcode
-from puzzles.p2_delegated_puzzle import puzzle_for_pk
+from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 import math
 
 # RLWallet is subclass of Wallet

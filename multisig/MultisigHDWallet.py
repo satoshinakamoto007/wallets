@@ -1,7 +1,7 @@
 from chiasim.hashable import ProgramHash
 from .address import address_for_puzzle_hash, puzzle_hash_for_address
 
-from puzzles.p2_m_of_n_delegate_direct import puzzle_for_m_of_public_key_list
+from chiasim.puzzles.p2_m_of_n_delegate_direct import puzzle_for_m_of_public_key_list
 
 
 class MultisigHDWallet:

@@ -3,8 +3,8 @@ from os import urandom
 from blspy import ExtendedPrivateKey
 from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BLSSignature, Coin
 from chiasim.hashable.CoinSolution import CoinSolutionList
-from puzzles.p2_delegated_puzzle import puzzle_for_pk
-from puzzles.p2_conditions import puzzle_for_conditions
+from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
+from chiasim.puzzles.p2_conditions import puzzle_for_conditions
 from chiasim.validation.Conditions import (
     conditions_by_opcode, make_create_coin_condition, make_assert_my_coin_id_condition, make_assert_min_time_condition, make_assert_coin_consumed_condition
 )

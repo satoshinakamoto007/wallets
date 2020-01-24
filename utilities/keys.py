@@ -2,7 +2,7 @@ import blspy
 
 from chiasim.hashable import ProgramHash
 from chiasim.hashable import BLSSignature, CoinSolution, SpendBundle
-from puzzles import p2_delegated_puzzle
+from chiasim.puzzles import p2_delegated_puzzle
 from chiasim.validation.Conditions import (
     conditions_by_opcode, make_create_coin_condition
 )
