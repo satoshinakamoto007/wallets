@@ -20,6 +20,7 @@ from chiasim.validation.Conditions import conditions_by_opcode
 from chiasim.validation.consensus import (
     conditions_for_solution, hash_key_pairs_for_conditions_dict
 )
+from clvm_tools import binutils
 
 
 async def proxy_for_unix_connection(path):
@@ -79,7 +80,6 @@ def test_cc_standard():
         genesisCoin = my_utxos_copy.pop()
     spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amount, innerpuzhash, genesisCoin=genesisCoin)
     _ = run(remote.push_tx(tx=spend_bundle))
-    breakpoint()
     # manually commit and notify so we can run assert on additions
 
     coinbase_puzzle_hash = Wallet().get_new_puzzlehash()
@@ -117,7 +117,6 @@ def test_cc_standard():
     core = wallet_a.my_coloured_coins[coin][1]
     wallet_b.cc_add_core(core)
     assert ProgramHash(clvm.to_sexp_f(wallet_a.cc_make_puzzle(ProgramHash(wallet_a.my_coloured_coins[coin][0]), core))) == coin.puzzle_hash
-    breakpoint()
 
     sigs = []
     pubkey, secretkey = wallet_a.get_keys(innerpuzhash)
@@ -139,3 +138,33 @@ def test_cc_standard():
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
     assert len(wallet_b.my_coloured_coins) == 1
+    assert len(wallet_a.my_coloured_coins) == 0
+
+
+
+    # wallet B spends coloured coin back to wallet A
+    parent_info = (coin.parent_coin_info, innerpuzhash, coin.amount)
+    pubkey, secretkey = wallet_b.get_keys(newinnerpuzhash)
+    newinnerpuzhash = wallet_a.get_new_puzzlehash()
+    innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': amount}])
+
+    coin = list(wallet_b.my_coloured_coins.keys()).copy().pop()  # this is a hack - design things properly
+    assert ProgramHash(clvm.to_sexp_f(wallet_b.cc_make_puzzle(ProgramHash(wallet_b.my_coloured_coins[coin][0]), core))) == coin.puzzle_hash
+    print(f"DEBUG puzstring 2: {binutils.disassemble(clvm.to_sexp_f(wallet_b.cc_make_puzzle(ProgramHash(wallet_b.my_coloured_coins[coin][0]), core)))}")
+    sigs = []
+    secretkey = BLSPrivateKey(secretkey)
+    code_ = [puzzle_for_pk(pubkey.serialize()), [innersol, []]]
+    sexp = clvm.to_sexp_f(code_)
+    conditions_dict = conditions_by_opcode(
+        conditions_for_solution(sexp))
+    for _ in hash_key_pairs_for_conditions_dict(conditions_dict):
+        signature = secretkey.sign(_.message_hash)
+        sigs.append(signature)
+
+    assert sigs != []
+    breakpoint()
+    spend_bundle = wallet_b.cc_generate_signed_transaction(coin, parent_info, amount, innersol, sigs=sigs)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert len(wallet_b.my_coloured_coins) == 0
+    assert len(wallet_a.my_coloured_coins) == 1

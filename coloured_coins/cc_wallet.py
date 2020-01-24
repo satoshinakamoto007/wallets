@@ -18,16 +18,19 @@ class CCWallet(Wallet):
         return
 
     def notify(self, additions, deletions):
-        self.cc_notify(additions)
+        self.cc_notify(additions, deletions)
         super().notify(additions, deletions)
 
-    def cc_notify(self, additions):
+    def cc_notify(self, additions, deletions):
         for coin in additions:
             for i in reversed(range(self.next_address)):
                 innerpuz = puzzle_for_pk(self.extended_secret_key.public_child(i).get_public_key().serialize())
                 for core in self.my_cores:
                     if ProgramHash(self.cc_make_puzzle(ProgramHash(innerpuz), core)) == coin.puzzle_hash:
                         self.my_coloured_coins[coin] = (innerpuz, core)
+        for coin in deletions:
+            if coin in self.my_coloured_coins:
+                self.my_coloured_coins.pop(coin)
         return
 
     def cc_can_generate(self, finalpuzhash):
@@ -120,7 +123,7 @@ class CCWallet(Wallet):
 
         assert_my_parent_is_origin = f"(c (q 0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()}) (c (sha256 (f (r (a))) (sha256tree {add_core_to_my_innerpuz_reveal}) (uint64 {sum_outputs})) (q ())))"  # todo - replace (q 10000) with {sum_outputs}
 
-        assert_my_parent_follows_core_logic = f"(c (q 0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()}) (c (sha256 (sha256 (f (f (r (a)))) (sha256tree {add_core_to_parent_innerpuzhash}) (f (r (r (f (r (a))))))) (sha256tree {add_core_to_my_innerpuz_reveal}) (uint64 {sum_outputs})) (q ())))"  # replace (q 10000) with {sum_outputs}
+        assert_my_parent_follows_core_logic = f"(c (q 0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()}) (c (sha256 (sha256 (f (f (r (a)))) (sha256tree {add_core_to_parent_innerpuzhash}) (uint64 (f (r (r (f (r (a)))))))) (sha256tree {add_core_to_my_innerpuz_reveal}) (uint64 {sum_outputs})) (q ())))"  # replace (q 10000) with {sum_outputs}
 
         heritage_check = f"((c (i (l (f (r (a)))) (q {assert_my_parent_follows_core_logic}) (q ((c (i (= (q 0x{originID}) (f (r (a)))) (q {assert_my_parent_is_origin}) (q (x))) (a)))) ) (a)))"
 
@@ -133,7 +136,7 @@ class CCWallet(Wallet):
         parent_str = ""
         # parent_info is a triplet or the originID
         # genesis coin isn't coloured, child of genesis uses originID, all subsequent children use triplets
-        if isinstance(parent_info, list):
+        if isinstance(parent_info, tuple):
             #  (parent primary input, parent inner puzzle hash, parent amount)
             parent_str = f"(0x{parent_info[0]} 0x{parent_info[1]} {parent_info[2]})"
         else:
