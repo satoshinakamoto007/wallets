@@ -128,7 +128,6 @@ class CCWallet(Wallet):
         heritage_check = f"((c (i (l (f (r (a)))) (q {assert_my_parent_follows_core_logic}) (q ((c (i (= (q 0x{originID}) (f (r (a)))) (q {assert_my_parent_is_origin}) (q (x))) (a)))) ) (a)))"
 
         core = f"(c {heritage_check} {replace_generated_createcoins})"
-        breakpoint()
         return core
 
     # This is for spending a recieved coloured coin
@@ -153,7 +152,6 @@ class CCWallet(Wallet):
         temp_fix_innersol = clvm.to_sexp_f([innersol, []])
         solution = self.cc_make_solution(core, parent_info, amount, innerpuz, binutils.disassemble(temp_fix_innersol))
         solution_list = CoinSolutionList([CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution]))])
-        breakpoint()
         aggsig = BLSSignature.aggregate(sigs)
         spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle

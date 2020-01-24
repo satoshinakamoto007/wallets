@@ -162,7 +162,6 @@ def test_cc_standard():
         sigs.append(signature)
 
     assert sigs != []
-    breakpoint()
     spend_bundle = wallet_b.cc_generate_signed_transaction(coin, parent_info, amount, innersol, sigs=sigs)
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
