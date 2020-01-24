@@ -56,6 +56,7 @@ class CCWallet(Wallet):
         spends = []
         change = genesisCoin.amount - amount
         newpuzzle = self.cc_make_puzzle(innerpuzhash, core)
+        print(f"Actual full puzzle: {binutils.disassemble(newpuzzle)}")
         newpuzzlehash = ProgramHash(newpuzzle)
         # Aped from wallet.generate_unsigned_transaction()
         puzzle_hash = genesisCoin.puzzle_hash
@@ -84,7 +85,7 @@ class CCWallet(Wallet):
     # This is for spending an existing coloured coin
     def cc_make_puzzle(self, innerpuzhash, core):
         puzstring = f"(r (c (q 0x{innerpuzhash}) ((c (q {core}) (a)))))"
-        print(f"DEBUG Puzstring: {puzstring}")
+        #print(f"DEBUG Puzstring: {puzstring}")
         return Program(binutils.assemble(puzstring))
 
     # TODO: Ask Bram about this - core is "the colour"
@@ -114,14 +115,12 @@ class CCWallet(Wallet):
         # below is confirmed working raw chialisp - to be converted to nice python later
         replace_generated_createcoins = f"((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q ((c (i (= (f (f (f (r (a))))) (q 0x{ConditionOpcode.CREATE_COIN.hex()})) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (f (r (r (a)))) (c (c (c (q 0x{ConditionOpcode.CREATE_COIN.hex()}) (c (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (f (f (r (a)))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (r (r (a)))) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))) (c (f (r (r (f (f (r (a))))))) (q ())))) (f (r (r (r (a)))))) (q ())))))))) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (f (r (r (a)))) (c (c (f (f (r (a)))) (f (r (r (r (a)))))) (q ())))))))) ) (a))) ) (q (f (r (r (r (a)))))) ) (a)))) (c {create_outputs} (c (f (a)) (c (q ()) (q ())))))))"
 
-
-
         add_core_to_parent_innerpuzhash = "(c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (f (r (a))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))"
         add_core_to_my_innerpuz_reveal = "(c (q 7) (c (c (q 5) (c (c (q 1) (c (sha256tree (f (r (r (r (a)))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))"
 
-        assert_my_parent_is_origin = f"(c (q 0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()}) (c (sha256 (f (r (a))) (sha256tree {add_core_to_my_innerpuz_reveal}) {sum_outputs}) (q ())))"
+        assert_my_parent_is_origin = f"(c (q 0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()}) (c (sha256 (f (r (a))) (sha256tree {add_core_to_my_innerpuz_reveal}) (uint64 {sum_outputs})) (q ())))"  # todo - replace (q 10000) with {sum_outputs}
 
-        assert_my_parent_follows_core_logic = f"(c (q 0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()}) (c (sha256 (sha256 (f (f (r (a)))) (sha256tree {add_core_to_parent_innerpuzhash}) (f (r (r (f (r (a))))))) (sha256tree {add_core_to_my_innerpuz_reveal}) {sum_outputs}) (q ())))"
+        assert_my_parent_follows_core_logic = f"(c (q 0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()}) (c (sha256 (sha256 (f (f (r (a)))) (sha256tree {add_core_to_parent_innerpuzhash}) (f (r (r (f (r (a))))))) (sha256tree {add_core_to_my_innerpuz_reveal}) (uint64 {sum_outputs})) (q ())))"  # replace (q 10000) with {sum_outputs}
 
         heritage_check = f"((c (i (l (f (r (a)))) (q {assert_my_parent_follows_core_logic}) (q ((c (i (= (q 0x{originID}) (f (r (a)))) (q {assert_my_parent_is_origin}) (q (x))) (a)))) ) (a)))"
 
@@ -156,9 +155,15 @@ class CCWallet(Wallet):
         spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle
 
+    def get_future_coloured_coin_ID(self, coin, parent_info, amount, innersol):
+        innerpuz = binutils.disassemble(self.my_coloured_coins[coin][0])
+        core = self.my_coloured_coins[coin][1]
+        temp_fix_innersol = clvm.to_sexp_f([innersol, []])
+        solution = self.cc_make_solution(core, parent_info, amount, innerpuz, binutils.disassemble(temp_fix_innersol))
+        clvm.eval_f(clvm.eval_f, self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution)
 
 """
-Copyright 2018 Chia Network Inc
+Copyright 2020 Chia Network Inc
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at

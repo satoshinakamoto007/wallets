@@ -11,7 +11,7 @@ from chiasim.remote.api_server import api_server
 from chiasim.remote.client import request_response_proxy
 from chiasim.clients import ledger_sim
 from chiasim.ledger import ledger_api
-from chiasim.hashable import Coin, CoinSolution
+from chiasim.hashable import Coin, Program, ProgramHash
 from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from chiasim.storage import RAM_DB
 from chiasim.utils.server import start_unix_server_aiter
@@ -108,13 +108,16 @@ def test_cc_standard():
 
     newinnerpuzhash = wallet_b.get_new_puzzlehash()
     innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': amount}])
-    breakpoint()
 
     # need to have the aggsigs for the standard puzzle in innerpuz
 
     coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()  # this is a hack - design things properly
     assert inspector == coin
     assert coin.parent_coin_info == genesisCoin.name()
+    core = wallet_a.my_coloured_coins[coin][1]
+    wallet_b.cc_add_core(core)
+    assert ProgramHash(clvm.to_sexp_f(wallet_a.cc_make_puzzle(ProgramHash(wallet_a.my_coloured_coins[coin][0]), core))) == coin.puzzle_hash
+    breakpoint()
 
     sigs = []
     pubkey, secretkey = wallet_a.get_keys(innerpuzhash)
