@@ -145,12 +145,12 @@ def test_cc_standard():
     # wallet B spends coloured coin back to wallet A
     parent_info = (coin.parent_coin_info, innerpuzhash, coin.amount)
     pubkey, secretkey = wallet_b.get_keys(newinnerpuzhash)
+    innerpuzhash = newinnerpuzhash
     newinnerpuzhash = wallet_a.get_new_puzzlehash()
     innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': amount}])
 
     coin = list(wallet_b.my_coloured_coins.keys()).copy().pop()  # this is a hack - design things properly
     assert ProgramHash(clvm.to_sexp_f(wallet_b.cc_make_puzzle(ProgramHash(wallet_b.my_coloured_coins[coin][0]), core))) == coin.puzzle_hash
-    print(f"DEBUG puzstring 2: {binutils.disassemble(clvm.to_sexp_f(wallet_b.cc_make_puzzle(ProgramHash(wallet_b.my_coloured_coins[coin][0]), core)))}")
     sigs = []
     secretkey = BLSPrivateKey(secretkey)
     code_ = [puzzle_for_pk(pubkey.serialize()), [innersol, []]]

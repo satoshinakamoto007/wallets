@@ -59,7 +59,7 @@ class CCWallet(Wallet):
         spends = []
         change = genesisCoin.amount - amount
         newpuzzle = self.cc_make_puzzle(innerpuzhash, core)
-        print(f"Actual full puzzle: {binutils.disassemble(newpuzzle)}")
+        # print(f"Actual full puzzle: {binutils.disassemble(newpuzzle)}")
         newpuzzlehash = ProgramHash(newpuzzle)
         # Aped from wallet.generate_unsigned_transaction()
         puzzle_hash = genesisCoin.puzzle_hash
@@ -141,7 +141,7 @@ class CCWallet(Wallet):
         else:
             parent_str = f"0x{parent_info.hex()}"
         sol = f"({core} {parent_str} {amount} {innerpuzreveal} {innersol})"
-        print(f"DEBUG solstring: {sol}")
+        # print(f"DEBUG solstring: {sol}")
         return Program(binutils.assemble(sol))
 
     # This is for spending a recieved coloured coin
