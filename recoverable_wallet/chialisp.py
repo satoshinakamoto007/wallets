@@ -65,8 +65,8 @@ def sha256(*argv):
     return apply('sha256', argv)
 
 
-def wrap(obj):
-    return sexp('wrap', obj)
+def sha256tree(*argv):
+    return apply('sha256tree', argv)
 
 
 def uint64(obj):

@@ -54,7 +54,7 @@ def aggsig_condition(key):
     op_aggsig = ConditionOpcode.AGG_SIG[0]
     return make_list(quote(op_aggsig),
                      quote(f'0x{hexbytes(key)}'),
-                     sha256(wrap(args(0))))
+                     sha256tree(args(0)))
 
 
 class RecoverableWallet(Wallet):
@@ -230,7 +230,7 @@ class RecoverableWallet(Wallet):
             puzzle_hash = coin.puzzle_hash
 
             pubkey, secretkey = self.get_keys(puzzle_hash)
-            puzzle = self.get_new_puzzle_with_params(pubkey.serialize(), stake_factor)
+            puzzle = self.get_new_puzzle_with_params(pubkey.serialize(), stake_factor, self.get_escrow_duration())
             if output_id is None:
                 primaries = [{'puzzlehash': newpuzzlehash, 'amount': amount}]
                 if change > 0:
