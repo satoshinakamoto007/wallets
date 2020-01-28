@@ -3,7 +3,6 @@ import clvm
 from chiasim.hashable import CoinSolution, Program, ProgramHash, SpendBundle
 from binascii import hexlify
 from clvm_tools import binutils
-from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from chiasim.validation.Conditions import ConditionOpcode
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from utilities.puzzle_utilities import puzzlehash_from_string
@@ -29,12 +28,12 @@ class ASWallet(Wallet):
     # ... created by the other party
     def get_keys(self, hash, as_pubkey_sender = None, as_pubkey_receiver = None, as_amount = None, as_timelock_t = None, as_secret_hash = None):
         for child in reversed(range(self.next_address)):
-            pubkey = self.extended_secret_key.public_child(child).get_public_key()
-            if hash == ProgramHash(puzzle_for_pk(pubkey.serialize())):
-                return (pubkey, self.extended_secret_key.private_child(child).get_private_key())
+            pubkey = self.extended_secret_key.public_child(child)
+            if hash == ProgramHash(puzzle_for_pk(bytes(pubkey))):
+                return (pubkey, self.extended_secret_key.private_child(child))
             elif as_pubkey_sender is not None and as_pubkey_receiver is not None and as_amount is not None and as_timelock_t is not None and as_secret_hash is not None:
                 if hash == ProgramHash(self.as_make_puzzle(as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_t, as_secret_hash)):
-                    return (pubkey, self.extended_secret_key.private_child(child).get_private_key())
+                    return (pubkey, self.extended_secret_key.private_child(child))
 
     def notify(self, additions, deletions, as_swap_list=[]):
         super().notify(additions, deletions)
@@ -131,7 +130,7 @@ class ASWallet(Wallet):
         return npc_list
 
     def get_private_keys(self):
-        return [BLSPrivateKey(self.extended_secret_key.private_child(child).get_private_key()) for child in range(self.next_address)]
+        return [self.extended_secret_key.private_child(child) for child in range(self.next_address)]
 
     def make_keychain(self):
         private_keys = self.get_private_keys()
