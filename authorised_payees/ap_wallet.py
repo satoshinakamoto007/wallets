@@ -204,7 +204,6 @@ class APWallet(Wallet):
             self.temp_coin, clvm.to_sexp_f([puzzle, solution])))
 
         # Spend consolidating coin
-        #puzzle = Program(clvm.eval_f(clvm.eval_f, binutils.assmeble(self.puzzle_generator), binutils.assemble("(0x" + self.AP_puzzlehash + ")")))
         puzzle = ap_make_aggregation_puzzle(self.temp_coin.puzzle_hash)
         solution = self.ac_make_aggregation_solution(consolidating_coin.name(
         ), self.temp_coin.parent_coin_info, self.temp_coin.amount)
