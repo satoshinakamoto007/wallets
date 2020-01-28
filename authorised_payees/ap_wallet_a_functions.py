@@ -31,7 +31,6 @@ def ap_make_puzzle(a_pubkey_serialized, b_pubkey_serialized):
     # Mode one is for spending to one of the approved destinations
     # Solution contains (option 1 flag, new puzzle, new solution, my_primary_input, wallet_puzzle_hash)
 
-
     aggsig_entire_solution = f"(c (q 0x{ConditionOpcode.AGG_SIG.hex()}) (c (q {b_pubkey}) (c (sha256tree (a)) (q ()))))"
     create_outputs = f"((c (f (r (a))) (f (r (r (a))))))"
     aggsig_outputs = f"((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q ((c (i (= (f (f (f (r (a))))) (q 0x{ConditionOpcode.CREATE_COIN.hex()})) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (c (c (q 0x{ConditionOpcode.AGG_SIG.hex()}) (c (q {a_pubkey}) (c (f (r (f (f (r (a)))))) (q ())))) (f (r (r (a))))) (q ()))))))) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (f (r (r (a)))) (q ())))))))) (a)))) (q (f (r (r (a)))))) (a)))) (c {create_outputs} (c {create_outputs} (q ()))))))"
