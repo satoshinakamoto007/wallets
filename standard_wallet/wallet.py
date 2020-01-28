@@ -10,7 +10,6 @@ from chiasim.validation.Conditions import (
 from chiasim.validation.consensus import (
     conditions_for_solution, hash_key_pairs_for_conditions_dict
 )
-from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 
 from multisig.BLSHDKeys import BLSPrivateHDKey
 

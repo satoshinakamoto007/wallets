@@ -1,7 +1,7 @@
 import hashlib
 
 import blspy
-from chiasim.hashable.BLSSignature import BLSPublicKey
+from chiasim.hashable.BLSPublicKey import BLSPublicKey
 from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 
 

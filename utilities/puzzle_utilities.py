@@ -1,7 +1,6 @@
 from binascii import hexlify
-from blspy import PublicKey, PrependSignature
 import string
-from chiasim.hashable import ProgramHash, BLSSignature
+from chiasim.hashable import ProgramHash, BLSPublicKey, BLSSignature
 
 
 def pubkey_format(pubkey):
@@ -20,8 +19,8 @@ def pubkey_format(pubkey):
             raise ValueError
     elif hasattr(pubkey, 'decode'):  # check if serialized
         ret = serialized_key_to_string(pubkey)
-    elif isinstance(pubkey, PublicKey):
-        ret = serialized_key_to_string(pubkey.serialize())
+    elif isinstance(pubkey, BLSPublicKey):
+        ret = serialized_key_to_string(bytes(pubkey))
     return ret
 
 
@@ -58,7 +57,7 @@ def pubkey_from_string(pubkey):
 
 def signature_from_string(signature):
     try:
-        sig = PrependSignature.from_bytes(bytes.fromhex(signature))
+        sig = BLSSignature.from_bytes(bytes.fromhex(signature))
     except Exception:
         raise Exception
     return sig
