@@ -26,6 +26,9 @@ jobs:
         eval "$(ssh-agent -s)"
         ssh-add - <<< "${CHIA_MACHINE_SSH_KEY}"
         python -m pip install --upgrade pip
+        # this next nasty line install the first three things
+        # in requirements.txt individually
+        head -3 requirements.txt | xargs -L1 pip install
         pip install -r requirements.txt 
         pip install -e .
     - name: Test with pytest

@@ -88,7 +88,7 @@ def test_multisig_spend():
 
     index = 0
     address = wallet.address_for_index(index)
-    assert address == "89fcf1d21c922b14c1e74dfbbe3a6416b12e26634c708407c1e838221f239cd5"
+    assert address == "a79718dedcdaf055b03e3fbb1e29046e85eb5e09d24b31a73daea952c4540d43"
 
     coin = run(coin_for_address(remote, address))
 
@@ -117,13 +117,13 @@ def test_multisig_spend_two():
 
     index = 0
     address = wallet.address_for_index(index)
-    assert address == "89fcf1d21c922b14c1e74dfbbe3a6416b12e26634c708407c1e838221f239cd5"
+    assert address == "a79718dedcdaf055b03e3fbb1e29046e85eb5e09d24b31a73daea952c4540d43"
 
     coin_0 = run(coin_for_address(remote, address))
 
     index = 1
     address = wallet.address_for_index(index)
-    assert address == "8c65173cd88c4c9f878189ae55ec9f93793a35ac84935bd58681e8a2445f9c69"
+    assert address == "59f59bce472d4a79cbcc1210bf05dd3aae929b28008e876fa51c2e3d00739474"
 
     coin_1 = run(coin_for_address(remote, address))
 
@@ -182,7 +182,7 @@ def test_ui_process():
 
     assert (
         wallet.address_for_index(0)
-        == "ebab9ba9d6d0463c821a076640c76a458693c015889f0a9df796fa5e32b03eef"
+        == "bf7bd966a294845e8e774376138f7ba8087037cca3e94aff3f820073e59eca6b"
     )
 
     GENERATE_ADDRESS_INPUTS = [
