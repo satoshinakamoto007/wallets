@@ -378,9 +378,9 @@ class RLWallet(Wallet):
                         {'puzzlehash': changepuzzlehash, 'amount': change})
                     # add change coin into temp_utxo set
                     self.temp_utxos.add(Coin(coin, changepuzzlehash, change))
-                solution = make_solution(primaries=primaries)
+                solution = self.make_solution(primaries=primaries)
             else:
-                solution = make_solution(consumed=[coin.name()])
+                solution = self.make_solution(consumed=[coin.name()])
             spends.append((puzzle, CoinSolution(coin, solution)))
         self.temp_balance -= amount
         return spends

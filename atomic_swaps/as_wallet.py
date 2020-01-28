@@ -11,14 +11,13 @@ from utilities.puzzle_utilities import puzzlehash_from_string
 from utilities.keys import build_spend_bundle, sign_f_for_keychain
 
 
-#ASWallet is subclass of Wallet
+# ASWallet is subclass of Wallet
 class ASWallet(Wallet):
     def __init__(self):
         self.as_pending_utxos = set()
         self.overlook = []
         super().__init__()
         return
-
 
     # special AS version of the standard get_keys function which allows both ...
     # ... parties in an atomic swap recreate an atomic swap puzzle which was ...
@@ -32,8 +31,7 @@ class ASWallet(Wallet):
                 if hash == ProgramHash(self.as_make_puzzle(as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_t, as_secret_hash)):
                     return (pubkey, self.extended_secret_key.private_child(child).get_private_key())
 
-
-    def notify(self, additions, deletions, as_swap_list):
+    def notify(self, additions, deletions, as_swap_list=[]):
         super().notify(additions, deletions)
         puzzlehashes = []
         for swap in as_swap_list:
@@ -42,25 +40,20 @@ class ASWallet(Wallet):
         if puzzlehashes != []:
             self.as_notify(additions, puzzlehashes)
 
-
     def as_notify(self, additions, puzzlehashes):
-        counter = 0
         for coin in additions:
             for puzzlehash in puzzlehashes:
                 if hexlify(coin.puzzle_hash).decode('ascii') == puzzlehash and coin.puzzle_hash not in self.overlook:
                     self.as_pending_utxos.add(coin)
-                    counter += 1
                     self.overlook.append(coin.puzzle_hash)
-
 
     # finds a pending atomic swap coin to be spent
     def as_select_coins(self, amount, as_puzzlehash):
-        if amount > self.current_balance:
+        if amount > self.current_balance or amount < 0:
             return None
         used_utxos = set()
         if isinstance(as_puzzlehash, str):
             as_puzzlehash = puzzlehash_from_string(as_puzzlehash)
-        # print(self.my_utxos)
         coins = self.my_utxos.copy()
         for pcoin in self.as_pending_utxos:
             coins.add(pcoin)
@@ -69,15 +62,13 @@ class ASWallet(Wallet):
                 used_utxos.add(coin)
         return used_utxos
 
-
     # generates the hash of the secret used for the atomic swap coin hashlocks
     def as_generate_secret_hash(self, secret):
         secret_hash_cl = "(sha256 (q %s))" % (secret)
         sec = "(%s)" % secret
-        secret_hash_preformat = clvm.eval_f(clvm.eval_f, binutils.assemble("(sha256 (f (a)))"), binutils.assemble(sec))
+        cost, secret_hash_preformat = clvm.run_program(binutils.assemble("(sha256 (f (a)))"), binutils.assemble(sec))
         secret_hash = binutils.disassemble(secret_hash_preformat)
         return secret_hash
-
 
     def as_make_puzzle(self, as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_block, as_secret_hash):
         as_pubkey_sender_cl = "0x%s" % (hexlify(as_pubkey_sender).decode('ascii'))
@@ -95,12 +86,10 @@ class ASWallet(Wallet):
         as_puz = "((c (i (= (f (a)) (q 33333)) (q " + receiver_puz + " (q " + as_puz_sender + ")) (a)))"
         return Program(binutils.assemble(as_puz))
 
-
     def as_get_new_puzzlehash(self, as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_block, as_secret_hash):
         as_puz = self.as_make_puzzle(as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_block, as_secret_hash)
         as_puzzlehash = ProgramHash(as_puz)
         return as_puzzlehash
-
 
     # 33333 is the receiver solution code prefix
     def as_make_solution_receiver(self, as_sec_to_try):
@@ -109,49 +98,42 @@ class ASWallet(Wallet):
         sol += ")"
         return Program(binutils.assemble(sol))
 
-
     # 77777 is the sender solution code prefix
     def as_make_solution_sender(self):
         sol = "(77777 "
         sol += ")"
         return Program(binutils.assemble(sol))
 
-
     # returns a list of tuples of the form (coin_name, puzzle_hash, conditions_dict, puzzle_solution_program)
     def as_solution_list(self, body_program):
         try:
-            sexp = clvm.eval_f(clvm.eval_f, body_program, [])
+            cost, sexp = clvm.run_program(body_program, [])
         except clvm.EvalError.EvalError:
-            breakpoint()
-            raise ConsensusError(Err.INVALID_BLOCK_SOLUTION, body_program)
+            raise ValueError(body_program)
         npc_list = []
         for name_solution in sexp.as_iter():
             _ = name_solution.as_python()
             if len(_) != 2:
-                raise ConsensusError(Err.INVALID_COIN_SOLUTION, name_solution)
+                raise ValueError(name_solution)
             if not isinstance(_[0], bytes) or len(_[0]) != 32:
-                raise ConsensusError(Err.INVALID_COIN_SOLUTION, name_solution)
+                raise ValueError(name_solution)
             if not isinstance(_[1], list) or len(_[1]) != 2:
-                raise ConsensusError(Err.INVALID_COIN_SOLUTION, name_solution)
+                raise ValueError(name_solution)
             puzzle_solution_program = name_solution.rest().first()
             puzzle_program = puzzle_solution_program.first()
             puzzle_hash = ProgramHash(Program(puzzle_program))
             npc_list.append((puzzle_hash, puzzle_solution_program))
         return npc_list
 
-
     def get_private_keys(self):
         return [BLSPrivateKey(self.extended_secret_key.private_child(child).get_private_key()) for child in range(self.next_address)]
-
 
     def make_keychain(self):
         private_keys = self.get_private_keys()
         return dict((_.public_key(), _) for _ in private_keys)
 
-
     def make_signer(self):
         return sign_f_for_keychain(self.make_keychain())
-
 
     def as_create_spend_bundle(self, as_puzzlehash, as_amount, as_timelock_block, as_secret_hash, as_pubkey_sender = None, as_pubkey_receiver = None, who = None, as_sec_to_try = None):
         utxos = self.as_select_coins(as_amount, as_puzzlehash)
