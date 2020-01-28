@@ -75,11 +75,11 @@ def test_rl_spend():
     commit_and_notify(remote, wallets, wallet_a)
 
     origin_coin = wallet_a.my_utxos.copy().pop()
-    wallet_b_pk = wallet_b.get_next_public_key().serialize()
+    wallet_b_pk = bytes(wallet_b.get_next_public_key())
     wallet_b.set_origin(origin_coin)
     wallet_b.limit = limit
     wallet_b.interval = interval
-    clawback_pk = wallet_a.get_next_public_key().serialize()
+    clawback_pk = bytes(wallet_a.get_next_public_key())
     clawback_pk = hexbytes(clawback_pk)
     wallet_b.rl_clawback_pk = clawback_pk
     rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_coin.name(), clawback_pk)
@@ -138,11 +138,11 @@ def test_rl_interval():
     commit_and_notify(remote, wallets, wallet_a)
 
     origin_coin = wallet_a.my_utxos.copy().pop()
-    wallet_b_pk = wallet_b.get_next_public_key().serialize()
+    wallet_b_pk = bytes(wallet_b.get_next_public_key())
     wallet_b.set_origin(origin_coin)
     wallet_b.limit = limit
     wallet_b.interval = interval
-    clawback_pk = wallet_a.get_next_public_key().serialize()
+    clawback_pk = bytes(wallet_a.get_next_public_key())
     clawback_pk = hexbytes(clawback_pk)
     wallet_b.rl_clawback_pk = clawback_pk
     rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_coin.name(), clawback_pk)
@@ -199,11 +199,11 @@ def test_rl_interval_more_funds():
     commit_and_notify(remote, wallets, wallet_a)
 
     origin_coin = wallet_a.my_utxos.copy().pop()
-    wallet_b_pk = wallet_b.get_next_public_key().serialize()
+    wallet_b_pk = bytes(wallet_b.get_next_public_key())
     wallet_b.set_origin(origin_coin)
     wallet_b.limit = limit
     wallet_b.interval = interval
-    clawback_pk = wallet_a.get_next_public_key().serialize()
+    clawback_pk = bytes(wallet_a.get_next_public_key())
     clawback_pk = hexbytes(clawback_pk)
     wallet_b.rl_clawback_pk = clawback_pk
     rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_coin.name(), clawback_pk)
@@ -266,11 +266,11 @@ def test_spending_over_limit():
     commit_and_notify(remote, wallets, wallet_a)
 
     origin_coin = wallet_a.my_utxos.copy().pop()
-    wallet_b_pk = wallet_b.get_next_public_key().serialize()
+    wallet_b_pk = bytes(wallet_b.get_next_public_key())
     wallet_b.set_origin(origin_coin)
     wallet_b.limit = limit
     wallet_b.interval = interval
-    clawback_pk = wallet_a.get_next_public_key().serialize()
+    clawback_pk = bytes(wallet_a.get_next_public_key())
     clawback_pk = hexbytes(clawback_pk)
     wallet_b.rl_clawback_pk = clawback_pk
     rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_coin.name(), clawback_pk)
@@ -320,11 +320,11 @@ def test_rl_aggregation():
     commit_and_notify(remote, wallets, wallet_a)
 
     origin_coin = wallet_a.my_utxos.copy().pop()
-    wallet_b_pk = wallet_b.get_next_public_key().serialize()
+    wallet_b_pk = bytes(wallet_b.get_next_public_key())
     wallet_b.set_origin(origin_coin)
     wallet_b.limit = limit
     wallet_b.interval = interval
-    clawback_pk = wallet_a.get_next_public_key().serialize()
+    clawback_pk = bytes(wallet_a.get_next_public_key())
     clawback_pk = hexbytes(clawback_pk)
     wallet_b.rl_clawback_pk = clawback_pk
     rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_coin.name(), clawback_pk)
@@ -378,11 +378,11 @@ def test_rl_spend_all():
     commit_and_notify(remote, wallets, wallet_a)
 
     origin_coin = wallet_a.my_utxos.copy().pop()
-    wallet_b_pk = wallet_b.get_next_public_key().serialize()
+    wallet_b_pk = bytes(wallet_b.get_next_public_key())
     wallet_b.set_origin(origin_coin)
     wallet_b.limit = limit
     wallet_b.interval = interval
-    clawback_pk = wallet_a.get_next_public_key().serialize()
+    clawback_pk = bytes(wallet_a.get_next_public_key())
     clawback_pk = hexbytes(clawback_pk)
     wallet_b.rl_clawback_pk = clawback_pk
     rl_puzzle = wallet_b.rl_puzzle_for_pk(wallet_b_pk, limit, interval, origin_coin.name(), clawback_pk)
