@@ -1,5 +1,4 @@
 from standard_wallet.wallet import Wallet
-import hashlib
 import clvm
 from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BLSSignature
 from chiasim.hashable.Coin import Coin
@@ -11,14 +10,6 @@ from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from .ap_wallet_a_functions import ap_make_puzzle, ap_make_aggregation_puzzle
 from utilities.puzzle_utilities import puzzlehash_from_string
 from chiasim.validation.Conditions import ConditionOpcode
-
-
-def sha256(val):
-    return hashlib.sha256(val).digest()
-
-
-def serialize(myobject):
-    return bytes(myobject, 'utf-8')
 
 
 class APWallet(Wallet):
@@ -87,9 +78,6 @@ class APWallet(Wallet):
         if self.AP_puzzlehash is not None and not self.my_utxos:
             for coin in additions:
                 if coin.puzzle_hash == self.AP_puzzlehash:
-                    self.puzzle_generator = f"(q (c (c (q 0x{ConditionOpcode.AGG_SIG.hex()}) (c (f (a)) (q ()))) (c (c (q 0x{ConditionOpcode.ASSERT_COIN_CONSUMED.hex()}) (c (sha256 (sha256 (f (r (a))) (q 0x{self.AP_puzzlehash.hex()}) (uint64 (f (r (r (a)))))) (sha256 (wrap (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (c (q (q ())) (q ())))) (q ()))))) (uint64 (q 0))) (q ()))) (q ()))))"
-                    self.puzzle_generator_id = str(ProgramHash(
-                        Program(binutils.assemble(self.puzzle_generator))))
                     self.current_balance += coin.amount
                     self.my_utxos.add(coin)
                     print("this coin is locked using my ID, it's output must be for me")
@@ -216,7 +204,6 @@ class APWallet(Wallet):
             self.temp_coin, clvm.to_sexp_f([puzzle, solution])))
 
         # Spend consolidating coin
-        #puzzle = Program(clvm.eval_f(clvm.eval_f, binutils.assmeble(self.puzzle_generator), binutils.assemble("(0x" + self.AP_puzzlehash + ")")))
         puzzle = ap_make_aggregation_puzzle(self.temp_coin.puzzle_hash)
         solution = self.ac_make_aggregation_solution(consolidating_coin.name(
         ), self.temp_coin.parent_coin_info, self.temp_coin.amount)

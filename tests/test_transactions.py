@@ -72,11 +72,7 @@ def test_standard_spend():
     assert wallet_b.current_balance == 0
     assert len(wallet_b.my_utxos) == 0
     # wallet a send to wallet b
-    pubkey_puz_string = "(0x%s)" % hexlify(
-        wallet_b.get_next_public_key().serialize()).decode('ascii')
-    args = binutils.assemble(pubkey_puz_string)
-    program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
-        wallet_a.generator_lookups[wallet_b.puzzle_generator_id]), args))
+    program = wallet_b.get_new_puzzle()
     puzzlehash = ProgramHash(program)
 
     amount = 5000
@@ -90,12 +86,7 @@ def test_standard_spend():
     assert len(wallet_b.my_utxos) == 1
 
     # wallet b sends back to wallet a
-    pubkey_puz_string = "(0x%s)" % hexlify(
-        wallet_a.get_next_public_key().serialize()).decode('ascii')
-    args = binutils.assemble(pubkey_puz_string)
-    program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
-        wallet_b.generator_lookups[wallet_a.puzzle_generator_id]), args))
-    puzzlehash = ProgramHash(program)
+    puzzlehash = wallet_a.get_new_puzzlehash()
 
     amount = 5000
     spend_bundle = wallet_b.generate_signed_transaction(amount, puzzlehash)
@@ -156,11 +147,7 @@ def test_spend_failure():
     wallets = [wallet_a, wallet_b]
     amount = 5000
     # wallet a send to wallet b
-    pubkey_puz_string = "(0x%s)" % hexlify(
-        wallet_b.get_next_public_key().serialize()).decode('ascii')
-    args = binutils.assemble(pubkey_puz_string)
-    program = Program(clvm.eval_f(clvm.eval_f, binutils.assemble(
-        wallet_a.generator_lookups[wallet_b.puzzle_generator_id]), args))
+    program = wallet_b.get_new_puzzle()
     puzzlehash = ProgramHash(program)
     spend_bundle = wallet_a.generate_signed_transaction(amount, puzzlehash)
     assert spend_bundle is None

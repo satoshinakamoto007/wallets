@@ -66,7 +66,7 @@ class ASWallet(Wallet):
     def as_generate_secret_hash(self, secret):
         secret_hash_cl = "(sha256 (q %s))" % (secret)
         sec = "(%s)" % secret
-        secret_hash_preformat = clvm.eval_f(clvm.eval_f, binutils.assemble("(sha256 (f (a)))"), binutils.assemble(sec))
+        cost, secret_hash_preformat = clvm.run_program(binutils.assemble("(sha256 (f (a)))"), binutils.assemble(sec))
         secret_hash = binutils.disassemble(secret_hash_preformat)
         return secret_hash
 
@@ -107,7 +107,7 @@ class ASWallet(Wallet):
     # returns a list of tuples of the form (coin_name, puzzle_hash, conditions_dict, puzzle_solution_program)
     def as_solution_list(self, body_program):
         try:
-            sexp = clvm.eval_f(clvm.eval_f, body_program, [])
+            cost, sexp = clvm.run_program(body_program, [])
         except clvm.EvalError.EvalError:
             raise ValueError(body_program)
         npc_list = []

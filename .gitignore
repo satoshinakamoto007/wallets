@@ -7,3 +7,4 @@ wallets.egg-info
 .venv
 .DS_Store
 .eggs
+*.hex
