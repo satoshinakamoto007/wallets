@@ -40,11 +40,11 @@ class APWallet(Wallet):
     # returns a tuple of (puzhash, signature)
     def ap_generate_signatures(self, puzhashes, oldpuzzlehash, b_pubkey_used):
         puzhash_signature_list = []
-        pubkey, secretkey = self.get_keys(oldpuzzlehash, None, b_pubkey_used)
-        signature = secretkey.sign(oldpuzzlehash)
+        pubkey, secret_exponent = self.get_keys(oldpuzzlehash, None, b_pubkey_used)
+        signature = BLSSignature.create(oldpuzzlehash, secret_exponent)
         puzhash_signature_list.append((oldpuzzlehash, signature))
         for p in puzhashes:
-            signature = secretkey.sign(p)
+            signature = BLSSignature(secret_exponent, p)
             puzhash_signature_list.append((p, signature))
 
         return puzhash_signature_list
@@ -54,13 +54,13 @@ class APWallet(Wallet):
         for child in reversed(range(self.next_address)):
             pubkey = self.extended_secret_key.public_child(child)
             if hash == ProgramHash(puzzle_for_pk(bytes(pubkey))):
-                return (pubkey, self.extended_secret_key.private_child(child))
+                return (pubkey, self.extended_secret_key.secret_exponent_for_child(child))
             if a_pubkey_used is not None and b_pubkey_used is None:
                 if hash == ProgramHash(ap_make_puzzle(a_pubkey_used, bytes(pubkey))):
-                    return (pubkey, self.extended_secret_key.private_child(child))
+                    return (pubkey, self.extended_secret_key.secret_exponent_for_child(child))
             elif a_pubkey_used is None and b_pubkey_used is not None:
                 if hash == ProgramHash(ap_make_puzzle(bytes(pubkey), b_pubkey_used)):
-                    return (pubkey, self.extended_secret_key.private_child(child))
+                    return (pubkey, self.extended_secret_key.secret_exponent_for_child(child))
 
     def notify(self, additions, deletions):
         super().notify(additions, deletions)
@@ -129,7 +129,7 @@ class APWallet(Wallet):
         coin = self.temp_coin
         puzzle_hash = coin.puzzle_hash
 
-        pubkey, secretkey = self.get_keys(puzzle_hash, self.a_pubkey)
+        pubkey, secret_exponent = self.get_keys(puzzle_hash, self.a_pubkey)
         puzzle = ap_make_puzzle(self.a_pubkey, bytes(pubkey))
         solution = self.ap_make_solution_mode_1(
             puzzlehash_amount_list, coin.parent_coin_info, puzzle_hash)
@@ -138,8 +138,8 @@ class APWallet(Wallet):
 
     # this allows wallet A to approve of new puzzlehashes/spends from wallet B that weren't in the original list
     def ap_sign_output_newpuzzlehash(self, puzzlehash, newpuzzlehash, b_pubkey_used):
-        pubkey, secretkey = self.get_keys(puzzlehash, None, b_pubkey_used)
-        signature = secretkey.sign(newpuzzlehash)
+        pubkey, secret_exponent = self.get_keys(puzzlehash, None, b_pubkey_used)
+        signature = BLSSignature.create(newpuzzlehash, secret_exponent)
         return signature
 
     # this is for sending a locked coin
@@ -147,10 +147,9 @@ class APWallet(Wallet):
     def ap_sign_transaction(self, spends: (Program, [CoinSolution]), signatures_from_a):
         sigs = []
         for puzzle, solution in spends:
-            pubkey, secretkey = self.get_keys(
+            pubkey, secret_exponent = self.get_keys(
                 solution.coin.puzzle_hash, self.a_pubkey)
-            signature = secretkey.sign(
-                ProgramHash(Program(solution.solution)))
+            signature = BLSSignature.create(ProgramHash(Program(solution.solution)), secret_exponent)
             sigs.append(signature)
         for s in signatures_from_a:
             sigs.append(s)
@@ -187,14 +186,14 @@ class APWallet(Wallet):
             return
         consolidating_coin = self.aggregation_coins.pop()
 
-        pubkey, secretkey = self.get_keys(
+        pubkey, secret_exponent = self.get_keys(
             self.temp_coin.puzzle_hash, self.a_pubkey)
 
         # Spend wallet coin
         puzzle = ap_make_puzzle(self.a_pubkey, bytes(pubkey))
         solution = self.ap_make_solution_mode_2(self.temp_coin.puzzle_hash, consolidating_coin.parent_coin_info,
                                                 consolidating_coin.puzzle_hash, consolidating_coin.amount, self.temp_coin.parent_coin_info, self.temp_coin.amount)
-        signature = secretkey.sign(ProgramHash(solution))
+        signature = BLSSignature.create(ProgramHash(solution), secret_exponent)
         list_of_coinsolutions.append(CoinSolution(
             self.temp_coin, clvm.to_sexp_f([puzzle, solution])))
 

@@ -210,13 +210,13 @@ class RLWallet(Wallet):
             pubkey = self.extended_secret_key.public_child(child)
             if hash == ProgramHash(
                     self.rl_puzzle_for_pk(bytes(pubkey), self.limit, self.interval, self.rl_origin, self.rl_clawback_pk)):
-                return pubkey, self.extended_secret_key.private_child(child)
+                return pubkey, self.extended_secret_key.secret_exponent_for_child(child)
 
     def get_keys_pk(self, clawback_pubkey):
         for child in reversed(range(self.next_address)):
             pubkey = self.extended_secret_key.public_child(child)
             if hexbytes(bytes(pubkey)) == clawback_pubkey:
-                return pubkey, self.extended_secret_key.private_child(child)
+                return pubkey, self.extended_secret_key.secret_exponent_for_child(child)
 
     # This is for spending from received RL coin, not creating a new RL coin
     def rl_generate_unsigned_transaction(self, to_puzzlehash, amount):
@@ -243,10 +243,10 @@ class RLWallet(Wallet):
     def rl_sign_transaction(self, spends: (Program, [CoinSolution])):
         sigs = []
         for puzzle, solution in spends:
-            pubkey, secretkey = self.get_keys(
+            pubkey, secret_exponent = self.get_keys(
                 solution.coin.puzzle_hash)
-            signature = secretkey.sign(
-                ProgramHash(Program(solution.solution)))
+            signature = BLSSignature.create(
+                ProgramHash(Program(solution.solution)), secret_exponent)
             sigs.append(signature)
         aggsig = BLSSignature.aggregate(sigs)
         solution_list = CoinSolutionList(
@@ -266,9 +266,8 @@ class RLWallet(Wallet):
     def sign_clawback_transaction(self, spends: (Program, [CoinSolution]), clawback_pubkey):
         sigs = []
         for puzzle, solution in spends:
-            pubkey, secretkey = self.get_keys_pk(clawback_pubkey)
-            signature = secretkey.sign(
-                ProgramHash(Program(solution.solution)))
+            pubkey, secret_exponent = self.get_keys_pk(clawback_pubkey)
+            signature = BLSSignature.create(ProgramHash(Program(solution.solution)), secret_exponent)
             sigs.append(signature)
         aggsig = BLSSignature.aggregate(sigs)
         solution_list = CoinSolutionList(
@@ -290,7 +289,7 @@ class RLWallet(Wallet):
             return
         consolidating_coin = self.aggregation_coins.pop()
 
-        pubkey, secretkey = self.get_keys(
+        pubkey, secret_exponent = self.get_keys(
             self.rl_coin.puzzle_hash)
         # Spend wallet coin
         puzzle = self.rl_puzzle_for_pk(bytes(pubkey), self.limit, self.interval, self.rl_origin, self.rl_clawback_pk)
@@ -305,7 +304,7 @@ class RLWallet(Wallet):
                                                     consolidating_coin.puzzle_hash, consolidating_coin.amount,
                                                     self.rl_coin.parent_coin_info, self.rl_coin.amount,
                                                     self.rl_parent["amount"], self.rl_parent["parent_coin_info"])
-        signature = secretkey.sign(ProgramHash(solution))
+        signature = BLSSignature.create(ProgramHash(solution), secret_exponent)
         list_of_coinsolutions.append(CoinSolution(self.rl_coin, clvm.to_sexp_f([puzzle, solution])))
 
         # Spend consolidating coin

@@ -35,9 +35,9 @@ def conditions_for_payment(puzzle_hash_amount_pairs):
 
 def sign_f_for_keychain(keychain):
     def sign_f(aggsig_pair):
-        bls_private_key = keychain.get(aggsig_pair.public_key)
-        if bls_private_key:
-            return bls_private_key.sign(aggsig_pair.message_hash)
+        secret_exponent = keychain.get(aggsig_pair.public_key)
+        if secret_exponent:
+            return BLSSignature.create(aggsig_pair.message_hash, secret_exponent)
         raise ValueError("unknown pubkey %s" % aggsig_pair.public_key)
     return sign_f
 

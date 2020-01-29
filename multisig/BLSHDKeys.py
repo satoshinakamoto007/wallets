@@ -2,7 +2,6 @@ import hashlib
 
 import blspy
 from chiasim.hashable.BLSPublicKey import BLSPublicKey
-from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 
 
 def fingerprint_for_pk(pk):
@@ -81,16 +80,10 @@ class BLSPrivateHDKey:
     def secret_exponent_for_child(self, idx):
         return self.private_hd_child(idx).secret_exponent()
 
-    def private_child(self, idx):
-        return self.private_hd_child(idx).private_key()
-
     def secret_exponent(self):
         return int.from_bytes(
             self._bls_private_hd_key.get_private_key().serialize(), "big"
         )
-
-    def private_key(self):
-        return BLSPrivateKey(self._bls_private_hd_key.get_private_key())
 
     def public_child(self, idx):
         return self.public_hd_child(idx).public_key()

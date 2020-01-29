@@ -7,6 +7,7 @@ from pathlib import Path
 from .BLSHDKeys import BLSPrivateHDKey, fingerprint_for_pk
 from .pst import PartiallySignedTransaction
 
+from chiasim.hashable import BLSSignature
 from chiasim.validation.consensus import (
     conditions_dict_for_solution,
     hash_key_pairs_for_conditions_dict,
@@ -64,8 +65,8 @@ def generate_signatures(pst, private_wallet):
             if fp in hd_hints:
                 hint = hd_hints[fp]
                 if private_fingerprint == hint.get("hd_fingerprint"):
-                    private_key = private_wallet.private_child(hint.get("index"))
-                    signature = private_key.sign(message_hash)
+                    secret_exponent = private_wallet.secret_exponent_for_child(hint.get("index"))
+                    signature = BLSSignature.create(message_hash, secret_exponent)
                     sigs[aggsig_pair] = signature
     return list(sigs.values())
 

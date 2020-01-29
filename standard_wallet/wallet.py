@@ -56,7 +56,7 @@ class Wallet:
         for child in range(self.next_address):
             pubkey = self.extended_secret_key.public_child(child)
             if hash == ProgramHash(puzzle_for_pk(bytes(pubkey))):
-                return (pubkey, self.extended_secret_key.private_child(child))
+                return (pubkey, self.extended_secret_key.secret_exponent_for_child(child))
 
     def notify(self, additions, deletions):
         for coin in additions:
@@ -99,8 +99,8 @@ class Wallet:
         return puzzlehash
 
     def sign(self, value, pubkey):
-        privatekey = self.extended_secret_key.private_child(self.pubkey_num_lookup[pubkey])
-        return privatekey.sign(value)
+        secret_exponent = self.extended_secret_key.secret_exponent_for_child(self.pubkey_num_lookup[pubkey])
+        return BLSSignature.create(value, secret_exponent)
 
     def make_solution(self, primaries=[], min_time=0, me={}, consumed=[]):
         ret = []
@@ -126,7 +126,7 @@ class Wallet:
         for coin in utxos:
             puzzle_hash = coin.puzzle_hash
 
-            pubkey, secretkey = self.get_keys(puzzle_hash)
+            pubkey, secret_exponent = self.get_keys(puzzle_hash)
             puzzle = puzzle_for_pk(pubkey)
             if output_created is False:
                 primaries = [{'puzzlehash': newpuzzlehash, 'amount': amount}]
@@ -147,13 +147,13 @@ class Wallet:
     def sign_transaction(self, spends: (Program, [CoinSolution])):
         sigs = []
         for puzzle, solution in spends:
-            pubkey, secretkey = self.get_keys(solution.coin.puzzle_hash)
+            pubkey, secret_exponent = self.get_keys(solution.coin.puzzle_hash)
             code_ = [puzzle, solution.solution]
             sexp = clvm.to_sexp_f(code_)
             conditions_dict = conditions_by_opcode(
                 conditions_for_solution(sexp))
             for _ in hash_key_pairs_for_conditions_dict(conditions_dict):
-                signature = secretkey.sign(_.message_hash)
+                signature = BLSSignature.create(_.message_hash, secret_exponent)
                 sigs.append(signature)
         aggsig = BLSSignature.aggregate(sigs)
         solution_list = CoinSolutionList(
