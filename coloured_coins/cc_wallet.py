@@ -175,7 +175,7 @@ class CCWallet(Wallet):
 
         core = self.my_coloured_coins[coin][1]
         temp_fix_innersol = clvm.to_sexp_f([innersol, []])
-        aggregator_info = (aggregator.parent_coin_info, aggregator_innerpuzhash, aggregator.amount)  # innerpuz (self.my_coloured_coins[coin][0]) is a HACK here - fix later
+        aggregator_info = (aggregator.parent_coin_info, aggregator_innerpuzhash, aggregator.amount)
         solution = self.cc_make_solution(core, parent_info, amount, innerpuz, binutils.disassemble(temp_fix_innersol), aggregator_info, None)
         solution_list = CoinSolutionList([CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution]))])
         aggsig = BLSSignature.aggregate(sigs)

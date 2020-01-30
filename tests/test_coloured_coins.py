@@ -104,12 +104,10 @@ def test_cc_standard():
 
     assert len(wallet_a.my_coloured_coins) == 1
 
-    # Generate spend so that Wallet B can receive the coin
+    # Wallet A does Eve spend to itself
 
     newinnerpuzhash = wallet_b.get_new_puzzlehash()
     innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': amount}])
-
-    # need to have the aggsigs for the standard puzzle in innerpuz
 
     coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()  # this is a hack - design things properly
     assert inspector == coin
@@ -118,6 +116,31 @@ def test_cc_standard():
     wallet_b.cc_add_core(core)
     assert ProgramHash(clvm.to_sexp_f(wallet_a.cc_make_puzzle(ProgramHash(wallet_a.my_coloured_coins[coin][0]), core))) == coin.puzzle_hash
 
+    # parent info is origin ID
+    parent_info = genesisCoin.name()
+
+    # don't need sigs for eve spend
+    sigs = []
+
+    spend_bundle = wallet_a.cc_generate_signed_transaction(coin, parent_info, amount, innersol, coin, wallet_a.my_coloured_coins[coin][0], None, sigs=sigs)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert len(wallet_b.my_coloured_coins) == 0
+    assert len(wallet_a.my_coloured_coins) == 1
+    assert coin not in wallet_a.my_coloured_coins
+    breakpoint()
+
+
+    # Generate spend so that Wallet B can receive the coin
+    # reuse innerpuz and innersol from above
+
+    # parent info update
+    parent_info = parent_info = (coin.parent_coin_info, innerpuzhash, coin.amount)
+    coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()  # this is a hack - design things properly
+    core = wallet_a.my_coloured_coins[coin][1]
+    assert ProgramHash(clvm.to_sexp_f(wallet_a.cc_make_puzzle(ProgramHash(wallet_a.my_coloured_coins[coin][0]), core))) == coin.puzzle_hash
+
+    # Generate signatures for inner standard spend
     sigs = []
     pubkey, secretkey = wallet_a.get_keys(innerpuzhash)
     secretkey = BLSPrivateKey(secretkey)
@@ -131,9 +154,6 @@ def test_cc_standard():
 
     assert sigs != []
 
-    # parent info is origin ID
-    parent_info = genesisCoin.name()
-
     spend_bundle = wallet_a.cc_generate_signed_transaction(coin, parent_info, amount, innersol, coin, wallet_a.my_coloured_coins[coin][0], None, sigs=sigs)
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
@@ -141,9 +161,8 @@ def test_cc_standard():
     assert len(wallet_a.my_coloured_coins) == 0
 
 
-
     # wallet B spends coloured coin back to wallet A
-    parent_info = (coin.parent_coin_info, innerpuzhash, coin.amount)
+    parent_info = (coin.parent_coin_info, newinnerpuzhash, coin.amount)
     pubkey, secretkey = wallet_b.get_keys(newinnerpuzhash)
     innerpuzhash = newinnerpuzhash
     newinnerpuzhash = wallet_a.get_new_puzzlehash()
