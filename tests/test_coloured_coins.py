@@ -134,7 +134,7 @@ def test_cc_standard():
     # parent info is origin ID
     parent_info = genesisCoin.name()
 
-    spend_bundle = wallet_a.cc_generate_signed_transaction(coin, parent_info, amount, innersol, sigs=sigs)
+    spend_bundle = wallet_a.cc_generate_signed_transaction(coin, parent_info, amount, innersol, coin, wallet_a.my_coloured_coins[coin][0], None, sigs=sigs)
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
     assert len(wallet_b.my_coloured_coins) == 1
@@ -162,7 +162,7 @@ def test_cc_standard():
         sigs.append(signature)
 
     assert sigs != []
-    spend_bundle = wallet_b.cc_generate_signed_transaction(coin, parent_info, amount, innersol, sigs=sigs)
+    spend_bundle = wallet_b.cc_generate_signed_transaction(coin, parent_info, amount, innersol, coin, wallet_b.my_coloured_coins[coin][0], None, sigs=sigs)
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
     assert len(wallet_b.my_coloured_coins) == 0
