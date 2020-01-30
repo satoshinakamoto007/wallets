@@ -82,7 +82,7 @@ class BLSPrivateHDKey:
 
     def secret_exponent(self):
         return int.from_bytes(
-            self._bls_private_hd_key.get_private_key().serialize(), "big"
+            bytes(self._bls_private_hd_key.get_private_key()), "big"
         )
 
     def public_child(self, idx):

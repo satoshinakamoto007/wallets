@@ -2,7 +2,7 @@
 -e git+https://git@github.com/Chia-Network/clvm_tools.git@aca0c1577991a9349df53817249d0088656c7608#egg=clvm_tools
 -e git+https://git@github.com/Chia-Network/ledger_sim.git@8ed4f1bac658eb435dc24f03ea2ec147b2cefaf0#egg=ledger_sim
 aiter==0.1.2
-blspy==0.1.8
+blspy==0.1.14
 cbor==1.0.0
 qrcode==6.1
 pyzbar==0.1.8
