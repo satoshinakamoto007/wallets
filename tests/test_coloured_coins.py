@@ -136,7 +136,7 @@ def test_cc_standard():
     # reuse innerpuz and innersol from above
 
     # parent info update
-    parent_info = parent_info = (coin.parent_coin_info, innerpuzhash, coin.amount)
+    parent_info = (coin.parent_coin_info, innerpuzhash, coin.amount)
     coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()  # this is a hack - design things properly
     core = wallet_a.my_coloured_coins[coin][1]
     assert ProgramHash(clvm.to_sexp_f(wallet_a.cc_make_puzzle(ProgramHash(wallet_a.my_coloured_coins[coin][0]), core))) == coin.puzzle_hash
