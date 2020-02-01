@@ -122,7 +122,8 @@ def test_cc_standard():
     # don't need sigs for eve spend
     sigs = []
 
-    spend_bundle = wallet_a.cc_generate_signed_transaction(coin, parent_info, amount, innersol, coin, wallet_a.my_coloured_coins[coin][0], None, sigs=sigs)
+    #spend_bundle = wallet_a.cc_generate_signed_transaction(coin, parent_info, amount, innersol, coin, wallet_a.my_coloured_coins[coin][0], None, sigs=sigs)
+    spend_bundle = wallet_a.cc_generate_eve_spend([(coin, parent_info, amount, innersol)])
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
     assert len(wallet_b.my_coloured_coins) == 0
@@ -155,7 +156,8 @@ def test_cc_standard():
 
     assert sigs != []
     aggregatees_list = [(coin.parent_coin_info, innerpuzhash, amount, amount)]
-    spend_bundle = wallet_a.cc_generate_signed_transaction(coin, parent_info, amount, innersol, coin, ProgramHash(wallet_a.my_coloured_coins[coin][0]), aggregatees_list, sigs=sigs)
+    #spend_bundle = wallet_a.cc_generate_signed_transaction(coin, parent_info, amount, innersol, coin, ProgramHash(wallet_a.my_coloured_coins[coin][0]), aggregatees_list, sigs=sigs)
+    spend_bundle = wallet_a.cc_generate_spends_for_coin_list([(coin, parent_info, amount, innersol)], sigs)
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
     assert len(wallet_b.my_coloured_coins) == 1

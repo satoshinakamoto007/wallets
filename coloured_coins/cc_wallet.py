@@ -161,7 +161,8 @@ class CCWallet(Wallet):
         aggees = "("
         if aggregatees is not None:
             for aggregatee in aggregatees:
-                aggees = aggees + f"(0x{aggregatee[0]} 0x{aggregatee[1]} {aggregatee[2]} {aggregatee[3]})"
+                # spendslist is [] of (coin, parent_info, outputamount, innersol)
+                aggees = aggees + f"(0x{aggregatee[0].parent_coin_info} 0x{ProgramHash(self.my_coloured_coins[aggregatee[0]][0])} {aggregatee[0].amount} {aggregatee[2]})"
         aggees = aggees + ")"
 
         sol = f"({core} {parent_str} {amount} {innerpuzreveal} {innersol} {aggregator_formatted} {aggees})"
@@ -177,13 +178,68 @@ class CCWallet(Wallet):
         aggregator_info = (aggregator.parent_coin_info, aggregator_innerpuzhash, aggregator.amount)
         solution = self.cc_make_solution(core, parent_info, amount, innerpuz, binutils.disassemble(temp_fix_innersol), aggregator_info, aggregatees)
         list_of_solutions = [CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution]))]
-
+        breakpoint()
         if aggregatees is not None:
             for agg in aggregatees:
                 agg_coin = Coin(agg[0], self.cc_make_puzzle(agg[1], core), agg[2])
-                breakpoint()
-                list_of_solutions.append(self.create_spend_for_ephemeral(coin, aggregator, amount))
+
+                list_of_solutions.append(self.create_spend_for_ephemeral(agg_coin, aggregator, amount))
                 list_of_solutions.append(self.create_puzzle_for_aggregator(aggregator, agg_coin))
+        solution_list = CoinSolutionList(list_of_solutions)
+        aggsig = BLSSignature.aggregate(sigs)
+        spend_bundle = SpendBundle(solution_list, aggsig)
+        return spend_bundle
+
+    def cc_generate_eve_spend(self, spendslist, sigs=[]):
+        # spendslist is [] of (coin, parent_info, outputamount, innersol)
+        aggregator = spendslist[0][0]
+        innerpuz = binutils.disassemble(self.my_coloured_coins[aggregator][0])
+        core = self.my_coloured_coins[aggregator][1]
+        aggregator_info = (aggregator.parent_coin_info, ProgramHash(self.my_coloured_coins[aggregator][0]), aggregator.amount)
+        list_of_solutions = []
+        for spend in spendslist:
+            coin = spend[0]
+            innerpuz = binutils.disassemble(self.my_coloured_coins[coin][0])
+            innersol = spend[3]
+            temp_fix_innersol = clvm.to_sexp_f([innersol, []])
+            parent_info = spend[1]
+            solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), aggregator_info, None)
+            list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
+        solution_list = CoinSolutionList(list_of_solutions)
+        aggsig = BLSSignature.aggregate(sigs)
+        spend_bundle = SpendBundle(solution_list, aggsig)
+        return spend_bundle
+
+    def cc_generate_spends_for_coin_list(self, spendslist, sigs=[]):
+        # spendslist is [] of (coin, parent_info, outputamount, innersol)
+        aggregator = spendslist[0][0]
+        innerpuz = binutils.disassemble(self.my_coloured_coins[aggregator][0])
+        core = self.my_coloured_coins[aggregator][1]
+        aggregator_info = (aggregator.parent_coin_info, ProgramHash(self.my_coloured_coins[aggregator][0]), aggregator.amount)
+        list_of_solutions = []
+        # aggregator special case
+        spend = spendslist[0]
+        coin = spend[0]
+        innerpuz = binutils.disassemble(self.my_coloured_coins[coin][0])
+        innersol = spend[3]
+        temp_fix_innersol = clvm.to_sexp_f([innersol, []])
+        parent_info = spend[1]
+        solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), aggregator_info, spendslist)
+        list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
+        list_of_solutions.append(self.create_spend_for_ephemeral(coin, aggregator, spend[2]))
+        list_of_solutions.append(self.create_puzzle_for_aggregator(aggregator, coin))
+        breakpoint()
+        # loop through remaining aggregatees
+        for spend in spendslist[1:]:
+            coin = spend[0]
+            innerpuz = binutils.disassemble(self.my_coloured_coins[coin][0])
+            innersol = spend[3]
+            temp_fix_innersol = clvm.to_sexp_f([innersol, []])
+            parent_info = spend[1]
+            solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), aggregator_info, None)
+            list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
+            list_of_solutions.append(self.create_spend_for_ephemeral(coin, aggregator, spend[2]))
+            list_of_solutions.append(self.create_puzzle_for_aggregator(aggregator, coin))
         solution_list = CoinSolutionList(list_of_solutions)
         aggsig = BLSSignature.aggregate(sigs)
         spend_bundle = SpendBundle(solution_list, aggsig)
