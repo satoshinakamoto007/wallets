@@ -88,7 +88,7 @@ def test_multisig_spend():
 
     index = 0
     address = wallet.address_for_index(index)
-    assert address == "2ac7fbf72a53291b511929baa7f3b4e99e470c64bd32ee01939698daba632794"
+    assert address == "a8f583e8f09c8eeca04c4b62f34734fb3747b021eb41ed05e8265d9dd396cbf6"
 
     coin = run(coin_for_address(remote, address))
 
@@ -117,13 +117,13 @@ def test_multisig_spend_two():
 
     index = 0
     address = wallet.address_for_index(index)
-    assert address == "2ac7fbf72a53291b511929baa7f3b4e99e470c64bd32ee01939698daba632794"
+    assert address == "a8f583e8f09c8eeca04c4b62f34734fb3747b021eb41ed05e8265d9dd396cbf6"
 
     coin_0 = run(coin_for_address(remote, address))
 
     index = 1
     address = wallet.address_for_index(index)
-    assert address == "4245fddc137b63d177032b8dfd0637ad14e8fb9c1a4191fa40a6af3db96a2645"
+    assert address == "f29cfc4cfdea7f7d2692dc08e670e46bbd73a1fbef114df2c9def81a9ecde945"
 
     coin_1 = run(coin_for_address(remote, address))
 
@@ -168,6 +168,16 @@ def test_ui_process():
 
     # create the wallet
 
+    # these keys are based on extended private keys that serialize as
+    # "0000000100000000000000000050421bbc044a3cfcd2297e5bb799a4c5e79069cd1df416acdc3"
+    # "108d7575346890bf96618a62dd6f69b921b8ef3ef8f6a5b39ccb23162d81bd49758c0e3ff238b"
+    #
+    # "00000001000000000000000000058c016b8e4e3b92a41814f758b500d1f6d4df070466a737e08"
+    # "a330979a78ee6584e7593ea0a6e0f1288db16b1bd97394d2e21453c9b8c0c89e5fcca01089ada"
+    #
+    # "0000000100000000000000000027d28a4ab48580acaf9c4dc48bf72020b2cc9a7394fe507653d"
+    # "255a9ceeed83867cd6ee2839495345c0430293af8cbc72e715576f852219c32a8fb047c6d88b0"
+
     CREATE_WALLET_INPUTS = [
         "0000000100000000000000000050421bbc044a3cfcd2297e5bb799a4c5e79069cd1df416acdc3108d75753468908e5b516e93868159d0eb07aab715805acce775a55e7702968490893d73f644619e6e9ff0b95c6315b1e895544edd94a",
         "00000001000000000000000000058c016b8e4e3b92a41814f758b500d1f6d4df070466a737e08a330979a78ee614a963ec636d0ce1577980e705a24bf4bcb928a8577d9e66c716b37dcf444b0e624d022b59fdcfe3092333153906091c",
@@ -176,13 +186,12 @@ def test_ui_process():
         "2",
         "q",
     ]
-
     run(main_loop(PATH, storage=storage, input=input_for(CREATE_WALLET_INPUTS)))
     wallet = load_wallet(PATH)
 
     assert (
         wallet.address_for_index(0)
-        == "8a6b61236f84ea8a6d7c869d673f238585fa64029457019921373475ae05f9be"
+        == "332298d6fb67ca29e1c15f26a4cc4b655ecc8c85135909b23e2fa9fa8a341d06"
     )
 
     GENERATE_ADDRESS_INPUTS = [
@@ -201,8 +210,8 @@ def test_ui_process():
         coins[0].name().hex(),
         coins[1].name().hex(),
         "",
-        "c203f6725d178d243a8d8f0788a4c5b2c99f01c57758a0fcdf880c44344862823cec2ecc6374895c5f52411f481eae040fdad704fc03d22f0e447630fc5c5c8bd750424bb17ffdaa0781218e32a4b0fce4d50fd818b86e39297af901831a6854",
-        "c4b50e2308bb9dc472c51a5712ba75b6ad52bfa4e1134b26444f0d070f01404932529a8dfe67990ebf83747d78db09471482c417b57e2eee0f486ad7bf1798e350e18e43530b07545b11b8265832c97ec74cab0f69e5dfca5de4155896bbdb83",
+        "42cd0487d583c348229d1de188e8523ab814a808435bf61e1f27f81775197339d72117d870bc421d64244ac5c0440105076a40c385907a920fae054b683874a81d5adcc64cb4d70afc27f4b4ab83e4830597d5a272cf9f9056d9d19357d5bc8c",
+        "4917f65ce8d46c3b14fb32ae9d1202b48b12770ab52d0dda33c896f9442cc8c26c978c257a354667c0bcd7160f7b5b24117a7a3b102f0ccb1d06a2069d28474e1ead4eae0c86d449ff95404241a413d893f97fe7e6a745f1078dc1516634f916",
         "y",
         "q",
     ]
