@@ -71,7 +71,7 @@ def test_cc_standard():
     wallets = [wallet_a, wallet_b]
     commit_and_notify(remote, wallets, wallet_a)
 
-    # Wallet B generates some genesis coins to itself.
+    # Wallet A generates some genesis coins to itself.
     innerpuzhash = wallet_a.get_new_puzzlehash()
     amount = 10000
     my_utxos_copy = wallet_a.temp_utxos.copy()
@@ -129,7 +129,6 @@ def test_cc_standard():
     assert len(wallet_b.my_coloured_coins) == 0
     assert len(wallet_a.my_coloured_coins) == 1
     assert coin not in wallet_a.my_coloured_coins
-    breakpoint()
 
 
     # Generate spend so that Wallet B can receive the coin
@@ -155,7 +154,7 @@ def test_cc_standard():
         sigs.append(signature)
 
     assert sigs != []
-    aggregatees_list = [(coin.parent_coin_info, innerpuzhash, amount, amount)]
+    #aggregatees_list = [(coin.parent_coin_info, innerpuzhash, amount, amount)]
     #spend_bundle = wallet_a.cc_generate_signed_transaction(coin, parent_info, amount, innersol, coin, ProgramHash(wallet_a.my_coloured_coins[coin][0]), aggregatees_list, sigs=sigs)
     spend_bundle = wallet_a.cc_generate_spends_for_coin_list([(coin, parent_info, amount, innersol)], sigs)
     _ = run(remote.push_tx(tx=spend_bundle))
@@ -165,7 +164,7 @@ def test_cc_standard():
 
 
     # wallet B spends coloured coin back to wallet A
-    parent_info = (coin.parent_coin_info, newinnerpuzhash, coin.amount)
+    parent_info = (coin.parent_coin_info, innerpuzhash, coin.amount)
     pubkey, secretkey = wallet_b.get_keys(newinnerpuzhash)
     innerpuzhash = newinnerpuzhash
     newinnerpuzhash = wallet_a.get_new_puzzlehash()
@@ -184,8 +183,29 @@ def test_cc_standard():
         sigs.append(signature)
 
     assert sigs != []
-    spend_bundle = wallet_b.cc_generate_signed_transaction(coin, parent_info, amount, innersol, coin, wallet_b.my_coloured_coins[coin][0], None, sigs=sigs)
+    spend_bundle = wallet_b.cc_generate_spends_for_coin_list([(coin, parent_info, amount, innersol)], sigs)
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
     assert len(wallet_b.my_coloured_coins) == 0
     assert len(wallet_a.my_coloured_coins) == 1
+
+
+def test_multiple_cc_spends_once():
+    remote = make_client_server()
+    run = asyncio.get_event_loop().run_until_complete
+
+    # A gives some unique coloured Chia coins to B who is then able to spend it while retaining the colouration
+    wallet_a = CCWallet()
+    wallet_b = CCWallet()
+    wallets = [wallet_a, wallet_b]
+    commit_and_notify(remote, wallets, wallet_a)
+
+    # Wallet A generates some genesis coins to itself.
+    innerpuzhash = wallet_a.get_new_puzzlehash()
+    amount = 10000
+    my_utxos_copy = wallet_a.temp_utxos.copy()
+    genesisCoin = my_utxos_copy.pop()
+    while genesisCoin.amount < amount and len(my_utxos_copy) > 0:
+        genesisCoin = my_utxos_copy.pop()
+    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amount, innerpuzhash, genesisCoin=genesisCoin)
+    _ = run(remote.push_tx(tx=spend_bundle))

@@ -169,27 +169,6 @@ class CCWallet(Wallet):
         print(f"DEBUG solstring: {sol}")
         return Program(binutils.assemble(sol))
 
-    # This is for spending a recieved coloured coin
-    def cc_generate_signed_transaction(self, coin, parent_info, amount, innersol, aggregator, aggregator_innerpuzhash, aggregatees=None, sigs=[]):
-        innerpuz = binutils.disassemble(self.my_coloured_coins[coin][0])
-
-        core = self.my_coloured_coins[coin][1]
-        temp_fix_innersol = clvm.to_sexp_f([innersol, []])
-        aggregator_info = (aggregator.parent_coin_info, aggregator_innerpuzhash, aggregator.amount)
-        solution = self.cc_make_solution(core, parent_info, amount, innerpuz, binutils.disassemble(temp_fix_innersol), aggregator_info, aggregatees)
-        list_of_solutions = [CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution]))]
-        breakpoint()
-        if aggregatees is not None:
-            for agg in aggregatees:
-                agg_coin = Coin(agg[0], self.cc_make_puzzle(agg[1], core), agg[2])
-
-                list_of_solutions.append(self.create_spend_for_ephemeral(agg_coin, aggregator, amount))
-                list_of_solutions.append(self.create_puzzle_for_aggregator(aggregator, agg_coin))
-        solution_list = CoinSolutionList(list_of_solutions)
-        aggsig = BLSSignature.aggregate(sigs)
-        spend_bundle = SpendBundle(solution_list, aggsig)
-        return spend_bundle
-
     def cc_generate_eve_spend(self, spendslist, sigs=[]):
         # spendslist is [] of (coin, parent_info, outputamount, innersol)
         aggregator = spendslist[0][0]
@@ -228,7 +207,7 @@ class CCWallet(Wallet):
         list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
         list_of_solutions.append(self.create_spend_for_ephemeral(coin, aggregator, spend[2]))
         list_of_solutions.append(self.create_puzzle_for_aggregator(aggregator, coin))
-        breakpoint()
+        #breakpoint()
         # loop through remaining aggregatees
         for spend in spendslist[1:]:
             coin = spend[0]
