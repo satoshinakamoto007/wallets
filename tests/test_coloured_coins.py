@@ -72,45 +72,23 @@ def test_cc_standard():
     commit_and_notify(remote, wallets, wallet_a)
 
     # Wallet A generates some genesis coins to itself.
-    innerpuzhash = wallet_a.get_new_puzzlehash()
     amount = 10000
     my_utxos_copy = wallet_a.temp_utxos.copy()
     genesisCoin = my_utxos_copy.pop()
     while genesisCoin.amount < amount and len(my_utxos_copy) > 0:
         genesisCoin = my_utxos_copy.pop()
-    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amount, innerpuzhash, genesisCoin=genesisCoin)
+    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins([amount], genesisCoin=genesisCoin)
     _ = run(remote.push_tx(tx=spend_bundle))
-    # manually commit and notify so we can run assert on additions
-
-    coinbase_puzzle_hash = Wallet().get_new_puzzlehash()
-    fees_puzzle_hash = Wallet().get_new_puzzlehash()
-    r = run(remote.next_block(coinbase_puzzle_hash=coinbase_puzzle_hash,
-                                fees_puzzle_hash=fees_puzzle_hash))
-    body = r.get("body")
-
-    additions = list(additions_for_body(body))
-    add_copy = additions.copy()
-    assert len(additions) == 4
-    inspector = add_copy.pop()
-    while inspector.amount != 10000 and len(add_copy) > 0:
-        inspector = add_copy.pop()
-    assert wallet_a.cc_can_generate(inspector.puzzle_hash)
-
-    removals = removals_for_body(body)
-    removals = [Coin.from_bytes(run(remote.hash_preimage(hash=x)))for x in removals]
-
-    for wallet in wallets:
-        wallet.notify(additions, removals)
+    commit_and_notify(remote, wallets, Wallet())
 
     assert len(wallet_a.my_coloured_coins) == 1
 
     # Wallet A does Eve spend to itself
 
-    newinnerpuzhash = wallet_b.get_new_puzzlehash()
+    newinnerpuzhash = wallet_b.get_new_puzzlehash()  # these are irrelevant because eve spend doesn't run innerpuz
     innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': amount}])
 
     coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()  # this is a hack - design things properly
-    assert inspector == coin
     assert coin.parent_coin_info == genesisCoin.name()
     core = wallet_a.my_coloured_coins[coin][1]
     wallet_b.cc_add_core(core)
@@ -122,7 +100,6 @@ def test_cc_standard():
     # don't need sigs for eve spend
     sigs = []
 
-    #spend_bundle = wallet_a.cc_generate_signed_transaction(coin, parent_info, amount, innersol, coin, wallet_a.my_coloured_coins[coin][0], None, sigs=sigs)
     spend_bundle = wallet_a.cc_generate_eve_spend([(coin, parent_info, amount, innersol)])
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
@@ -136,9 +113,9 @@ def test_cc_standard():
     # reuse innerpuz and innersol from above
 
     # parent info update
+    innerpuzhash = ProgramHash(wallet_a.my_coloured_coins[list(wallet_a.my_coloured_coins.keys()).copy().pop()][0])  # have you ever seen something so disgusting
     parent_info = (coin.parent_coin_info, innerpuzhash, coin.amount)
     coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()  # this is a hack - design things properly
-    core = wallet_a.my_coloured_coins[coin][1]
     assert ProgramHash(clvm.to_sexp_f(wallet_a.cc_make_puzzle(ProgramHash(wallet_a.my_coloured_coins[coin][0]), core))) == coin.puzzle_hash
 
     # Generate signatures for inner standard spend
@@ -201,11 +178,8 @@ def test_multiple_cc_spends_once():
     commit_and_notify(remote, wallets, wallet_a)
 
     # Wallet A generates some genesis coins to itself.
-    innerpuzhash = wallet_a.get_new_puzzlehash()
-    amount = 10000
-    my_utxos_copy = wallet_a.temp_utxos.copy()
-    genesisCoin = my_utxos_copy.pop()
-    while genesisCoin.amount < amount and len(my_utxos_copy) > 0:
-        genesisCoin = my_utxos_copy.pop()
-    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amount, innerpuzhash, genesisCoin=genesisCoin)
+    amounts = [10000, 500, 1000]
+    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amounts)
     _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert len(wallet_a.my_coloured_coins) == 3

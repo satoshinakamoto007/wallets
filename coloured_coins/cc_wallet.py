@@ -14,7 +14,7 @@ class CCWallet(Wallet):
     def __init__(self):
         super().__init__()
         self.my_cores = []  # core is stored as a string
-        self.my_coloured_coins = dict()  # {coin: (innerpuzhash, core)}
+        self.my_coloured_coins = dict()  # {coin: (innerpuzzle, core)}
         return
 
     def notify(self, additions, deletions):
@@ -45,27 +45,31 @@ class CCWallet(Wallet):
         self.my_cores.append(core)
         return
 
-    # This is for generating a new set of coloured coins - this may be moved out of this wallet
-    def cc_generate_spend_for_genesis_coins(self, amount, innerpuzhash, genesisCoin=None):
+    # This is for generating a new set of coloured coins
+    def cc_generate_spend_for_genesis_coins(self, amounts, genesisCoin=None):
+        total_amount = sum(amounts)
         if genesisCoin is None:
             my_utxos_copy = self.temp_utxos.copy()
             genesisCoin = my_utxos_copy.pop()
-            while genesisCoin.amount < amount and len(my_utxos_copy) > 0:
+            while genesisCoin.amount < total_amount and len(my_utxos_copy) > 0:
                 genesisCoin = my_utxos_copy.pop()
-            if genesisCoin.amount < amount:
+            if genesisCoin.amount < total_amount:
                 return None  # no reason why a coin couldn't have two parents, just want to make debugging simple for now
         core = self.cc_make_core(genesisCoin.name())
         self.cc_add_core(core)
         spends = []
-        change = genesisCoin.amount - amount
-        newpuzzle = self.cc_make_puzzle(innerpuzhash, core)
-        # print(f"Actual full puzzle: {binutils.disassemble(newpuzzle)}")
-        newpuzzlehash = ProgramHash(newpuzzle)
+        change = genesisCoin.amount - total_amount
+
         # Aped from wallet.generate_unsigned_transaction()
-        puzzle_hash = genesisCoin.puzzle_hash
-        pubkey, secretkey = self.get_keys(puzzle_hash)
+        pubkey, secretkey = self.get_keys(genesisCoin.puzzle_hash)
+
         puzzle = self.puzzle_for_pk(pubkey.serialize())
-        primaries = [{'puzzlehash': newpuzzlehash, 'amount': amount}]
+        primaries = []
+        for amount in amounts:
+            innerpuzhash = self.get_new_puzzlehash()
+            newpuzzle = self.cc_make_puzzle(innerpuzhash, core)
+            newpuzzlehash = ProgramHash(newpuzzle)
+            primaries.append({'puzzlehash': newpuzzlehash, 'amount': amount})
         if change > 0:
             changepuzzlehash = self.get_new_puzzlehash()
             primaries.append(
@@ -74,7 +78,7 @@ class CCWallet(Wallet):
             self.temp_utxos.add(Coin(genesisCoin, changepuzzlehash, change))
         solution = make_solution(primaries=primaries)
         spends.append((puzzle, CoinSolution(genesisCoin, solution)))
-        self.temp_balance -= amount
+        self.temp_balance -= total_amount
 
         return self.sign_transaction(spends)
 
@@ -138,7 +142,7 @@ class CCWallet(Wallet):
         create_child_with_my_puzzle = f"(c (q 51) (c (sha256tree {add_core_to_my_innerpuz_reveal}) (c (uint64 (f (r (r (a))))) (q ()))))"
         eve_case = f"((c (i (= (q 0x{originID}) (f (r (a)))) (q (c {assert_my_parent_is_origin} (c {create_child_with_my_puzzle} (q ())))) (q (x))) (a)))"
         core = f"((c (i (l (f (r (a)))) (q {normal_case}) (q {eve_case}) ) (a)))"
-        breakpoint()
+        #breakpoint()
         return core
 
     # This is for spending a recieved coloured coin
@@ -230,7 +234,6 @@ class CCWallet(Wallet):
         coin = Coin(parent_of_e, ProgramHash(puzzle), 0)
         solution = Program(binutils.assemble("()"))
         coinsol = CoinSolution(coin, clvm.to_sexp_f([puzzle, solution]))
-        breakpoint()
         return coinsol
 
     def create_puzzle_for_aggregator(self, parent_of_a, aggregatee):
@@ -239,7 +242,6 @@ class CCWallet(Wallet):
         coin = Coin(parent_of_a, ProgramHash(puzzle), 0)
         solution = Program(binutils.assemble("()"))
         coinsol = CoinSolution(coin, clvm.to_sexp_f([puzzle, solution]))
-        breakpoint()
         return coinsol
 
 
