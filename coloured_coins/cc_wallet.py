@@ -7,6 +7,11 @@ from clvm_tools import binutils
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from chiasim.hashable import CoinSolution, SpendBundle, BLSSignature
 from chiasim.hashable.CoinSolution import CoinSolutionList
+from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
+from chiasim.validation.Conditions import conditions_by_opcode
+from chiasim.validation.consensus import (
+    conditions_for_solution, hash_key_pairs_for_conditions_dict
+)
 
 
 class CCWallet(Wallet):
@@ -151,7 +156,6 @@ class CCWallet(Wallet):
         # parent_info is a triplet or the originID
         # genesis coin isn't coloured, child of genesis uses originID, all subsequent children use triplets
         # aggregator is (primary_input, innerpuzzlehash, amount)
-        # aggregatees is list of [(primary_input, innerpuzhash, coin_amount, output_amount)]
         if isinstance(parent_info, tuple):
             #  (parent primary input, parent inner puzzle hash, parent amount)
             parent_str = f"(0x{parent_info[0]} 0x{parent_info[1]} {parent_info[2]})"
@@ -166,6 +170,7 @@ class CCWallet(Wallet):
         if aggregatees is not None:
             for aggregatee in aggregatees:
                 # spendslist is [] of (coin, parent_info, outputamount, innersol)
+                # aggees should be (primary_input, innerpuzhash, coin_amount, output_amount)
                 aggees = aggees + f"(0x{aggregatee[0].parent_coin_info} 0x{ProgramHash(self.my_coloured_coins[aggregatee[0]][0])} {aggregatee[0].amount} {aggregatee[2]})"
         aggees = aggees + ")"
 
@@ -200,6 +205,7 @@ class CCWallet(Wallet):
         core = self.my_coloured_coins[aggregator][1]
         aggregator_info = (aggregator.parent_coin_info, ProgramHash(self.my_coloured_coins[aggregator][0]), aggregator.amount)
         list_of_solutions = []
+
         # aggregator special case
         spend = spendslist[0]
         coin = spend[0]
@@ -212,6 +218,7 @@ class CCWallet(Wallet):
         list_of_solutions.append(self.create_spend_for_ephemeral(coin, aggregator, spend[2]))
         list_of_solutions.append(self.create_puzzle_for_aggregator(aggregator, coin))
         #breakpoint()
+
         # loop through remaining aggregatees
         for spend in spendslist[1:]:
             coin = spend[0]
@@ -223,6 +230,7 @@ class CCWallet(Wallet):
             list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
             list_of_solutions.append(self.create_spend_for_ephemeral(coin, aggregator, spend[2]))
             list_of_solutions.append(self.create_puzzle_for_aggregator(aggregator, coin))
+            #breakpoint()
         solution_list = CoinSolutionList(list_of_solutions)
         aggsig = BLSSignature.aggregate(sigs)
         spend_bundle = SpendBundle(solution_list, aggsig)
@@ -234,6 +242,7 @@ class CCWallet(Wallet):
         coin = Coin(parent_of_e, ProgramHash(puzzle), 0)
         solution = Program(binutils.assemble("()"))
         coinsol = CoinSolution(coin, clvm.to_sexp_f([puzzle, solution]))
+        #breakpoint()
         return coinsol
 
     def create_puzzle_for_aggregator(self, parent_of_a, aggregatee):
@@ -242,7 +251,21 @@ class CCWallet(Wallet):
         coin = Coin(parent_of_a, ProgramHash(puzzle), 0)
         solution = Program(binutils.assemble("()"))
         coinsol = CoinSolution(coin, clvm.to_sexp_f([puzzle, solution]))
+        #breakpoint()
         return coinsol
+
+    def get_sigs_for_innerpuz_with_innersol(self, innerpuz, innersol):
+        sigs = []
+        pubkey, secretkey = self.get_keys(ProgramHash(innerpuz))
+        secretkey = BLSPrivateKey(secretkey)
+        code_ = [innerpuz, [innersol, []]]
+        sexp = clvm.to_sexp_f(code_)
+        conditions_dict = conditions_by_opcode(
+            conditions_for_solution(sexp))
+        for _ in hash_key_pairs_for_conditions_dict(conditions_dict):
+            signature = secretkey.sign(_.message_hash)
+            sigs.append(signature)
+        return sigs
 
 
 """
