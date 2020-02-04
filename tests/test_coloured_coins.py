@@ -57,7 +57,7 @@ def commit_and_notify(remote, wallets, reward_recipient):
         wallet.notify(additions, removals)
 
 
-def test_cc_standard():
+def test_cc_single():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
 
@@ -101,10 +101,8 @@ def test_cc_standard():
     assert len(wallet_a.my_coloured_coins) == 1
     assert coin not in wallet_a.my_coloured_coins
 
-
     # Generate spend so that Wallet B can receive the coin
-
-    newinnerpuzhash = wallet_b.get_new_puzzlehash()  # these are irrelevant because eve spend doesn't run innerpuz
+    newinnerpuzhash = wallet_b.get_new_puzzlehash()
     innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': amount}])
 
     # parent info update
@@ -143,7 +141,7 @@ def test_cc_standard():
     assert len(wallet_a.my_coloured_coins) == 1
 
 
-def test_multiple_cc_spends_once():
+def test_aggregate_coloured_coins():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
 
@@ -184,8 +182,6 @@ def test_multiple_cc_spends_once():
     assert len(wallet_a.my_coloured_coins) == 3
     assert wallet_a.current_balance == 999988500
 
-
-
     # Send 1500 chia to Wallet B
     spendslist = []  # spendslist is [(coin, parent_info, amount, innersol)]
 
@@ -209,3 +205,114 @@ def test_multiple_cc_spends_once():
     assert len(wallet_a.my_coloured_coins) == 1
     assert len(wallet_b.my_coloured_coins) == 1
     assert list(wallet_b.my_coloured_coins.keys()).copy().pop().amount == 1500
+
+
+# Test that we can't forge a coloured coin, either through aggregating a different colour, or by printing a new coin.
+def test_bad_aggregation():
+    remote = make_client_server()
+    run = asyncio.get_event_loop().run_until_complete
+
+    wallet_a = CCWallet()
+    wallet_b = CCWallet()
+    wallets = [wallet_a, wallet_b]
+    commit_and_notify(remote, wallets, wallet_a)
+
+    # Wallet A generates a genesis coin to itself.
+    amounts = [10000]
+    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amounts)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert len(wallet_a.my_coloured_coins) == 1
+    assert wallet_a.current_balance == 999990000
+
+    coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()
+    core = wallet_a.my_coloured_coins[coin][1]
+    wallet_b.cc_add_core(core)
+
+    # Eve spend coins
+    parent_info = coin.parent_coin_info
+
+    # don't need sigs or a proper innersol for eve spend
+    spendlist = []
+    innersol = binutils.assemble("()")
+    spendlist.append((coin, parent_info, coin.amount, innersol))
+    spend_bundle = wallet_a.cc_generate_eve_spend(spendlist)
+    _ = run(remote.push_tx(tx=spend_bundle))
+
+    # update parent info before the information is lost
+    original_eve_parent = parent_info
+    parent_info = dict()  # (coin.parent_coin_info, innerpuzhash, coin.amount)
+    parent_info = (coin.parent_coin_info, ProgramHash(wallet_a.my_coloured_coins[coin][0]), coin.amount)
+
+    commit_and_notify(remote, wallets, Wallet())
+    assert len(wallet_a.my_coloured_coins) == 1
+
+    # Copy a coins coloured puzzle
+    forgedpuzhash = coin.puzzle_hash
+    forgedparentcoin = wallet_a.temp_utxos.copy().pop()
+    forgedparentinfo = (forgedparentcoin.parent_coin_info, forgedparentcoin.puzzle_hash, forgedparentcoin.amount)
+    # Generate new coins with that puzzle
+    spend_bundle = wallet_a.generate_signed_transaction(5000, forgedpuzhash)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+
+    assert len(wallet_a.my_coloured_coins) == 2
+    coins = list(wallet_a.my_coloured_coins.keys()).copy()
+    assert coins[0].puzzle_hash == coins[1].puzzle_hash
+
+    # Try to eve spend the new coin using its own parent info
+    spendlist = []
+    for coin in coins:
+        if coin.amount == 5000:
+            spendlist.append((coin, coin.parent_coin_info, coin.amount, innersol))
+            continue
+    spend_bundle = wallet_a.cc_generate_eve_spend(spendlist)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+
+    assert coin in wallet_a.my_coloured_coins
+
+    # Try to Eve spend the new coin using the original parent info
+    spendlist = []
+    for coin in coins:
+        if coin.amount == 5000:
+            spendlist.append((coin, original_eve_parent, coin.amount, innersol))
+            continue
+    spend_bundle = wallet_a.cc_generate_eve_spend(spendlist)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+
+    assert coin in wallet_a.my_coloured_coins
+
+    # Try to regular spend using the information from the real coin
+    newinnerpuzhash = wallet_b.get_new_puzzlehash()
+    innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': 5000}])
+    sigs = wallet_a.get_sigs_for_innerpuz_with_innersol(wallet_a.my_coloured_coins[coin][0], innersol)
+    spend_bundle = wallet_a.cc_generate_spends_for_coin_list([(coin, parent_info, 5000, innersol)], sigs)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+
+    assert coin in wallet_a.my_coloured_coins
+
+    # Try the same spend using the forged parent information
+    spend_bundle = wallet_a.cc_generate_spends_for_coin_list([(coin, forgedparentinfo, 5000, innersol)], sigs)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+
+    assert coin in wallet_a.my_coloured_coins
+
+    # Try to aggregate forged coin with real coin
+    newinnerpuzhash = wallet_b.get_new_puzzlehash()
+    innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': 15000}])
+    spendlist = [None] * 2
+    for coin in coins:
+        if coin.amount == 5000:
+            spendlist[1] = (coin, forgedparentinfo, 0, binutils.assemble("(q ())"))
+        else:
+            spendlist[0] = (coin, parent_info, 15000, innersol)
+    spend_bundle = wallet_a.cc_generate_spends_for_coin_list(spendlist, sigs)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+
+    assert len(wallet_a.my_coloured_coins) == 2
+    assert len(wallet_b.my_coloured_coins) == 0
