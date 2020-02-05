@@ -43,9 +43,9 @@ $ ledger-sim
        - type "**c**" and press Enter
        - from **Terminal 1** copy  "Authorizer pubkey" and paste it to **Terminal 2** (Press enter in terminal 2)
        - from **Terminal 2** copy "Custodian pubkey" and paste it to **Terminal 1** (Press enter in terminal 1)
-       - type "**5**" and press Enter
+       - type "**5000**" and press Enter
      - **Terminal 1** 
-       - type "**5**" and press Enter (Same lock time)
+       - type "**5000**" and press Enter (Same lock time)
        - type "**1000**" (we're sending 1000 Chia into custody)
        - type "**4**" (farm a block that includes the last transaction)
      - **Terminal 2** 
