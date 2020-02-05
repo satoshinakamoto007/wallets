@@ -3,10 +3,8 @@
 ## About
 
 Custody smart transaction ensures that funds in custody wallet can be moved only with approval of
-both the "custodian" and the "authorizer" until specified block lock height has been reached.    
-Once the block lock height has passed, custodian can move funds without the approval.     
-(Currently, lock time uses block height for time measurement, once the "wall clock" time is supported, custody wallet can be easily modified to support it)
-
+both the "custodian" and the "authorizer" until specified time has been exceeded.    
+Once the lock period has passed, custodian can move funds without the approval.     
 
 ## Setup
 
@@ -43,14 +41,14 @@ $ ledger-sim
        - type "**c**" and press Enter
        - from **Terminal 1** copy  "Authorizer pubkey" and paste it to **Terminal 2** (Press enter in terminal 2)
        - from **Terminal 2** copy "Custodian pubkey" and paste it to **Terminal 1** (Press enter in terminal 1)
-       - type "**5000**" and press Enter
+       - type "**5000**" and press Enter (select the time when funds unlock)
      - **Terminal 1** 
        - type "**5000**" and press Enter (Same lock time)
-       - type "**1000**" (we're sending 1000 Chia into custody)
+       - type "**1000**" (we're sending 1000 Chia into custody wallet)
        - type "**4**" (farm a block that includes the last transaction)
      - **Terminal 2** 
        - type "**3**" and press Enter. (Get updates)
-       - type "**2**" (view funds
+       - type "**2**" (view funds, there should be 1000 chia in custody balance)
   3. **Move to a different custody**
      - **Terminal 2** 
        - type "**6**" and press Enter
@@ -65,7 +63,7 @@ $ ledger-sim
        - From **Terminal 1** copy "**Approving Signature**" and paste it to **Terminal 2**
      - **Terminal 3**
        - From **Terminal 1** copy "**Authorizing pubkey**" and paste it to **Terminal 3**
-       - Type "**5**" (same lock time as previous custody)
+       - Type "**5000**" (same lock time as previous custody)
      - **Terminal 1**
        - type "**4**" and press Enter
      - **Terminal 2**
@@ -74,14 +72,14 @@ $ ledger-sim
      - **Terminal 3**
        - type "**3**" and press Enter
        - type "**2**" and press Enter (Confirm that funds are now in custody of this wallet)
-  4. **Confirm we can move funds after lock period**
-     - **Terminal 1** (Time increase by 1000 milliseconds every time we print wallet detail)
+  4. **Confirm that we can move funds after lock period has passed**
+     - **Terminal 1** (Time increase by 1000 milliseconds every time we print wallet details)
        - type "**1**" and press Enter
        - type "**1**" and press Enter
        - type "**1**" and press Enter
        - type "**1**" and press Enter
        - type "**1**" and press Enter
-       - type "**1**" and press Enter
+       - type "**1**" and press Enter (time should be 6000 here)
      - **Terminal 3**
        - type "**3**" and press Enter
        - type "**6**" and press Enter
