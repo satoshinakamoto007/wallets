@@ -141,7 +141,7 @@ def test_cc_single():
     assert len(wallet_a.my_coloured_coins) == 1
 
 
-def test_aggregate_coloured_coins():
+def test_audit_coloured_coins():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
 
@@ -224,8 +224,8 @@ def test_aggregate_coloured_coins():
     assert len(wallet_b.my_coloured_coins) == 3
 
 
-# Test that we can't forge a coloured coin, either through aggregating a different colour, or by printing a new coin.
-def test_bad_aggregation():
+# Test that we can't forge a coloured coin, either through auditing a different colour, or by printing a new coin.
+def test_forgery():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
 
@@ -333,3 +333,25 @@ def test_bad_aggregation():
 
     assert len(wallet_a.my_coloured_coins) == 2
     assert len(wallet_b.my_coloured_coins) == 0
+
+
+def test_partial_spend_market():
+    remote = make_client_server()
+    run = asyncio.get_event_loop().run_until_complete
+
+    wallet_a = CCWallet()
+    wallet_b = CCWallet()
+    wallets = [wallet_a, wallet_b]
+    commit_and_notify(remote, wallets, wallet_a)
+
+    # Wallet A generates some genesis coins to itself.
+    amounts = [10000, 500, 1000]
+    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amounts)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert len(wallet_a.my_coloured_coins) == 3
+    assert wallet_a.current_balance == 999988500
+
+    coins = list(wallet_a.my_coloured_coins.keys()).copy()
+    core = wallet_a.my_coloured_coins[coins[0]][1]
+    wallet_b.cc_add_core(core)

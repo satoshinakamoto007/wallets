@@ -128,21 +128,21 @@ class CCWallet(Wallet):
 
         # heritage_check = f"((c (i (l (f (r (a)))) (q {assert_my_parent_follows_core_logic}) (q ((c (i (= (q 0x{originID}) (f (r (a)))) (q {assert_my_parent_is_origin}) (q (x))) (a)))) ) (a)))"
 
-        add_core_to_aggregator_innerpuzhash = f"(c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (f (r (r (r (r (r (a))))))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))"
+        add_core_to_auditor_innerpuzhash = f"(c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (f (r (r (r (r (r (a))))))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))"
         create_a_puz_for_cn = f"(c (q #r) (c (c (q #c) (c (c (q #q) (c (sha256 (sha256 (f (f (r (a)))) (sha256tree {add_core_to_parent_innerpuzhash}) (uint64 (f (r (r (f (r (a)))))))) (sha256tree {add_core_to_my_innerpuz_reveal}) (uint64 (f (r (r (a)))))) (q ()))) (q ((q ()))))) (q ())))"
 
-        consume_a = f"(c (q 52) (c (sha256 (sha256 (f (f (r (r (r (r (r (a)))))))) (sha256tree {add_core_to_aggregator_innerpuzhash}) (uint64 (f (r (r (f (r (r (r (r (r (a)))))))))))) (sha256tree {create_a_puz_for_cn}) (uint64 (q 0))) (q ())))"
+        consume_a = f"(c (q 52) (c (sha256 (sha256 (f (f (r (r (r (r (r (a)))))))) (sha256tree {add_core_to_auditor_innerpuzhash}) (uint64 (f (r (r (f (r (r (r (r (r (a)))))))))))) (sha256tree {create_a_puz_for_cn}) (uint64 (q 0))) (q ())))"
 
-        create_e_puz = f"(c (q #r) (c (c (q #r) (c (c (q #c) (c (c (q #q) (c (sha256 (f (f (r (r (r (r (r (a)))))))) (sha256tree {add_core_to_aggregator_innerpuzhash}) (uint64 (f (r (r (f (r (r (r (r (r (a)))))))))))) (q ()))) (c (c (q #c) (c (c (q #uint64) (c (c (q #q) (c {sum_outputs} (q ()))) (q ()))) (q ((q ()))))) (q ())))) (q ()))) (q ())))"
+        create_e_puz = f"(c (q #r) (c (c (q #r) (c (c (q #c) (c (c (q #q) (c (sha256 (f (f (r (r (r (r (r (a)))))))) (sha256tree {add_core_to_auditor_innerpuzhash}) (uint64 (f (r (r (f (r (r (r (r (r (a)))))))))))) (q ()))) (c (c (q #c) (c (c (q #uint64) (c (c (q #q) (c {sum_outputs} (q ()))) (q ()))) (q ((q ()))))) (q ())))) (q ()))) (q ())))"
         create_e = f"(c (q 51) (c (sha256tree {create_e_puz}) (c (uint64 (q 0)) (q ()))))"
 
         consume_es_generate_as = f"((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (f (r (r (a)))) (c (f (r (r (r (a))))) (c (c (c (q 51) (c (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (sha256 (f (f (f (r (a))))) (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (f (f (r (a)))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (r (r (r (a))))) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))) (uint64 (f (r (r (f (f (r (a))))))))) (q ()))) (q ((q ()))))) (q ())))) (q (0x0000000000000000)))) (c (c (q 52) (c (sha256 (sha256 (f (f (f (r (a))))) (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (f (f (r (a)))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (r (r (r (a))))) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))) (uint64 (f (r (r (f (f (r (a))))))))) (sha256tree (c (q 7) (c (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (r (a)))) (q ()))) (c (c (q 5) (c (c (q 20) (c (c (q 1) (c (f (r (r (r (f (f (r (a)))))))) (q ()))) (q ()))) (q ((q ()))))) (q ())))) (q ()))) (q ())))) (q 0x0000000000000000)) (q ()))) (f (r (r (r (r (a)))))))) (q ()))))))))) (q (f (r (r (r (r (a)))))))) (a))))(c (f (r (r (r (r (r (r (a)))))))) (c (sha256 (sha256 (f (f (r (a)))) (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (f (r (a))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))) (uint64 (f (r (r (f (r (a)))))))) (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (sha256tree (f (r (r (r (a)))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))) (uint64 (f (r (r (a)))))) (c (f (a)) (q (()))))))))"
 
         compare_sums = f"((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (+ (f (r (r (f (f (r (a))))))) (f (r (r (a))))) (c (+ (f (r (r (r (f (f (r (a)))))))) (f (r (r (r (a)))))) (q ())))))))) (q (= (f (r (r (a)))) (f (r (r (r (a)))))))) (a)))) (c (f (r (r (r (r (r (r (a)))))))) (q (() ()))))))"
 
-        aggregator_code_path = f"((c (i (f (r (r (r (r (r (r (a)))))))) (q ((c (i {compare_sums} (q {consume_es_generate_as}) (q (x))) (a)))) (q (q ()))) (a)))"
+        auditor_code_path = f"((c (i (f (r (r (r (r (r (r (a)))))))) (q ((c (i {compare_sums} (q {consume_es_generate_as}) (q (x))) (a)))) (q (q ()))) (a)))"
 
-        normal_case = f"(c {consume_a} (c {create_e} (c {assert_my_parent_follows_core_logic} {self.merge_two_lists(replace_generated_createcoins, aggregator_code_path)})))"
+        normal_case = f"(c {consume_a} (c {create_e} (c {assert_my_parent_follows_core_logic} {self.merge_two_lists(replace_generated_createcoins, auditor_code_path)})))"
 
         create_child_with_my_puzzle = f"(c (q 51) (c (sha256tree {add_core_to_my_innerpuz_reveal}) (c (uint64 (f (r (r (a))))) (q ()))))"
         eve_case = f"((c (i (= (q 0x{originID}) (f (r (a)))) (q (c {assert_my_parent_is_origin} (c {create_child_with_my_puzzle} (q ())))) (q (x))) (a)))"
@@ -151,39 +151,39 @@ class CCWallet(Wallet):
         return core
 
     # This is for spending a recieved coloured coin
-    def cc_make_solution(self, core, parent_info, amount, innerpuzreveal, innersol, aggregator, aggregatees=None):
+    def cc_make_solution(self, core, parent_info, amount, innerpuzreveal, innersol, auditor, auditees=None):
         parent_str = ""
         # parent_info is a triplet or the originID
         # genesis coin isn't coloured, child of genesis uses originID, all subsequent children use triplets
-        # aggregator is (primary_input, innerpuzzlehash, amount)
+        # auditor is (primary_input, innerpuzzlehash, amount)
         if isinstance(parent_info, tuple):
             #  (parent primary input, parent inner puzzle hash, parent amount)
             parent_str = f"(0x{parent_info[0]} 0x{parent_info[1]} {parent_info[2]})"
         else:
             parent_str = f"0x{parent_info.hex()}"
 
-        aggregator_formatted = "()"
-        if aggregator is not None:
-            aggregator_formatted = f"(0x{aggregator[0]} 0x{aggregator[1]} {aggregator[2]})"
+        auditor_formatted = "()"
+        if auditor is not None:
+            auditor_formatted = f"(0x{auditor[0]} 0x{auditor[1]} {auditor[2]})"
 
         aggees = "("
-        if aggregatees is not None:
-            for aggregatee in aggregatees:
+        if auditees is not None:
+            for auditee in auditees:
                 # spendslist is [] of (coin, parent_info, outputamount, innersol)
                 # aggees should be (primary_input, innerpuzhash, coin_amount, output_amount)
-                aggees = aggees + f"(0x{aggregatee[0].parent_coin_info} 0x{ProgramHash(self.my_coloured_coins[aggregatee[0]][0])} {aggregatee[0].amount} {aggregatee[2]})"
+                aggees = aggees + f"(0x{auditee[0].parent_coin_info} 0x{ProgramHash(self.my_coloured_coins[auditee[0]][0])} {auditee[0].amount} {auditee[2]})"
         aggees = aggees + ")"
 
-        sol = f"({core} {parent_str} {amount} {innerpuzreveal} {innersol} {aggregator_formatted} {aggees})"
+        sol = f"({core} {parent_str} {amount} {innerpuzreveal} {innersol} {auditor_formatted} {aggees})"
         print(f"DEBUG solstring: {sol}")
         return Program(binutils.assemble(sol))
 
     def cc_generate_eve_spend(self, spendslist, sigs=[]):
         # spendslist is [] of (coin, parent_info, outputamount, innersol)
-        aggregator = spendslist[0][0]
-        innerpuz = binutils.disassemble(self.my_coloured_coins[aggregator][0])
-        core = self.my_coloured_coins[aggregator][1]
-        aggregator_info = (aggregator.parent_coin_info, ProgramHash(self.my_coloured_coins[aggregator][0]), aggregator.amount)
+        auditor = spendslist[0][0]
+        innerpuz = binutils.disassemble(self.my_coloured_coins[auditor][0])
+        core = self.my_coloured_coins[auditor][1]
+        auditor_info = (auditor.parent_coin_info, ProgramHash(self.my_coloured_coins[auditor][0]), auditor.amount)
         list_of_solutions = []
         for spend in spendslist:
             coin = spend[0]
@@ -191,7 +191,7 @@ class CCWallet(Wallet):
             innersol = spend[3]
             temp_fix_innersol = clvm.to_sexp_f([innersol, []])
             parent_info = spend[1]
-            solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), aggregator_info, None)
+            solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), auditor_info, None)
             list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
         solution_list = CoinSolutionList(list_of_solutions)
         aggsig = BLSSignature.aggregate(sigs)
@@ -200,10 +200,10 @@ class CCWallet(Wallet):
 
     def cc_generate_spends_for_coin_list(self, spendslist, sigs=[]):
         # spendslist is [] of (coin, parent_info, outputamount, innersol)
-        aggregator = spendslist[0][0]
-        innerpuz = binutils.disassemble(self.my_coloured_coins[aggregator][0])
-        core = self.my_coloured_coins[aggregator][1]
-        aggregator_info = (aggregator.parent_coin_info, ProgramHash(self.my_coloured_coins[aggregator][0]), aggregator.amount)
+        auditor = spendslist[0][0]
+        innerpuz = binutils.disassemble(self.my_coloured_coins[auditor][0])
+        core = self.my_coloured_coins[auditor][1]
+        auditor_info = (auditor.parent_coin_info, ProgramHash(self.my_coloured_coins[auditor][0]), auditor.amount)
         list_of_solutions = []
 
         # aggregator special case
@@ -213,10 +213,10 @@ class CCWallet(Wallet):
         innersol = spend[3]
         temp_fix_innersol = clvm.to_sexp_f([innersol, []])
         parent_info = spend[1]
-        solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), aggregator_info, spendslist)
+        solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), auditor_info, spendslist)
         list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
-        list_of_solutions.append(self.create_spend_for_ephemeral(coin, aggregator, spend[2]))
-        list_of_solutions.append(self.create_puzzle_for_aggregator(aggregator, coin))
+        list_of_solutions.append(self.create_spend_for_ephemeral(coin, auditor, spend[2]))
+        list_of_solutions.append(self.create_puzzle_for_auditor(auditor, coin))
         #breakpoint()
 
         # loop through remaining aggregatees
@@ -226,18 +226,18 @@ class CCWallet(Wallet):
             innersol = spend[3]
             temp_fix_innersol = clvm.to_sexp_f([innersol, []])
             parent_info = spend[1]
-            solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), aggregator_info, None)
+            solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), auditor_info, None)
             list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
-            list_of_solutions.append(self.create_spend_for_ephemeral(coin, aggregator, spend[2]))
-            list_of_solutions.append(self.create_puzzle_for_aggregator(aggregator, coin))
+            list_of_solutions.append(self.create_spend_for_ephemeral(coin, auditor, spend[2]))
+            list_of_solutions.append(self.create_puzzle_for_auditor(auditor, coin))
             #breakpoint()
         solution_list = CoinSolutionList(list_of_solutions)
         aggsig = BLSSignature.aggregate(sigs)
         spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle
 
-    def create_spend_for_ephemeral(self, parent_of_e, aggregator_coin, spend_amount):
-        puzstring = f"(r (r (c (q 0x{aggregator_coin.name()}) (c (uint64 (q {spend_amount})) (q ())))))"
+    def create_spend_for_ephemeral(self, parent_of_e, auditor_coin, spend_amount):
+        puzstring = f"(r (r (c (q 0x{auditor_coin.name()}) (c (uint64 (q {spend_amount})) (q ())))))"
         puzzle = Program(binutils.assemble(puzstring))
         coin = Coin(parent_of_e, ProgramHash(puzzle), 0)
         solution = Program(binutils.assemble("()"))
@@ -245,8 +245,8 @@ class CCWallet(Wallet):
         #breakpoint()
         return coinsol
 
-    def create_puzzle_for_aggregator(self, parent_of_a, aggregatee):
-        puzstring = f"(r (c (q 0x{aggregatee.name()}) (q ())))"
+    def create_puzzle_for_auditor(self, parent_of_a, auditee):
+        puzstring = f"(r (c (q 0x{auditee.name()}) (q ())))"
         puzzle = Program(binutils.assemble(puzstring))
         coin = Coin(parent_of_a, ProgramHash(puzzle), 0)
         solution = Program(binutils.assemble("()"))
