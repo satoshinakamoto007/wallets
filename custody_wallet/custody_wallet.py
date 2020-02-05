@@ -16,8 +16,8 @@ class CPWallet(Wallet):
         self.all_cp_deletions = {}
         self.pubkey_permission = None
         self.pubkey_approval = None
-        self.lock_index = 0
-        self.tip_index = 0
+        self.unlock_time = 0
+        self.tip_time = 0
         self.cp_balance = 0
         self.cp_coin = None
         super().__init__()
@@ -25,7 +25,6 @@ class CPWallet(Wallet):
 
     def notify(self, additions, deletions, index):
         super().notify(additions, deletions)
-        self.tip_index = index
         self.cp_notify(additions, deletions, index)
 
     def cp_notify(self, additions, deletions, index):
@@ -47,7 +46,7 @@ class CPWallet(Wallet):
         if self.pubkey_permission is None:
             return None
         return any(map(lambda child: hash == ProgramHash(self.cp_puzzle(
-            hexbytes(self.extended_secret_key.public_child(child).get_public_key().serialize()), self.pubkey_permission, self.lock_index)),
+            hexbytes(self.extended_secret_key.public_child(child).get_public_key().serialize()), self.pubkey_permission, self.unlock_time)),
                        reversed(range(self.next_address))))
 
     def merge_two_lists(self, list1=None, list2=None):
@@ -56,14 +55,14 @@ class CPWallet(Wallet):
         ret = f"((c (q ((c (f (a)) (a)))) (c (q ((c (i ((c (i (f (r (a))) (q (q ())) (q (q 1))) (a))) (q (f (c (f (r (r (a)))) (q ())))) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (c (f (f (r (a)))) (f (r (r (a))))) (q ())))))))) (a)))) (c {list1} (c {list2} (q ()))))))"
         return ret
 
-    def cp_puzzle(self, pubkey_my, pubkey_permission, lock_index):
+    def cp_puzzle(self, pubkey_my, pubkey_permission, unlock_time):
         opcode_aggsig = hexlify(ConditionOpcode.AGG_SIG).decode('ascii')
-        opcode_block_index = hexlify(ConditionOpcode.ASSERT_BLOCK_INDEX_EXCEEDS).decode('ascii')
+        opcode_time_exceeds = hexlify(ConditionOpcode.ASSERT_TIME_EXCEEDS).decode('ascii')
 
-        INDEX_EXCEEDS = f"(c (q 0x{opcode_block_index}) (c (q {lock_index}) (q ())))"
-        AGGSIG_ME = f"(c (q 0x{opcode_aggsig}) (c (q 0x{pubkey_my}) (c (sha256 (wrap (a))) (q ()))))"
-        AGGSIG_PERMISSION = f"(c (q 0x{opcode_aggsig}) (c (q 0x{pubkey_permission}) (c (sha256 (wrap (a))) (q ()))))"
-        SOLO_PUZZLE_CONDITIONS = f"(c {INDEX_EXCEEDS} (c {AGGSIG_ME} (q ())))"
+        TIME_EXCEEDS = f"(c (q 0x{opcode_time_exceeds}) (c (q {unlock_time}) (q ())))"
+        AGGSIG_ME = f"(c (q 0x{opcode_aggsig}) (c (q 0x{pubkey_my}) (c (sha256tree (a)) (q ()))))"
+        AGGSIG_PERMISSION = f"(c (q 0x{opcode_aggsig}) (c (q 0x{pubkey_permission}) (c (sha256tree (a)) (q ()))))"
+        SOLO_PUZZLE_CONDITIONS = f"(c {TIME_EXCEEDS} (c {AGGSIG_ME} (q ())))"
         SOLUTION_OUTPUTS = f"(f (r (a)))"
         SOLO_PUZZLE = self.merge_two_lists(SOLO_PUZZLE_CONDITIONS, SOLUTION_OUTPUTS)
         PERMISSION_PUZZLE_CONDITIONS = f"(c {AGGSIG_PERMISSION} (c {AGGSIG_ME} (q ())))"
@@ -95,7 +94,7 @@ class CPWallet(Wallet):
             pubkey = self.extended_secret_key.public_child(
                 child).get_public_key()
             if hash == ProgramHash(
-                    self.cp_puzzle(hexbytes(pubkey.serialize()), self.pubkey_permission, self.lock_index)):
+                    self.cp_puzzle(hexbytes(pubkey.serialize()), self.pubkey_permission, self.unlock_time)):
                 return pubkey, self.extended_secret_key.private_child(child).get_private_key()
 
     def get_keys_pk(self, approval_pubkey):
@@ -116,7 +115,7 @@ class CPWallet(Wallet):
         spends = []
         puzzle_hash = self.cp_coin.puzzle_hash
         pubkey, secretkey = self.get_keys(puzzle_hash)
-        puzzle = self.cp_puzzle(hexbytes(pubkey.serialize()), self.pubkey_permission, self.lock_index)
+        puzzle = self.cp_puzzle(hexbytes(pubkey.serialize()), self.pubkey_permission, self.unlock_time)
         if mode == 1:
             solution = self.solution_for_cp_solo(outputs)
         else:

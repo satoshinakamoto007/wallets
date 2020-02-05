@@ -13,7 +13,8 @@ from chiasim.hashable import Coin, ProgramHash, BLSSignature
 from chiasim.storage import RAM_DB
 from chiasim.utils.server import start_unix_server_aiter
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
-from chiasim.atoms import hexbytes
+from chiasim.atoms import hexbytes, uint64
+
 
 async def proxy_for_unix_connection(path):
     reader, writer = await asyncio.open_unix_connection(path)
@@ -71,7 +72,7 @@ def test_cp_receive():
     pub_a = hexbytes(wallet_a.get_next_public_key().serialize())
     pub_b = hexbytes(wallet_b.get_next_public_key().serialize())
     wallet_b.pubkey_permission = pub_a
-    wallet_b.lock_index = 100
+    wallet_b.unlock_time = 100
     b_puzzle = wallet_b.cp_puzzle(pub_b, pub_a, 100)
     b_puzzlehash = ProgramHash(b_puzzle)
 
@@ -102,10 +103,12 @@ def test_cp_send_solo():
     pub_a = hexbytes(wallet_a.get_next_public_key().serialize())
     pub_b = hexbytes(wallet_b.get_next_public_key().serialize())
     wallet_b.pubkey_permission = pub_a
-    wallet_b.lock_index = 3
+    wallet_b.unlock_time = 3
     b_puzzle = wallet_b.cp_puzzle(pub_b, pub_a, 3)
     b_puzzlehash = ProgramHash(b_puzzle)
 
+    # Set ledger api to
+    _ = run(remote.skip_milliseconds(ms=uint64(4).to_bytes(4, 'big')))
 
     commit_and_notify(remote, wallets, wallet_a)
 
@@ -121,8 +124,7 @@ def test_cp_send_solo():
     assert wallet_b.cp_balance == 1000
     assert wallet_c.current_balance == 0
 
-    #Mine another block sot that index 3 is exceeded
-    commit_and_notify(remote, wallets, Wallet())
+
 
     puzzlehash_c = wallet_c.get_new_puzzlehash()
     spend_bundle = wallet_b.cp_generate_signed_transaction(puzzlehash_c, 100)
@@ -145,11 +147,12 @@ def test_cp_send_solo_fail():
     pub_a = hexbytes(wallet_a.get_next_public_key().serialize())
     pub_b = hexbytes(wallet_b.get_next_public_key().serialize())
     wallet_b.pubkey_permission = pub_a
-    wallet_b.lock_index = 3
+    wallet_b.unlock_time = 3
     b_puzzle = wallet_b.cp_puzzle(pub_b, pub_a, 3)
     b_puzzlehash = ProgramHash(b_puzzle)
 
-
+    # Set time to 2, time needs to be greater than 3 in order to be valid
+    _ = run(remote.skip_milliseconds(ms=uint64(2).to_bytes(4, 'big')))
     commit_and_notify(remote, wallets, wallet_a)
 
     assert wallet_a.current_balance == 1000000000
@@ -186,12 +189,14 @@ def test_cp_with_permission():
     pub_b = hexbytes(wallet_b.get_next_public_key().serialize())
     unlock_time = 5
     wallet_b.pubkey_permission = pub_a
-    wallet_b.lock_index = unlock_time
+    wallet_b.unlock_time = unlock_time
     wallet_a.pubkey_approval = pub_a
     b_puzzle = wallet_b.cp_puzzle(pub_b, pub_a, unlock_time)
     b_puzzlehash = ProgramHash(b_puzzle)
 
     commit_and_notify(remote, wallets, wallet_a)
+    # Set time to 4, time needs to exceed 5, unless there is approval from authorizer
+    _ = run(remote.skip_milliseconds(ms=uint64(4).to_bytes(4, 'big')))
 
     assert wallet_a.current_balance == 1000000000
     assert wallet_b.current_balance == 0
@@ -232,12 +237,14 @@ def test_cp_without_permission():
     pub_b = hexbytes(wallet_b.get_next_public_key().serialize())
     unlock_time = 5
     wallet_b.pubkey_permission = pub_a
-    wallet_b.lock_index = unlock_time
+    wallet_b.unlock_time = unlock_time
     wallet_a.pubkey_approval = pub_a
     b_puzzle = wallet_b.cp_puzzle(pub_b, pub_a, unlock_time)
     b_puzzlehash = ProgramHash(b_puzzle)
 
     commit_and_notify(remote, wallets, wallet_a)
+    # Set time to 4, time needs to exceed 5, unless there is approval from authorizer
+    _ = run(remote.skip_milliseconds(ms=uint64(4).to_bytes(4, 'big')))
 
     assert wallet_a.current_balance == 1000000000
     assert wallet_b.current_balance == 0
