@@ -37,7 +37,6 @@ async def print_my_details(wallet, ledger_api):
 
 
 def view_funds(wallet):
-    breakpoint()
     print(f"Regular Balance: {wallet.current_balance}")
     print(f"Current Custody Balance: {wallet.cp_balance}")
 
