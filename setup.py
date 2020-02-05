@@ -4,7 +4,6 @@ dependencies = ["aiter", "blspy", "cbor"]
 
 setuptools.setup(
     name="wallets",
-    version="0.1",
     description="Chis wallets that interact with ledger-sim",
     author="Chia Network",
     packages=[
@@ -28,8 +27,8 @@ setuptools.setup(
             "recoverable_wallet = recoverable_wallet.recoverable_wallet_runnable:main"
         ]
     },
-    setup_requires=["setuptools_scm"],
-    use_scm_version=True,
+    setup_requires=["clvm_tools", "setuptools_scm"],
+    use_scm_version={"fallback_version": "unknown"},
     install_requires=dependencies,
     long_description=open("README.md").read(),
 )

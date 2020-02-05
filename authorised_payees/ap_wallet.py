@@ -1,8 +1,6 @@
 from standard_wallet.wallet import Wallet
-import hashlib
 import clvm
 from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BLSSignature
-from binascii import hexlify
 from chiasim.hashable.Coin import Coin
 from chiasim.hashable.CoinSolution import CoinSolutionList
 from clvm_tools import binutils
@@ -12,14 +10,6 @@ from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from .ap_wallet_a_functions import ap_make_puzzle, ap_make_aggregation_puzzle
 from utilities.puzzle_utilities import puzzlehash_from_string
 from chiasim.validation.Conditions import ConditionOpcode
-
-
-def sha256(val):
-    return hashlib.sha256(val).digest()
-
-
-def serialize(myobject):
-    return bytes(myobject, 'utf-8')
 
 
 class APWallet(Wallet):
@@ -88,9 +78,6 @@ class APWallet(Wallet):
         if self.AP_puzzlehash is not None and not self.my_utxos:
             for coin in additions:
                 if coin.puzzle_hash == self.AP_puzzlehash:
-                    self.puzzle_generator = f"(q (c (c (q 0x{hexlify(ConditionOpcode.AGG_SIG).decode('ascii')}) (c (f (a)) (q ()))) (c (c (q 0x{hexlify(ConditionOpcode.ASSERT_COIN_CONSUMED).decode('ascii')}) (c (sha256 (sha256 (f (r (a))) (q 0x{hexlify(self.AP_puzzlehash).decode('ascii')}) (uint64 (f (r (r (a)))))) (sha256 (wrap (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (c (q (q ())) (q ())))) (q ()))))) (uint64 (q 0))) (q ()))) (q ()))))"
-                    self.puzzle_generator_id = str(ProgramHash(
-                        Program(binutils.assemble(self.puzzle_generator))))
                     self.current_balance += coin.amount
                     self.my_utxos.add(coin)
                     print("this coin is locked using my ID, it's output must be for me")
@@ -125,18 +112,18 @@ class APWallet(Wallet):
     # creates the solution that will allow wallet B to spend the coin
     # Wallet B is allowed to make multiple spends but must spend the coin in its entirety
     def ap_make_solution_mode_1(self, outputs=[], my_primary_input=0x0000, my_puzzle_hash=0x0000):
-        sol = "(1 ("
+        sol = "(1 (a) ("
         for puzhash, amount in outputs:
-            sol += f"(0x{hexlify(puzhash).decode('ascii')} {amount})"
-        sol += f") 0x{hexlify(my_primary_input).decode('ascii')} 0x{hexlify(my_puzzle_hash).decode('ascii')})"
+            sol += f"(0x{ConditionOpcode.CREATE_COIN.hex()} 0x{puzhash.hex()} {amount})"
+        sol += f") 0x{my_primary_input.hex()} 0x{my_puzzle_hash.hex()})"
         return Program(binutils.assemble(sol))
 
     def ac_make_aggregation_solution(self, myid, wallet_coin_primary_input, wallet_coin_amount):
-        sol = f"(0x{hexlify(myid).decode('ascii')} 0x{hexlify(wallet_coin_primary_input).decode('ascii')} {wallet_coin_amount})"
+        sol = f"(0x{myid.hex()} 0x{wallet_coin_primary_input.hex()} {wallet_coin_amount})"
         return Program(binutils.assemble(sol))
 
     def ap_make_solution_mode_2(self, wallet_puzzle_hash, consolidating_primary_input, consolidating_coin_puzzle_hash, outgoing_amount, my_primary_input, incoming_amount):
-        sol = f"(2 0x{hexlify(wallet_puzzle_hash).decode('ascii')} 0x{hexlify(consolidating_primary_input).decode('ascii')} 0x{hexlify(consolidating_coin_puzzle_hash).decode('ascii')} {outgoing_amount} 0x{hexlify(my_primary_input).decode('ascii')} {incoming_amount})"
+        sol = f"(2 0x{wallet_puzzle_hash.hex()} 0x{consolidating_primary_input.hex()} 0x{consolidating_coin_puzzle_hash.hex()} {outgoing_amount} 0x{my_primary_input.hex()} {incoming_amount})"
         return Program(binutils.assemble(sol))
 
     # this is for sending a recieved ap coin, not creating a new ap coin
@@ -217,14 +204,13 @@ class APWallet(Wallet):
             self.temp_coin, clvm.to_sexp_f([puzzle, solution])))
 
         # Spend consolidating coin
-        #puzzle = Program(clvm.eval_f(clvm.eval_f, binutils.assmeble(self.puzzle_generator), binutils.assemble("(0x" + self.AP_puzzlehash + ")")))
         puzzle = ap_make_aggregation_puzzle(self.temp_coin.puzzle_hash)
         solution = self.ac_make_aggregation_solution(consolidating_coin.name(
         ), self.temp_coin.parent_coin_info, self.temp_coin.amount)
         list_of_coinsolutions.append(CoinSolution(
             consolidating_coin, clvm.to_sexp_f([puzzle, solution])))
         # Spend lock
-        puzstring = f"(r (c (q 0x{hexlify(consolidating_coin.name()).decode('ascii')}) (q ())))"
+        puzstring = f"(r (c (q 0x{consolidating_coin.name().hex()}) (q ())))"
         puzzle = Program(binutils.assemble(puzstring))
         solution = Program(binutils.assemble("()"))
         list_of_coinsolutions.append(CoinSolution(Coin(self.temp_coin, ProgramHash(

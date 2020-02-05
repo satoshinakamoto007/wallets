@@ -194,7 +194,8 @@ $ brun '(f (r (r (q (100 110 120 130 140)))))' '()'
 
 ## Solutions and Environment Variables
 
-Up until now our programs have not had any input or variables, however ChiaLisp does passed in through the solution.
+Up until now our programs have not had any input or variables, however ChiaLisp does have support for a kind of variable which is passed in through a solution.
+
 It's important to remember that the context for ChiaLisp is for use in locking up coins with a puzzle program.
 This means that we need to be able to pass some information to the puzzle.
 

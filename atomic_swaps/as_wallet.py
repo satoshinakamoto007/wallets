@@ -19,7 +19,6 @@ class ASWallet(Wallet):
         super().__init__()
         return
 
-
     def notify(self, additions, deletions):
         super().notify(additions, deletions)
         puzzlehashes = []
@@ -29,14 +28,12 @@ class ASWallet(Wallet):
         if puzzlehashes != []:
             self.as_notify(additions, puzzlehashes)
 
-
     def as_notify(self, additions, puzzlehashes):
         for coin in additions:
             for puzzlehash in puzzlehashes:
                 if coin.puzzle_hash.hex() == puzzlehash and coin.puzzle_hash not in self.overlook:
                     self.as_pending_utxos.add(coin)
                     self.overlook.append(coin.puzzle_hash)
-
 
     # finds a pending atomic swap coin to be spent
     def as_select_coins(self, amount, as_puzzlehash):
@@ -53,7 +50,6 @@ class ASWallet(Wallet):
                 used_utxos.add(coin)
         return used_utxos
 
-
     # generates the hash of the secret used for the atomic swap coin hashlocks
     def as_generate_secret_hash(self, secret):
         secret_hash_cl = f"(sha256 (q {secret}))"
@@ -61,7 +57,6 @@ class ASWallet(Wallet):
         secret_hash_preformat = clvm.eval_f(clvm.eval_f, binutils.assemble("(sha256 (f (a)))"), binutils.assemble(sec))
         secret_hash = binutils.disassemble(secret_hash_preformat)
         return secret_hash
-
 
     def as_make_puzzle(self, as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_block, as_secret_hash):
         as_pubkey_sender_cl = f"0x{as_pubkey_sender.hex()}"
@@ -79,12 +74,10 @@ class ASWallet(Wallet):
         as_puz = "((c (i (= (f (a)) (q 33333)) (q " + receiver_puz + " (q " + as_puz_sender + ")) (a)))"
         return Program(binutils.assemble(as_puz))
 
-
     def as_get_new_puzzlehash(self, as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_block, as_secret_hash):
         as_puz = self.as_make_puzzle(as_pubkey_sender, as_pubkey_receiver, as_amount, as_timelock_block, as_secret_hash)
         as_puzzlehash = ProgramHash(as_puz)
         return as_puzzlehash
-
 
     # 33333 is the receiver solution code prefix
     def as_make_solution_receiver(self, as_sec_to_try):
@@ -93,13 +86,11 @@ class ASWallet(Wallet):
         sol += ")"
         return Program(binutils.assemble(sol))
 
-
     # 77777 is the sender solution code prefix
     def as_make_solution_sender(self):
         sol = "(77777 "
         sol += ")"
         return Program(binutils.assemble(sol))
-
 
     # finds the secret used to spend a swap coin so that it can be used to spend the swap's other coin
     def pull_preimage(self, body, removals):
@@ -113,11 +104,10 @@ class ASWallet(Wallet):
                             preimage = pre1[(len(pre1) - 515):(len(pre1) - 3)]
                             swap["secret"] = preimage
 
-
     # returns a list of tuples of the form (coin_name, puzzle_hash, conditions_dict, puzzle_solution_program)
     def as_solution_list(self, body_program):
         try:
-            sexp = clvm.eval_f(clvm.eval_f, body_program, [])
+            cost, sexp = clvm.run_program(body_program, [])
         except clvm.EvalError.EvalError:
             raise ValueError(body_program)
         npc_list = []
@@ -135,19 +125,15 @@ class ASWallet(Wallet):
             npc_list.append((puzzle_hash, puzzle_solution_program))
         return npc_list
 
-
     def get_private_keys(self):
         return [BLSPrivateKey(self.extended_secret_key.private_child(child).get_private_key()) for child in range(self.next_address)]
-
 
     def make_keychain(self):
         private_keys = self.get_private_keys()
         return dict((_.public_key(), _) for _ in private_keys)
 
-
     def make_signer(self):
         return sign_f_for_keychain(self.make_keychain())
-
 
     def as_create_spend_bundle(self, as_puzzlehash, as_amount, as_timelock_block, as_secret_hash, as_pubkey_sender = None, as_pubkey_receiver = None, who = None, as_sec_to_try = None):
         utxos = self.as_select_coins(as_amount, as_puzzlehash)

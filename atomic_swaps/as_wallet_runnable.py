@@ -1078,7 +1078,7 @@ def spend_coin(wallet, as_contacts):
     print(divider)
     return spend_bundle
 
-
+              
 async def get_update(wallet, ledger_api, most_recent_header, as_contacts):
     if most_recent_header is None:
         r = await ledger_api.get_all_blocks()

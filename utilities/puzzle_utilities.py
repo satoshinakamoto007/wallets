@@ -61,7 +61,6 @@ def puzzlehash_from_string(puzhash):
     try:
         ret = ProgramHash(bytes.fromhex(puz))
     except Exception:
-        breakpoint()
         raise Exception
     return ret
 

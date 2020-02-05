@@ -23,9 +23,40 @@ $ brun '(c (f (a)) (c (f (r (a))) (c (f (r (r (a)))) (q ()))))' '((60 70 80) ("l
 ((60 70 80) ("list" 28518 "strings") (0xf00dbabe 0xdeadbeef 0xbadfeed1))
 ```
 
+### Extra Operator: (qq) and (unquote)
+
+When creating Chialisp programs that return dynamically created Chialisp programs, the complexity can increase quickly.
+One way we can mitigate this when developing Chialisp is by using quasiquote. 
+This is a compiler tool that allows us to use quote and 'unquote' when we want to insert a dynamically created element.
+
+For example let's suppose we are creating a program that returns a program which simply quotes an address.
+The base instinct may be to write something like:
+```
+(q (q 0xdeadbeef))
+```
+Which when ran, does create a program as expected.
+```
+$ brun '(q (q 0xdeadbeef))'
+(q 0xdeadbeef)
+```
+But what about if we want to generate the address dynamically by running `(sha256 (f (a)))`?
+We couldn't put that inside the outer `q` as it would not be evaluated, and the returned program would be incorrect.
+
+For this we can use `(qq)` and `(unquote)` in the compiler:
+```
+$ run '(mod (x0 x1) (qq (q (unquote (sha256 x0)))))'
+(c (q 1) (c (sha256 (f (a))) (q ())))
+```
+And running this results in:
+```
+$ brun '(c (q 1) (c (sha256 (f (a))) (q ())))' '("hello")'
+(q 0x2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824)
+```
+This is quite a simple example, but when you are creating more complex programs that return dynamically created programs `quasiquote` can become very handy.
+
 ### Extra Operator: (list)
 
-If we want to create a list during evaluation, you may have noticed we use `(c (A) (c (B) (q ())))`.
+If we want to create a list during evaluation, you may have noticed we use `(c (A) (c (B) (c (C) (q ()))))`.
 This pattern gets messy and hard to follow if extended further than one or two elements.
 In the compiler there is support for an extremely convenient operator that creates these complex `c` structures for us.
 
@@ -95,28 +126,3 @@ $ brun '((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q (+ (f (f (r (a))))
 600
 ```
 
-## Puzzle Generators and Off-Chain Communication
-
-We have previously looked at the format for a standard transaction for wallets in Chia, however it is important that the wallets support non-standard transactions and also agree what the 'standard' is anyway.
-
-ChiaLisp is very good at creating programs that create programs. We can use this to create Puzzle Generators for the wallets to communicate with.
-
-The puzzle for a standard transaction remains the same except for the public key, so the we can create a program that generates standard puzzles which takes the public key as part of it's solution.
-
-```
-$ brun '(c (q 5) (c (c (q 5) (c (q (q 50)) (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((c (sha256 (wrap (f (a)))) (q ())))))) (q ())))) (q (((c (f (a)) (f (r (a)))))))))' '("0xpubkey")'
-(c (c (q 50) (c (q "0xpubkey") (c (sha256 (wrap (f (a)))) (q ())))) ((c (f (a)) (f (r (a))))))
-```
-
-This means that wallets can define themselves in terms of what their puzzle generator is.
-We don't even need to store or communicate the whole generator!
-Because most wallets will be of only a few different types, and wallets will reuse their generator, we can optimise this further by having wallets communicate just the hash of their generator.
-We call this the Puzzle Generator ID.
-
-This means that the communication between two wallets during a spend will look like this.
-
-1. Wallet A requests Wallet B's Puzzle Generator ID and a solution which contains their pubkey.
-2. Wallet B returns the hash of its puzzle generator and their public key.
-3. Wallet A looks up the puzzle generator ID and uses the puzzle generator to generate the puzzlehash
-4. Wallet A spends one of their coins to generate a new coin which is locked up with the generated puzzlehash
-5. Wallet B detects this new coin and adds it to their list of 'owned' coins
