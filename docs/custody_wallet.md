@@ -70,14 +70,18 @@ $ ledger-sim
        - type "**4**" and press Enter
      - **Terminal 2**
        - type "**3**" and press Enter
-       - type "**2**" and press Enter (View funds to confirm they have moved)
+       - ###### type "**2**" and press Enter (View funds to confirm they have moved)
      - **Terminal 3**
        - type "**3**" and press Enter
        - type "**2**" and press Enter (Confirm that funds are now in custody of this wallet)
   4. **Confirm we can move funds after lock period**
-     - **Terminal 1** (Mine blocks until block height where funds unlock is reached)
-       - type "**4**" and press Enter
-       - type "**4**" and press Enter
+     - **Terminal 1** (Time increase by 1000 milliseconds every time we print wallet detail)
+       - type "**1**" and press Enter
+       - type "**1**" and press Enter
+       - type "**1**" and press Enter
+       - type "**1**" and press Enter
+       - type "**1**" and press Enter
+       - type "**1**" and press Enter
      - **Terminal 3**
        - type "**3**" and press Enter
        - type "**6**" and press Enter

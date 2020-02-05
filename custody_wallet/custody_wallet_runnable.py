@@ -7,7 +7,7 @@ from chiasim.hashable.Body import BodyList
 from utilities.decorations import print_leaf, divider, prompt
 from chiasim.hashable import ProgramHash
 from binascii import hexlify
-from chiasim.atoms import hexbytes
+from chiasim.atoms import hexbytes, uint64
 
 
 def get_int(message):
@@ -23,7 +23,7 @@ def get_int(message):
     return amount
 
 
-def print_my_details(wallet):
+async def print_my_details(wallet, ledger_api):
     print()
     print(divider)
     print(" \u2447 Wallet Details \u2447")
@@ -31,21 +31,22 @@ def print_my_details(wallet):
     print("Name: " + wallet.name)
     pk = hexlify(wallet.get_next_public_key().serialize()).decode("ascii")
     print(f"New pubkey: {pk}")
+    current_time = await ledger_api.skip_milliseconds(ms=uint64(1000).to_bytes(4, 'big'))
+    print(f"Current time in milliseconds is: {current_time}")
     print(divider)
 
 
 def view_funds(wallet):
-    print(f"Current balance: {wallet.current_balance}")
-    print(f"Current Custody balance: {wallet.cp_balance}")
-    print("UTXOs: ")
-    print([x.amount for x in wallet.temp_utxos if x.amount > 0])
+    breakpoint()
+    print(f"Regular Balance: {wallet.current_balance}")
+    print(f"Current Custody Balance: {wallet.cp_balance}")
 
 
 async def approve_transaction(wallet):
     print(f"Authorizing pubkey: {wallet.pubkey_approval}")
     print("Enter new that need's a approval:")
     newpubkey = input("Enter pubkey for new custody: ")
-    puzzlehash = ProgramHash(wallet.cp_puzzle(newpubkey, wallet.pubkey_approval, wallet.lock_index))
+    puzzlehash = ProgramHash(wallet.cp_puzzle(newpubkey, wallet.pubkey_approval, wallet.unlock_time))
     amount = get_int("Enter amount: ")
     output = puzzlehash, amount
     outputs = [output]
@@ -62,8 +63,8 @@ async def create_custody(wallet, ledger_api):
         print(f"Custodian pubkey: {pubkey}")
         pubkey_auth = input("Enter Authorizer's pubkey: ")
         wallet.pubkey_permission = pubkey_auth
-        locktime = get_int("Specify lock time (blocks): ")
-        wallet.lock_index = locktime
+        unlock_time = get_int("Specify unlock time (milliseconds since 1970): ")
+        wallet.unlock_time = unlock_time
         return
     elif option == "a":
         pubkey = hexbytes(wallet.get_next_public_key().serialize())
@@ -71,11 +72,11 @@ async def create_custody(wallet, ledger_api):
         print("Authorizer Selected")
         print(f"Authorizer pubkey is: {pubkey}")
         pubkey_custody = input("Enter Custodian's pubkey: ")
-        block_index = get_int("Enter same lock time as in custody wallet: ")
+        unlock_time = get_int("Enter the same lock time as in custody wallet: ")
         amount = get_int("Enter Chia amount to send to custody: ")
-        wallet.lock_index = block_index
+        wallet.unlock_time = unlock_time
 
-        puzzle_hash = ProgramHash(wallet.cp_puzzle(pubkey_custody, pubkey, block_index))
+        puzzle_hash = ProgramHash(wallet.cp_puzzle(pubkey_custody, pubkey, unlock_time))
         spend_bundle = wallet.generate_signed_transaction(amount, puzzle_hash)
         _ = await ledger_api.push_tx(tx=spend_bundle)
         return
@@ -88,12 +89,13 @@ async def move_custody(wallet, ledger_api):
     print("Moving custody")
     print(f"Amount being moved: {wallet.cp_balance}")
     amount = wallet.cp_balance
-    lock_index = wallet.lock_index
+    unlock_time = wallet.unlock_time
     pubkey_permission = wallet.pubkey_permission
-    if wallet.lock_index > wallet.tip_index:
+    current_time = await ledger_api.skip_milliseconds(ms=uint64(0).to_bytes(4, 'big'))
+    if unlock_time > current_time:
         new_pub = input("Enter pubkey of the new custodian wallet: ")
         print("Permission needed before moving funds: ")
-        puzzle_hash = ProgramHash(wallet.cp_puzzle(new_pub, pubkey_permission, lock_index))
+        puzzle_hash = ProgramHash(wallet.cp_puzzle(new_pub, pubkey_permission, unlock_time))
         approval = input("\nAdd authorization: ")
         approval = bytes.fromhex(approval)
         spend_bundle = wallet.cp_generate_signed_transaction_with_approval(puzzle_hash, amount, approval)
@@ -101,7 +103,8 @@ async def move_custody(wallet, ledger_api):
     else:
         print("Permission not needed for moving funds")
         pubkey = input("Enter receiver pubkey: ")
-        reg_puzzle = wallet.puzzle_for_pk(pubkey)
+        pub_bytes = bytes.fromhex(pubkey)
+        reg_puzzle = wallet.puzzle_for_pk(pub_bytes)
         puzzle_hash = ProgramHash(reg_puzzle)
         spend_bundle = wallet.cp_generate_signed_transaction(puzzle_hash, amount)
         _ = await ledger_api.push_tx(tx=spend_bundle)
@@ -178,7 +181,7 @@ async def main_loop():
 
         selection = input(prompt)
         if selection == "1":
-            print_my_details(wallet)
+            await print_my_details(wallet, ledger_api)
         elif selection == "2":
             view_funds(wallet)
         elif selection == "3":
