@@ -106,7 +106,7 @@ def test_cc_single():
     innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': amount}])
 
     # parent info update
-    innerpuzhash = ProgramHash(wallet_a.my_coloured_coins[list(wallet_a.my_coloured_coins.keys()).copy().pop()][0])  # have you ever seen something so disgusting
+    innerpuzhash = ProgramHash(wallet_a.my_coloured_coins[list(wallet_a.my_coloured_coins.keys()).copy()[0]][0])  # have you ever seen something so disgusting
     parent_info = (coin.parent_coin_info, innerpuzhash, coin.amount)
     coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()  # this is a hack - design things properly
     assert ProgramHash(clvm.to_sexp_f(wallet_a.cc_make_puzzle(ProgramHash(wallet_a.my_coloured_coins[coin][0]), core))) == coin.puzzle_hash
@@ -182,8 +182,8 @@ def test_aggregate_coloured_coins():
     assert len(wallet_a.my_coloured_coins) == 3
     assert wallet_a.current_balance == 999988500
 
-    # Send 1500 chia to Wallet B
-    spendslist = []  # spendslist is [(coin, parent_info, amount, innersol)]
+    # Send 1500 chia to Wallet B - aggregating the 1000 and the 500
+    spendslist = []  # spendslist is [] of (coin, parent_info, output_amount, innersol)
 
     coins = list(wallet_a.my_coloured_coins.keys()).copy()
     for coin in coins:
@@ -198,13 +198,30 @@ def test_aggregate_coloured_coins():
     sigs = sigs + wallet_a.get_sigs_for_innerpuz_with_innersol(wallet_a.my_coloured_coins[coins[1]][0], innersol)
     spendslist.append((coins[1], parent_info[coins[1].parent_coin_info], 0, innersol))
 
+    # update parent info before coin disappears
+    parent_info = (coins[0].parent_coin_info, ProgramHash(wallet_a.my_coloured_coins[coins[0]][0]), coins[0].amount)
+    #breakpoint()
     spend_bundle = wallet_a.cc_generate_spends_for_coin_list(spendslist, sigs)
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
-    #breakpoint()
+
     assert len(wallet_a.my_coloured_coins) == 1
     assert len(wallet_b.my_coloured_coins) == 1
     assert list(wallet_b.my_coloured_coins.keys()).copy().pop().amount == 1500
+
+    # Wallet B breaks down its new coin into 3 coins of value 500
+    innersol = make_solution(primaries=[{'puzzlehash': wallet_b.get_new_puzzlehash(), 'amount': 400}, {'puzzlehash': wallet_b.get_new_puzzlehash(), 'amount': 500}, {'puzzlehash': wallet_b.get_new_puzzlehash(), 'amount': 600}])
+    coin = list(wallet_b.my_coloured_coins.keys()).copy().pop()
+    assert coin.parent_coin_info == coins[0].name()
+    #breakpoint()
+    sigs = wallet_b.get_sigs_for_innerpuz_with_innersol(wallet_b.my_coloured_coins[coin][0], innersol)
+
+    spend_bundle = wallet_b.cc_generate_spends_for_coin_list([(coin, parent_info, 1500, innersol)], sigs)
+    #breakpoint()
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert len(wallet_a.my_coloured_coins) == 1
+    assert len(wallet_b.my_coloured_coins) == 3
 
 
 # Test that we can't forge a coloured coin, either through aggregating a different colour, or by printing a new coin.
