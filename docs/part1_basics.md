@@ -24,7 +24,7 @@ Internally however the blobs can be interpreted in a number of different ways, w
 There are no support for floating point numbers in ChiaLisp, only integers.
 Internally integers are interpreted as 256 bit signed integers.
 
-The math operators are `*`, `+`, `-`, and `uint64`.
+The math operators are `*`, `+`, and `-`.
 
 ```
 $ brun '(- (q 6) (q 5))' '()'
@@ -35,10 +35,6 @@ $ brun '(* (q 2) (q 4) (q 5))' '()'
 
 $ brun '(+ (q 10) (q 20) (q 30) (q 40))' '()'
 100
-
-$ $ brun '(uint64 (q 10))' '()'
-0x000000000000000a
-```
 
 You may have noticed that the multiplication example above takes more than two parameters in the list.
 This is because many operators can take variable amounts of parameters.
