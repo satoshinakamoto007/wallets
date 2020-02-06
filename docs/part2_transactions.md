@@ -29,7 +29,7 @@ Here is the actual code that defines a coin:
 class Coin:
     parent_coin_info: "CoinName"
     puzzle_hash: ProgramHash
-    amount: uint64
+    amount: clvm_int
 ```
 
 ## Spends

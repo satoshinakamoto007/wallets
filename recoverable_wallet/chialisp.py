@@ -69,10 +69,6 @@ def sha256tree(*argv):
     return apply('sha256tree', argv)
 
 
-def uint64(obj):
-    return sexp('uint64', obj)
-
-
 def equal(*argv):
     return apply('=', argv)
 
