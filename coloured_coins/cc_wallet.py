@@ -100,7 +100,7 @@ class CCWallet(Wallet):
         #print(f"DEBUG Puzstring: {puzstring}")
         return Program(binutils.assemble(puzstring))
 
-    # Typically called only once per colour
+    # Typically called only once per colour then passed around or inferred from a coin
     def cc_make_core(self, originID):
         create_outputs = f"((c (f (r (r (r (a))))) (f (r (r (r (r (a))))))))"
         sum_outputs = f"((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q ((c (i (= (f (f (f (r (a))))) (q 0x{ConditionOpcode.CREATE_COIN.hex()})) (q (+ (f (r (r (f (f (r (a))))))) ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (q ()))))))) (q (+ (q ()) ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (q ())))))))) (a)))) (q (q ()))) (a)))) (c {create_outputs} (q ())))))"
@@ -175,9 +175,10 @@ class CCWallet(Wallet):
         aggees = aggees + ")"
 
         sol = f"({core} {parent_str} {amount} {innerpuzreveal} {innersol} {auditor_formatted} {aggees})"
-        print(f"DEBUG solstring: {sol}")
+        #print(f"DEBUG solstring: {sol}")
         return Program(binutils.assemble(sol))
 
+    # A newly minted coloured coin has a special spend before it can act like normal
     def cc_generate_eve_spend(self, spendslist, sigs=[]):
         # spendslist is [] of (coin, parent_info, outputamount, innersol)
         auditor = spendslist[0][0]
@@ -216,7 +217,7 @@ class CCWallet(Wallet):
         solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), auditor_info, spendslist)
         list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
         list_of_solutions.append(self.create_spend_for_ephemeral(coin, auditor, spend[2]))
-        list_of_solutions.append(self.create_puzzle_for_auditor(auditor, coin))
+        list_of_solutions.append(self.create_spend_for_auditor(auditor, coin))
         #breakpoint()
 
         # loop through remaining aggregatees
@@ -229,7 +230,7 @@ class CCWallet(Wallet):
             solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), auditor_info, None)
             list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
             list_of_solutions.append(self.create_spend_for_ephemeral(coin, auditor, spend[2]))
-            list_of_solutions.append(self.create_puzzle_for_auditor(auditor, coin))
+            list_of_solutions.append(self.create_spend_for_auditor(auditor, coin))
             #breakpoint()
         solution_list = CoinSolutionList(list_of_solutions)
         aggsig = BLSSignature.aggregate(sigs)
@@ -245,7 +246,7 @@ class CCWallet(Wallet):
         #breakpoint()
         return coinsol
 
-    def create_puzzle_for_auditor(self, parent_of_a, auditee):
+    def create_spend_for_auditor(self, parent_of_a, auditee):
         puzstring = f"(r (c (q 0x{auditee.name()}) (q ())))"
         puzzle = Program(binutils.assemble(puzstring))
         coin = Coin(parent_of_a, ProgramHash(puzzle), 0)
@@ -254,6 +255,7 @@ class CCWallet(Wallet):
         #breakpoint()
         return coinsol
 
+    # This runs an innerpuz for an innersol
     def get_sigs_for_innerpuz_with_innersol(self, innerpuz, innersol):
         sigs = []
         pubkey, secretkey = self.get_keys(ProgramHash(innerpuz))
@@ -267,6 +269,68 @@ class CCWallet(Wallet):
             sigs.append(signature)
         return sigs
 
+    # This creates an incomplete/incorrect spend SpendBundle
+    # solution is missing auditor info, output amount != input amount
+    def create_trade_offer(self, chiacoin, amount, ccspendslist, sigs=[]):
+        # ccspendslist is [] of (coin, parent_info, outputamount, innersol)
+        core = self.my_coloured_coins[ccspendslist[0][0]][1]
+        list_of_solutions = []
+        for spend in ccspendslist:
+            coin = spend[0]
+            innerpuz = binutils.disassemble(self.my_coloured_coins[coin][0])
+            innersol = spend[3]
+            temp_fix_innersol = clvm.to_sexp_f([innersol, []])
+            parent_info = spend[1]
+            solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), None, None)
+            list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
+
+        # standard coin CoinSolution generation
+        newpuzhash = self.get_new_puzzlehash()
+        solution = make_solution(primaries=[{'puzzlehash': newpuzhash, 'amount': amount}])
+        temp_fix_sol = clvm.to_sexp_f([solution, []])
+        pubkey, secretkey = self.get_keys(chiacoin.puzzle_hash)
+        puzzle = self.puzzle_for_pk(pubkey.serialize())
+        list_of_solutions.append(CoinSolution(chiacoin, clvm.to_sexp_f([puzzle, temp_fix_sol])))
+        sigs = sigs + self.get_sigs_for_innerpuz_with_innersol(puzzle, solution)
+
+        solution_list = CoinSolutionList(list_of_solutions)
+        aggsig = BLSSignature.aggregate(sigs)
+        spend_bundle = SpendBundle(solution_list, aggsig)
+
+        return spend_bundle
+
+    # Take an incomplete SpendBundle, fill in auditor information and add missing amounts
+    def parse_trade_offer(self, trade_offer):
+        offers = []  # [] of (coin, puzzle, solution)
+        cc_discrepancy = 0
+        chia_discrepancy = 0
+        for coinsol in trade_offer.coin_solutions:
+            puzzle = coinsol.solution.first()
+            solution = coinsol.solution.rest().first()
+            offers.append((coinsol.coin, puzzle, solution))
+
+            # work out the deficits between coin amount and expected output for each
+            # puzstring = f"(r (c (q 0x{innerpuzhash}) ((c (q {core}) (a)))))"
+            if len(binutils.disassemble(puzzle)) > 300:  # CC or chia? - TODO: make more nuance
+                # innerpuzzlehash = puzzle[9:75]
+                innerpuzzlereveal = solution.rest().rest().rest().first()
+                innersol = solution.rest().rest().rest().rest().first()
+                cc_discrepancy += self.get_output_discrepancy_for_puzzle_and_solution(coinsol.coin, innerpuzzlereveal, innersol)
+            else:  # standard chia coin
+                chia_discrepancy += self.get_output_discrepancy_for_puzzle_and_solution(coinsol.coin, puzzle, solution)
+        breakpoint()
+        return
+
+    def get_output_discrepancy_for_puzzle_and_solution(self, coin, puzzle, solution):
+        conditions = clvm.eval_f(clvm.eval_f, puzzle, solution)
+        amount = 0
+        while conditions != b'':
+            opcode = conditions.first().first()
+            if opcode == b'3':
+                amount += int(binutils.disassemble(conditions.first().rest().rest().first()))
+            conditions = conditions.rest()
+        discrepancy = coin.amount - amount
+        return discrepancy
 
 """
 Copyright 2020 Chia Network Inc
