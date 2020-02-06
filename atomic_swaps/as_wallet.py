@@ -1,13 +1,18 @@
 from standard_wallet.wallet import Wallet
 import clvm
-import sys
-from chiasim.hashable import Program, ProgramHash, SpendBundle
+from chiasim.hashable import CoinSolution, Program, ProgramHash, SpendBundle
 from clvm_tools import binutils
 from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from chiasim.validation.Conditions import ConditionOpcode
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from utilities.puzzle_utilities import puzzlehash_from_string
-from utilities.keys import build_spend_bundle, sign_f_for_keychain
+from utilities.keys import signature_for_solution, sign_f_for_keychain
+
+
+def build_spend_bundle(coin, solution, sign_f):
+    coin_solution = CoinSolution(coin, solution)
+    signature = signature_for_solution(solution, sign_f)
+    return SpendBundle([coin_solution], signature)
 
 
 # ASWallet is subclass of Wallet
