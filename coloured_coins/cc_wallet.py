@@ -327,7 +327,11 @@ class CCWallet(Wallet):
         while conditions != b'':
             opcode = conditions.first().first()
             if opcode == b'3':
-                amount += int(binutils.disassemble(conditions.first().rest().rest().first()))
+                amount_str = binutils.disassemble(conditions.first().rest().rest().first())
+                if amount_str[0:2] == "0x":
+                    amount += int(amount_str, 16)
+                else:
+                    amount += int(amount_str, 10)
             conditions = conditions.rest()
         discrepancy = coin.amount - amount
         return discrepancy
