@@ -1,10 +1,9 @@
 from standard_wallet.wallet import Wallet
 import clvm
-from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BLSSignature
+from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BLSPublicKey, BLSSignature
 from chiasim.hashable.Coin import Coin
 from chiasim.hashable.CoinSolution import CoinSolutionList
 from clvm_tools import binutils
-from blspy import PublicKey
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from .ap_wallet_a_functions import ap_make_puzzle, ap_make_aggregation_puzzle
 from utilities.puzzle_utilities import puzzlehash_from_string
@@ -29,7 +28,7 @@ class APWallet(Wallet):
             self.AP_puzzlehash = AP_puzzlehash
 
         if isinstance(a_pubkey_used, str):
-            a_pubkey = PublicKey.from_bytes(bytes.fromhex(a_pubkey_used))
+            a_pubkey = BLSPublicKey.from_bytes(bytes.fromhex(a_pubkey_used))
             self.a_pubkey = a_pubkey
         else:
             self.a_pubkey = a_pubkey_used
