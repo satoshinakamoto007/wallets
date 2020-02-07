@@ -207,7 +207,7 @@ async def recover_escrow_coins(ledger_api, wallet):
         wallet.escrow_coins.pop(recovery_string)
 
 
-async def main():
+async def main_loop():
     ledger_api = await connect_to_ledger_sim('localhost', 9868)
     print('Creating a new Recoverable Wallet')
     stake_factor = input('Input stake factor (defaults to 1.1): ')
@@ -251,8 +251,14 @@ async def main():
     sys.exit(0)
 
 
-run = asyncio.get_event_loop().run_until_complete
-run(main())
+def main():
+    run = asyncio.get_event_loop().run_until_complete
+    run(main_loop())
+
+
+if __name__ == "__main__":
+    main()
+
 
 """
 Copyright 2018 Chia Network Inc

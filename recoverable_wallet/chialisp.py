@@ -58,7 +58,7 @@ def make_list(*argv, terminator=nil):
 
 
 def fail(*argv):
-    return apply('fail', argv)
+    return apply('x', argv)
 
 
 def sha256(*argv):
