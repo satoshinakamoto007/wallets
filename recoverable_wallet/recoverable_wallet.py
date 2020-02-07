@@ -28,14 +28,10 @@ def hash_sha256(val):
     return hashlib.sha256(val).digest()
 
 
-def make_solution(parent, puzzlehash, value, stake_factor, primaries=[], min_time=0, me={}, recovery=False):
+def make_solution(parent, puzzlehash, value, stake_factor, primaries=[], recovery=False):
     conditions = []
     for primary in primaries:
         conditions.append(make_create_coin_condition(primary['puzzlehash'], primary['amount']))
-    if min_time > 0:
-        conditions.append(make_assert_min_time_condition(min_time))
-    if me:
-        conditions.append(make_assert_my_coin_id_condition(me['id']))
     conditions = [binutils.assemble("#q"), conditions]
     solution = [conditions, [], 1 if recovery else 0, parent, puzzlehash, value, math.floor(value * stake_factor)]
     program = Program(to_sexp_f(solution))
@@ -55,6 +51,10 @@ def aggsig_condition(key):
     return make_list(quote(op_aggsig),
                      quote(f'0x{hexbytes(key)}'),
                      sha256tree(args(0)))
+
+
+class InsufficientFundsError(BaseException):
+    pass
 
 
 class RecoverableWallet(Wallet):
@@ -222,6 +222,8 @@ class RecoverableWallet(Wallet):
     def generate_unsigned_transaction(self, amount, newpuzzlehash):
         stake_factor = self.get_stake_factor()
         utxos = self.select_coins(amount)
+        if utxos is None:
+            raise InsufficientFundsError
         spends = []
         output_id = None
         spend_value = sum([coin.amount for coin in utxos])
@@ -247,6 +249,8 @@ class RecoverableWallet(Wallet):
     def generate_unsigned_transaction_without_recipient(self, amount):
         stake_factor = self.get_stake_factor()
         utxos = self.select_coins(amount)
+        if utxos is None:
+            raise InsufficientFundsError
         spends = []
         output_id = None
         spend_value = sum([coin.amount for coin in utxos])
@@ -269,23 +273,6 @@ class RecoverableWallet(Wallet):
                 solution = make_solution(coin.parent_coin_info, coin.puzzle_hash, coin.amount, stake_factor)
             spends.append((puzzle, CoinSolution(coin, solution)))
         return spends
-
-    def sign_recovery_transaction(self, spends, secret_key):
-        sigs = []
-        for puzzle, solution in spends:
-            secret_key = BLSPrivateKey(secret_key)
-            code_ = [puzzle, solution.solution]
-            sexp = clvm.to_sexp_f(code_)
-            conditions_dict = conditions_by_opcode(conditions_for_solution(sexp))
-            for _ in hash_key_pairs_for_conditions_dict(conditions_dict):
-                signature = secret_key.sign(_.message_hash)
-                sigs.append(signature)
-        aggsig = BLSSignature.aggregate(sigs)
-        solution_list = CoinSolutionList(
-            [CoinSolution(coin_solution.coin, clvm.to_sexp_f([puzzle, coin_solution.solution])) for
-             (puzzle, coin_solution) in spends])
-        spend_bundle = SpendBundle(solution_list, aggsig)
-        return spend_bundle
 
     def generate_recovery_to_escrow_transaction(self, coin, recovery_pubkey, pubkey, stake_factor, escrow_duration):
         solution = make_solution(coin.parent_coin_info, coin.puzzle_hash, coin.amount, stake_factor, recovery=True)
