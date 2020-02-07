@@ -6,7 +6,6 @@ from binascii import hexlify
 from chiasim.hashable.Coin import Coin
 from chiasim.hashable.CoinSolution import CoinSolutionList
 from clvm_tools import binutils
-from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from chiasim.validation.Conditions import ConditionOpcode
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 import math
@@ -113,7 +112,7 @@ class RLWallet(Wallet):
         if self.rl_clawback_pk is None:
             return None
         return any(map(lambda child: hash == ProgramHash(self.rl_puzzle_for_pk(
-            self.extended_secret_key.public_child(child).get_public_key().serialize(), self.limit, self.interval,
+            bytes(self.extended_secret_key.public_child(child)), self.limit, self.interval,
             self.rl_origin, self.rl_clawback_pk)),
                        reversed(range(self.next_address))))
 
@@ -208,18 +207,16 @@ class RLWallet(Wallet):
         if s is not None:
             return s
         for child in reversed(range(self.next_address)):
-            pubkey = self.extended_secret_key.public_child(
-                child).get_public_key()
+            pubkey = self.extended_secret_key.public_child(child)
             if hash == ProgramHash(
-                    self.rl_puzzle_for_pk(pubkey.serialize(), self.limit, self.interval, self.rl_origin, self.rl_clawback_pk)):
-                return pubkey, self.extended_secret_key.private_child(child).get_private_key()
+                    self.rl_puzzle_for_pk(bytes(pubkey), self.limit, self.interval, self.rl_origin, self.rl_clawback_pk)):
+                return pubkey, self.extended_secret_key.private_child(child)
 
     def get_keys_pk(self, clawback_pubkey):
         for child in reversed(range(self.next_address)):
-            pubkey = self.extended_secret_key.public_child(
-                child).get_public_key()
-            if hexbytes(pubkey.serialize()) == clawback_pubkey:
-                return pubkey, self.extended_secret_key.private_child(child).get_private_key()
+            pubkey = self.extended_secret_key.public_child(child)
+            if hexbytes(bytes(pubkey)) == clawback_pubkey:
+                return pubkey, self.extended_secret_key.private_child(child)
 
     # This is for spending from received RL coin, not creating a new RL coin
     def rl_generate_unsigned_transaction(self, to_puzzlehash, amount):
@@ -227,7 +224,7 @@ class RLWallet(Wallet):
         coin = self.rl_coin
         puzzle_hash = coin.puzzle_hash
         pubkey, secretkey = self.get_keys(puzzle_hash)
-        puzzle = self.rl_puzzle_for_pk(pubkey.serialize(), self.limit, self.interval, self.rl_origin, self.rl_clawback_pk)
+        puzzle = self.rl_puzzle_for_pk(bytes(pubkey), self.limit, self.interval, self.rl_origin, self.rl_clawback_pk)
         if isinstance(self.rl_parent, Coin):
             solution = self.solution_for_rl(coin.parent_coin_info, puzzle_hash, coin.amount, to_puzzlehash, amount,
                                         self.rl_parent.parent_coin_info, self.rl_parent.amount)
@@ -248,7 +245,6 @@ class RLWallet(Wallet):
         for puzzle, solution in spends:
             pubkey, secretkey = self.get_keys(
                 solution.coin.puzzle_hash)
-            secretkey = BLSPrivateKey(secretkey)
             signature = secretkey.sign(
                 ProgramHash(Program(solution.solution)))
             sigs.append(signature)
@@ -271,7 +267,6 @@ class RLWallet(Wallet):
         sigs = []
         for puzzle, solution in spends:
             pubkey, secretkey = self.get_keys_pk(clawback_pubkey)
-            secretkey = BLSPrivateKey(secretkey)
             signature = secretkey.sign(
                 ProgramHash(Program(solution.solution)))
             sigs.append(signature)
@@ -298,7 +293,7 @@ class RLWallet(Wallet):
         pubkey, secretkey = self.get_keys(
             self.rl_coin.puzzle_hash)
         # Spend wallet coin
-        puzzle = self.rl_puzzle_for_pk(pubkey.serialize(), self.limit, self.interval, self.rl_origin, self.rl_clawback_pk)
+        puzzle = self.rl_puzzle_for_pk(bytes(pubkey), self.limit, self.interval, self.rl_origin, self.rl_clawback_pk)
 
         if isinstance(self.rl_parent, Coin):
             solution = self.rl_make_solution_mode_2(self.rl_coin.puzzle_hash, consolidating_coin.parent_coin_info,
@@ -310,7 +305,7 @@ class RLWallet(Wallet):
                                                     consolidating_coin.puzzle_hash, consolidating_coin.amount,
                                                     self.rl_coin.parent_coin_info, self.rl_coin.amount,
                                                     self.rl_parent["amount"], self.rl_parent["parent_coin_info"])
-        signature = BLSPrivateKey(secretkey).sign(ProgramHash(solution))
+        signature = secretkey.sign(ProgramHash(solution))
         list_of_coinsolutions.append(CoinSolution(self.rl_coin, clvm.to_sexp_f([puzzle, solution])))
 
         # Spend consolidating coin
@@ -369,7 +364,7 @@ class RLWallet(Wallet):
         for coin in utxos:
             puzzle_hash = coin.puzzle_hash
             pubkey, secretkey = self.get_keys(puzzle_hash)
-            puzzle = self.puzzle_for_pk(pubkey.serialize())
+            puzzle = self.puzzle_for_pk(bytes(pubkey))
             if str(origin_name) == str(coin.name()):
                 primaries = [{'puzzlehash': newpuzzlehash, 'amount': amount}]
                 if change > 0:
