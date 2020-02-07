@@ -2,7 +2,6 @@ from standard_wallet.wallet import Wallet
 import clvm
 from chiasim.hashable import CoinSolution, Program, ProgramHash, SpendBundle
 from clvm_tools import binutils
-from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from chiasim.validation.Conditions import ConditionOpcode
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from utilities.puzzle_utilities import puzzlehash_from_string
@@ -58,7 +57,7 @@ class ASWallet(Wallet):
     # generates the hash of the secret used for the atomic swap coin hashlocks
     def as_generate_secret_hash(self, secret):
         secret_hash_cl = f"(sha256 (q {secret}))"
-        sec = f"({secret})" 
+        sec = f"({secret})"
         cost, secret_hash_preformat = clvm.run_program(binutils.assemble("(sha256 (f (a)))"), binutils.assemble(sec))
         secret_hash = binutils.disassemble(secret_hash_preformat)
         return secret_hash
@@ -131,7 +130,7 @@ class ASWallet(Wallet):
         return npc_list
 
     def get_private_keys(self):
-        return [BLSPrivateKey(self.extended_secret_key.private_child(child).get_private_key()) for child in range(self.next_address)]
+        return [self.extended_secret_key.private_child(child) for child in range(self.next_address)]
 
     def make_keychain(self):
         private_keys = self.get_private_keys()
@@ -155,7 +154,6 @@ class ASWallet(Wallet):
             spends.append(spend_bundle)
         return SpendBundle.aggregate(spends)
 
-
     def as_remove_swap_instances(self, removals):
         for coin in removals:
             pcoins = self.as_pending_utxos.copy()
@@ -171,7 +169,6 @@ class ASWallet(Wallet):
                     swap["incoming puzzlehash"] = "spent"
                     if swap["outgoing puzzlehash"] == "spent" and swap["incoming puzzlehash"] == "spent":
                         self.as_swap_list.remove(swap)
-
 
 
 """

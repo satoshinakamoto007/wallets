@@ -12,7 +12,7 @@ from chiasim.validation.consensus import (
 )
 from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 
-from multisig.BLSHDKeys import BLSPrivateHDKey
+from utilities.BLSHDKey import BLSPrivateHDKey
 
 
 class Wallet:
