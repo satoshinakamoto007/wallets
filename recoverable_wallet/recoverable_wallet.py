@@ -130,7 +130,7 @@ class RecoverableWallet(Wallet):
                                          multiply(value, stake_factor_numerator)),
                                    make_list(quote(op_create), quote(escrow_puzzlehash), new_value),
                                    fail())
-        coin_id = sha256(parent, puzzle_hash, uint64(value))
+        coin_id = sha256(parent, puzzle_hash, value)
         consumed_condition = make_list(quote(op_consumed), coin_id)
         escrow_conditions = make_list(create_condition,
                                       consumed_condition)
