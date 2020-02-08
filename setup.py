@@ -1,5 +1,9 @@
 import setuptools
 
+from clvm_tools.setuptools import build_clvm, monkey_patch
+
+monkey_patch()
+
 dependencies = ["aiter", "blspy", "cbor"]
 
 setuptools.setup(
@@ -31,4 +35,18 @@ setuptools.setup(
     use_scm_version={"fallback_version": "unknown"},
     install_requires=dependencies,
     long_description=open("README.md").read(),
+    cmdclass={"build_clvm": build_clvm, },
+    clvm_extensions=[
+        "puzzles/make_p2_delegated_puzzle_or_hidden_puzzle.clvm",
+        "puzzles/make_puzzle_m_of_n_direct.clvm",
+    ],
+    data_files=[
+        (
+            "puzzles",
+            [
+                "make_p2_delegated_puzzle_or_hidden_puzzle.clvm.hex",
+                "chiasim/puzzles/make_puzzle_m_of_n_direct.clvm.hex",
+            ],
+        )
+    ],
 )
