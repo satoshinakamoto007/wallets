@@ -54,7 +54,10 @@ def commit_and_notify(remote, wallets, reward_recipient):
                               for x in removals]
 
     for wallet in wallets:
-        wallet.notify(additions, removals)
+        if isinstance(wallet, CCWallet):
+            wallet.notify(additions, removals, body)
+        else:
+            wallet.notify(additions, removals)
 
 
 def test_cc_single():
@@ -357,14 +360,12 @@ def test_partial_spend_market():
     wallet_b.cc_add_core(core)
 
     # Eve spend coins
-    parent_info = dict()  # (coin.parent_coin_info, innerpuzhash, coin.amount)
 
     # don't need sigs or a proper innersol for eve spend
     spendslist = []
     innersol = binutils.assemble("()")
     for coin in coins:
         spendslist.append((coin,  coins[0].parent_coin_info, coin.amount, innersol))
-        parent_info[coin.name()] = (coin.parent_coin_info, ProgramHash(wallet_a.my_coloured_coins[coin][0]), coin.amount)
     spend_bundle = wallet_a.cc_generate_eve_spend(spendslist)
     _ = run(remote.push_tx(tx=spend_bundle))
 
@@ -376,11 +377,10 @@ def test_partial_spend_market():
     for coin in coins:
         if coin.amount == 1000:
             c = coin
-        parent_info[coin.name()] = (coin.parent_coin_info, ProgramHash(wallet_a.my_coloured_coins[coin][0]), coin.amount)
     newinnerpuzhash = wallet_b.get_new_puzzlehash()
     innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': 1000}])
     sigs = wallet_a.get_sigs_for_innerpuz_with_innersol(wallet_a.my_coloured_coins[c][0], innersol)
-    spendslist.append((c, parent_info[c.parent_coin_info], 1000, innersol))
+    spendslist.append((c, wallet_a.parent_info[c.parent_coin_info], 1000, innersol))
     spend_bundle = wallet_a.cc_generate_spends_for_coin_list(spendslist, sigs)
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
@@ -394,13 +394,17 @@ def test_partial_spend_market():
     for coin in coins:
         if coin.amount == 1000:
             c = coin
-        parent_info[coin.name()] = (coin.parent_coin_info, ProgramHash(wallet_b.my_coloured_coins[coin][0]), coin.amount)
     newinnerpuzhash = wallet_b.get_new_puzzlehash()
     innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': c.amount + 100}])
-    sigs = wallet_b .get_sigs_for_innerpuz_with_innersol(wallet_b.my_coloured_coins[c][0], innersol)
-    spendslist.append((c, parent_info[c.parent_coin_info], c.amount + 100, innersol))
+    sigs = wallet_b.get_sigs_for_innerpuz_with_innersol(wallet_b.my_coloured_coins[c][0], innersol)
+    spendslist.append((c, wallet_b.parent_info[c.parent_coin_info], c.amount + 100, innersol))
 
     coin = wallet_b.temp_utxos.copy().pop()
     trade_offer = wallet_b.create_trade_offer(coin, coin.amount - 100, spendslist, sigs)
 
     spend_bundle = wallet_a.parse_trade_offer(trade_offer)
+    _ = run(remote.push_tx(tx=spend_bundle))
+
+    commit_and_notify(remote, wallets, Wallet())
+    assert list(wallet_b.my_coloured_coins.keys()).copy().pop().amount == 1100
+    assert wallet_a.current_balance == 999988600
