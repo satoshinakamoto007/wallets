@@ -107,8 +107,8 @@ def test_recovery():
 
     recovery_string = wallet_a.get_backup_string()
     recovery_dict = recovery_string_to_dict(recovery_string)
-    root_public_key_serialized = recovery_dict['root_public_key'].serialize()
-    recovery_pubkey = recovery_dict['root_public_key'].public_child(0).get_public_key().serialize()
+    root_public_key_serialized = bytes(recovery_dict['root_public_key'])
+    recovery_pubkey = bytes(recovery_dict['root_public_key'].public_child(0))
 
     for coin in wallet_a.my_utxos.copy():
         pubkey = wallet_b.find_pubkey_for_hash(coin.puzzle_hash,
@@ -162,8 +162,8 @@ def test_recovery_from_escrow_too_soon():
 
     recovery_string = wallet_a.get_backup_string()
     recovery_dict = recovery_string_to_dict(recovery_string)
-    root_public_key_serialized = recovery_dict['root_public_key'].serialize()
-    recovery_pubkey = recovery_dict['root_public_key'].public_child(0).get_public_key().serialize()
+    root_public_key_serialized = bytes(recovery_dict['root_public_key'])
+    recovery_pubkey = bytes(recovery_dict['root_public_key'].public_child(0))
 
     for coin in wallet_a.my_utxos.copy():
         pubkey = wallet_b.find_pubkey_for_hash(coin.puzzle_hash,
@@ -212,8 +212,8 @@ def test_recovery_with_insufficient_funds():
 
     recovery_string = wallet_a.get_backup_string()
     recovery_dict = recovery_string_to_dict(recovery_string)
-    root_public_key_serialized = recovery_dict['root_public_key'].serialize()
-    recovery_pubkey = recovery_dict['root_public_key'].public_child(0).get_public_key().serialize()
+    root_public_key_serialized = bytes(recovery_dict['root_public_key'])
+    recovery_pubkey = bytes(recovery_dict['root_public_key'].public_child(0))
 
     import pytest
     with pytest.raises(InsufficientFundsError):
@@ -248,8 +248,8 @@ def test_clawback():
 
     recovery_string = wallet_a.get_backup_string()
     recovery_dict = recovery_string_to_dict(recovery_string)
-    root_public_key_serialized = recovery_dict['root_public_key'].serialize()
-    recovery_pubkey = recovery_dict['root_public_key'].public_child(0).get_public_key().serialize()
+    root_public_key_serialized = bytes(recovery_dict['root_public_key'])
+    recovery_pubkey = bytes(recovery_dict['root_public_key'].public_child(0))
 
     for coin in wallet_a.my_utxos.copy():
         pubkey = wallet_b.find_pubkey_for_hash(coin.puzzle_hash,

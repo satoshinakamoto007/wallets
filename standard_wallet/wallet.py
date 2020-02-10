@@ -1,6 +1,5 @@
 import clvm
 from os import urandom
-from blspy import ExtendedPrivateKey
 from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BLSSignature, Coin
 from chiasim.hashable.CoinSolution import CoinSolutionList
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
@@ -11,7 +10,8 @@ from chiasim.validation.Conditions import (
 from chiasim.validation.consensus import (
     conditions_for_solution, hash_key_pairs_for_conditions_dict
 )
-from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
+
+from utilities.BLSHDKey import BLSPrivateHDKey
 
 
 class Wallet:
@@ -23,7 +23,7 @@ class Wallet:
         self.current_balance = 0
         self.my_utxos = set()
         self.seed = urandom(1024)
-        self.extended_secret_key = ExtendedPrivateKey.from_seed(self.seed)
+        self.extended_secret_key = BLSPrivateHDKey.from_seed(self.seed)
         # self.contacts = {}  # {'name': (puzzlegenerator, last, extradata)}
         self.generator_lookups = {}  # {generator_hash: generator}
         self.name = "MyChiaWallet"
@@ -33,9 +33,8 @@ class Wallet:
         self.all_deletions = {}
 
     def get_next_public_key(self):
-        pubkey = self.extended_secret_key.public_child(
-            self.next_address).get_public_key()
-        self.pubkey_num_lookup[pubkey.serialize()] = self.next_address
+        pubkey = self.extended_secret_key.public_child(self.next_address)
+        self.pubkey_num_lookup[bytes(pubkey)] = self.next_address
         self.next_address = self.next_address + 1
         return pubkey
 
@@ -50,15 +49,14 @@ class Wallet:
 
     def can_generate_puzzle_hash(self, hash):
         return any(map(lambda child: hash == ProgramHash(puzzle_for_pk(
-            self.extended_secret_key.public_child(child).get_public_key().serialize())),
+            bytes(self.extended_secret_key.public_child(child)))),
             reversed(range(self.next_address))))
 
     def get_keys(self, hash):
         for child in range(self.next_address):
-            pubkey = self.extended_secret_key.public_child(
-                child).get_public_key()
-            if hash == ProgramHash(puzzle_for_pk(pubkey.serialize())):
-                return (pubkey, self.extended_secret_key.private_child(child).get_private_key())
+            pubkey = self.extended_secret_key.public_child(child)
+            if hash == ProgramHash(puzzle_for_pk(bytes(pubkey))):
+                return (pubkey, self.extended_secret_key.private_child(child))
 
     def notify(self, additions, deletions):
         for coin in additions:
@@ -91,7 +89,7 @@ class Wallet:
         return puzzle_for_pk(pubkey)
 
     def get_new_puzzle(self):
-        pubkey = self.get_next_public_key().serialize()
+        pubkey = bytes(self.get_next_public_key())
         puzzle = puzzle_for_pk(pubkey)
         return puzzle
 
@@ -101,10 +99,8 @@ class Wallet:
         return puzzlehash
 
     def sign(self, value, pubkey):
-        privatekey = self.extended_secret_key.private_child(
-            self.pubkey_num_lookup[pubkey]).get_private_key()
-        blskey = BLSPrivateKey(privatekey)
-        return blskey.sign(value)
+        privatekey = self.extended_secret_key.private_child(self.pubkey_num_lookup[pubkey])
+        return privatekey.sign(value)
 
     def make_solution(self, primaries=[], min_time=0, me={}, consumed=[]):
         ret = []
@@ -131,7 +127,7 @@ class Wallet:
             puzzle_hash = coin.puzzle_hash
 
             pubkey, secretkey = self.get_keys(puzzle_hash)
-            puzzle = puzzle_for_pk(pubkey.serialize())
+            puzzle = puzzle_for_pk(pubkey)
             if output_created is False:
                 primaries = [{'puzzlehash': newpuzzlehash, 'amount': amount}]
                 if change > 0:
@@ -152,7 +148,6 @@ class Wallet:
         sigs = []
         for puzzle, solution in spends:
             pubkey, secretkey = self.get_keys(solution.coin.puzzle_hash)
-            secretkey = BLSPrivateKey(secretkey)
             code_ = [puzzle, solution.solution]
             sexp = clvm.to_sexp_f(code_)
             conditions_dict = conditions_by_opcode(

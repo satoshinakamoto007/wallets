@@ -4,13 +4,14 @@ import json
 import os
 from pathlib import Path
 
-from .BLSHDKeys import BLSPrivateHDKey, fingerprint_for_pk
-from .pst import PartiallySignedTransaction
-
 from chiasim.validation.consensus import (
     conditions_dict_for_solution,
     hash_key_pairs_for_conditions_dict,
 )
+
+from utilities.BLSHDKey import BLSPrivateHDKey, fingerprint_for_pk
+
+from .pst import PartiallySignedTransaction
 
 
 def create_private_wallet(path, entropy_f):

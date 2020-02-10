@@ -17,7 +17,8 @@ from multisig.signer import generate_signatures
 from multisig.storage import Storage
 from multisig.wallet import spend_coin, finalize_pst, main_loop, all_coins_and_unspents
 from multisig.wallet import MultisigHDWallet
-from multisig.BLSHDKeys import BLSPrivateHDKey
+
+from utilities.BLSHDKey import BLSPrivateHDKey
 
 
 async def proxy_for_unix_connection(path):

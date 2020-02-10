@@ -8,7 +8,7 @@ from chiasim.hashable import Coin, Header, HeaderHash, Body
 from chiasim.hashable import ProgramHash
 from chiasim.remote.client import RemoteError
 from decimal import Decimal
-from blspy import ExtendedPublicKey, PrivateKey
+from utilities.BLSHDKey import BLSPublicHDKey, BLSPrivateKey
 
 
 async def view_coins(ledger_api, wallet, most_recent_header):
@@ -101,8 +101,8 @@ def print_backup(wallet):
 
 def recovery_string_to_dict(recovery_string):
     recovery_dict = cbor.loads(bytes.fromhex(recovery_string))
-    recovery_dict['root_public_key'] = ExtendedPublicKey.from_bytes(recovery_dict['root_public_key'])
-    recovery_dict['secret_key'] = PrivateKey.from_bytes(recovery_dict['secret_key'])
+    recovery_dict['root_public_key'] = BLSPublicHDKey.from_bytes(recovery_dict['root_public_key'])
+    recovery_dict['secret_key'] = BLSPrivateKey.from_bytes(recovery_dict['secret_key'])
     recovery_dict['stake_factor'] = Decimal(recovery_dict['stake_factor'])
     return recovery_dict
 
