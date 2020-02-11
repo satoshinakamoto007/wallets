@@ -4,7 +4,7 @@ import tempfile
 import clvm
 from aiter import map_aiter
 from coloured_coins.cc_wallet import CCWallet
-from standard_wallet.wallet import Wallet, make_solution
+from standard_wallet.wallet import Wallet
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from chiasim.utils.log import init_logging
 from chiasim.remote.api_server import api_server
@@ -106,11 +106,9 @@ def test_cc_single():
 
     # Generate spend so that Wallet B can receive the coin
     newinnerpuzhash = wallet_b.get_new_puzzlehash()
-    innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': amount}])
+    innersol = wallet_b.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': amount}])
 
     # parent info update
-    innerpuzhash = ProgramHash(wallet_a.my_coloured_coins[list(wallet_a.my_coloured_coins.keys()).copy()[0]][0])  # have you ever seen something so disgusting
-    #parent_info = (coin.parent_coin_info, innerpuzhash, coin.amount)
     coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()  # this is a hack - design things properly
     assert ProgramHash(clvm.to_sexp_f(wallet_a.cc_make_puzzle(ProgramHash(wallet_a.my_coloured_coins[coin][0]), core))) == coin.puzzle_hash
 
@@ -127,9 +125,8 @@ def test_cc_single():
     # wallet B spends coloured coin back to wallet A
     #parent_info = (coin.parent_coin_info, innerpuzhash, coin.amount)
     pubkey, secretkey = wallet_b.get_keys(newinnerpuzhash)
-    innerpuzhash = newinnerpuzhash
     newinnerpuzhash = wallet_a.get_new_puzzlehash()
-    innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': amount}])
+    innersol = wallet_a.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': amount}])
 
     coin = list(wallet_b.my_coloured_coins.keys()).copy().pop()  # this is a hack - design things properly
     assert ProgramHash(clvm.to_sexp_f(wallet_b.cc_make_puzzle(ProgramHash(wallet_b.my_coloured_coins[coin][0]), core))) == coin.puzzle_hash
@@ -194,10 +191,10 @@ def test_audit_coloured_coins():
             coins.remove(coin)
             continue
     newinnerpuzhash = wallet_b.get_new_puzzlehash()
-    innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': 1500}])
+    innersol = wallet_b.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': 1500}])
     sigs = wallet_a.get_sigs_for_innerpuz_with_innersol(wallet_a.my_coloured_coins[coins[0]][0], innersol)
     spendslist.append((coins[0], wallet_a.parent_info[coins[0].parent_coin_info], 1500, innersol))
-    innersol = binutils.assemble("(q ())")
+    innersol = Program(binutils.assemble("((q ()) ())"))
     sigs = sigs + wallet_a.get_sigs_for_innerpuz_with_innersol(wallet_a.my_coloured_coins[coins[1]][0], innersol)
     spendslist.append((coins[1], wallet_a.parent_info[coins[1].parent_coin_info], 0, innersol))
 
@@ -213,7 +210,7 @@ def test_audit_coloured_coins():
     assert list(wallet_b.my_coloured_coins.keys()).copy().pop().amount == 1500
 
     # Wallet B breaks down its new coin into 3 coins of value 500
-    innersol = make_solution(primaries=[{'puzzlehash': wallet_b.get_new_puzzlehash(), 'amount': 400}, {'puzzlehash': wallet_b.get_new_puzzlehash(), 'amount': 500}, {'puzzlehash': wallet_b.get_new_puzzlehash(), 'amount': 600}])
+    innersol = wallet_b.make_solution(primaries=[{'puzzlehash': wallet_b.get_new_puzzlehash(), 'amount': 400}, {'puzzlehash': wallet_b.get_new_puzzlehash(), 'amount': 500}, {'puzzlehash': wallet_b.get_new_puzzlehash(), 'amount': 600}])
     coin = list(wallet_b.my_coloured_coins.keys()).copy().pop()
     assert coin.parent_coin_info == coins[0].name()
     #breakpoint()
@@ -306,7 +303,7 @@ def test_forgery():
 
     # Try to regular spend using the information from the real coin
     newinnerpuzhash = wallet_b.get_new_puzzlehash()
-    innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': 5000}])
+    innersol = wallet_b.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': 5000}])
     sigs = wallet_a.get_sigs_for_innerpuz_with_innersol(wallet_a.my_coloured_coins[coin][0], innersol)
     spend_bundle = wallet_a.cc_generate_spends_for_coin_list([(coin, parent_info, 5000, innersol)], sigs)
     _ = run(remote.push_tx(tx=spend_bundle))
@@ -323,7 +320,7 @@ def test_forgery():
 
     # Try to aggregate forged coin with real coin
     newinnerpuzhash = wallet_b.get_new_puzzlehash()
-    innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': 15000}])
+    innersol = wallet_b.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': 15000}])
     spendlist = [None] * 2
     for coin in coins:
         if coin.amount == 5000:
@@ -378,7 +375,7 @@ def test_partial_spend_market():
         if coin.amount == 1000:
             c = coin
     newinnerpuzhash = wallet_b.get_new_puzzlehash()
-    innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': 1000}])
+    innersol = wallet_b.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': 1000}])
     sigs = wallet_a.get_sigs_for_innerpuz_with_innersol(wallet_a.my_coloured_coins[c][0], innersol)
     spendslist.append((c, wallet_a.parent_info[c.parent_coin_info], 1000, innersol))
     spend_bundle = wallet_a.cc_generate_spends_for_coin_list(spendslist, sigs)
@@ -395,7 +392,7 @@ def test_partial_spend_market():
         if coin.amount == 1000:
             c = coin
     newinnerpuzhash = wallet_b.get_new_puzzlehash()
-    innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': c.amount + 100}])
+    innersol = wallet_b.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': c.amount + 100}])
     sigs = wallet_b.get_sigs_for_innerpuz_with_innersol(wallet_b.my_coloured_coins[c][0], innersol)
     spendslist.append((c, wallet_b.parent_info[c.parent_coin_info], c.amount + 100, innersol))
 

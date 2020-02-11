@@ -1,13 +1,12 @@
 import clvm
 import string
-from standard_wallet.wallet import Wallet, make_solution
+from standard_wallet.wallet import Wallet
 from chiasim.validation.Conditions import ConditionOpcode
 from chiasim.hashable import Program, ProgramHash, Coin
 from clvm_tools import binutils
 from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from chiasim.hashable import CoinSolution, SpendBundle, BLSSignature
 from chiasim.hashable.CoinSolution import CoinSolutionList
-from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from chiasim.validation.Conditions import conditions_by_opcode
 from chiasim.validation.consensus import (
     conditions_for_solution, hash_key_pairs_for_conditions_dict
@@ -31,7 +30,7 @@ class CCWallet(Wallet):
         search_for_parent = False
         for coin in additions:
             for i in reversed(range(self.next_address)):
-                innerpuz = puzzle_for_pk(self.extended_secret_key.public_child(i).get_public_key().serialize())
+                innerpuz = puzzle_for_pk(bytes(self.extended_secret_key.public_child(i)))
                 for core in self.my_cores:
                     if ProgramHash(self.cc_make_puzzle(ProgramHash(innerpuz), core)) == coin.puzzle_hash:
                         self.my_coloured_coins[coin] = (innerpuz, core)
@@ -74,7 +73,7 @@ class CCWallet(Wallet):
 
     def cc_can_generate(self, finalpuzhash):
         for i in reversed(range(self.next_address)):
-            innerpuzhash = ProgramHash(puzzle_for_pk(self.extended_secret_key.public_child(i).get_public_key().serialize()))
+            innerpuzhash = ProgramHash(puzzle_for_pk(bytes(self.extended_secret_key.public_child(i))))
             for core in self.my_cores:
                 if ProgramHash(self.cc_make_puzzle(innerpuzhash, core)) == finalpuzhash:
                     return True
@@ -102,7 +101,7 @@ class CCWallet(Wallet):
         # Aped from wallet.generate_unsigned_transaction()
         pubkey, secretkey = self.get_keys(genesisCoin.puzzle_hash)
 
-        puzzle = self.puzzle_for_pk(pubkey.serialize())
+        puzzle = self.puzzle_for_pk(bytes(pubkey))
         primaries = []
         for amount in amounts:
             innerpuzhash = self.get_new_puzzlehash()
@@ -115,7 +114,7 @@ class CCWallet(Wallet):
                 {'puzzlehash': changepuzzlehash, 'amount': change})
             # add change coin into temp_utxo set
             self.temp_utxos.add(Coin(genesisCoin, changepuzzlehash, change))
-        solution = make_solution(primaries=primaries)
+        solution = self.make_solution(primaries=primaries)
         spends.append((puzzle, CoinSolution(genesisCoin, solution)))
         self.temp_balance -= total_amount
 
@@ -231,9 +230,8 @@ class CCWallet(Wallet):
             coin = spend[0]
             innerpuz = binutils.disassemble(self.my_coloured_coins[coin][0])
             innersol = spend[3]
-            temp_fix_innersol = clvm.to_sexp_f([innersol, []])
             parent_info = spend[1]
-            solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), auditor_info, None)
+            solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(innersol), auditor_info, None)
             list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
         solution_list = CoinSolutionList(list_of_solutions)
         aggsig = BLSSignature.aggregate(sigs)
@@ -252,9 +250,8 @@ class CCWallet(Wallet):
         coin = spend[0]
         innerpuz = binutils.disassemble(self.my_coloured_coins[coin][0])
         innersol = spend[3]
-        temp_fix_innersol = clvm.to_sexp_f([innersol, []])
         parent_info = spend[1]
-        solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), auditor_info, spendslist)
+        solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(innersol), auditor_info, spendslist)
         list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
         list_of_solutions.append(self.create_spend_for_ephemeral(coin, auditor, spend[2]))
         list_of_solutions.append(self.create_spend_for_auditor(auditor, coin))
@@ -265,9 +262,8 @@ class CCWallet(Wallet):
             coin = spend[0]
             innerpuz = binutils.disassemble(self.my_coloured_coins[coin][0])
             innersol = spend[3]
-            temp_fix_innersol = clvm.to_sexp_f([innersol, []])
             parent_info = spend[1]
-            solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), auditor_info, None)
+            solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(innersol), auditor_info, None)
             list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
             list_of_solutions.append(self.create_spend_for_ephemeral(coin, auditor, spend[2]))
             list_of_solutions.append(self.create_spend_for_auditor(auditor, coin))
@@ -299,8 +295,7 @@ class CCWallet(Wallet):
     def get_sigs_for_innerpuz_with_innersol(self, innerpuz, innersol):
         sigs = []
         pubkey, secretkey = self.get_keys(ProgramHash(innerpuz))
-        secretkey = BLSPrivateKey(secretkey)
-        code_ = [innerpuz, [innersol, []]]
+        code_ = [innerpuz, innersol]
         sexp = clvm.to_sexp_f(code_)
         conditions_dict = conditions_by_opcode(
             conditions_for_solution(sexp))
@@ -319,18 +314,16 @@ class CCWallet(Wallet):
             coin = spend[0]
             innerpuz = binutils.disassemble(self.my_coloured_coins[coin][0])
             innersol = spend[3]
-            temp_fix_innersol = clvm.to_sexp_f([innersol, []])
             parent_info = spend[1]
-            solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), None, None)
+            solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(innersol), None, None)
             list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
 
         # standard coin CoinSolution generation
         newpuzhash = self.get_new_puzzlehash()
-        solution = make_solution(primaries=[{'puzzlehash': newpuzhash, 'amount': amount}])
-        temp_fix_sol = clvm.to_sexp_f([solution, []])
+        solution = self.make_solution(primaries=[{'puzzlehash': newpuzhash, 'amount': amount}])
         pubkey, secretkey = self.get_keys(chiacoin.puzzle_hash)
-        puzzle = self.puzzle_for_pk(pubkey.serialize())
-        list_of_solutions.append(CoinSolution(chiacoin, clvm.to_sexp_f([puzzle, temp_fix_sol])))
+        puzzle = self.puzzle_for_pk(bytes(pubkey))
+        list_of_solutions.append(CoinSolution(chiacoin, clvm.to_sexp_f([puzzle, solution])))
         sigs = sigs + self.get_sigs_for_innerpuz_with_innersol(puzzle, solution)
 
         solution_list = CoinSolutionList(list_of_solutions)
@@ -385,15 +378,14 @@ class CCWallet(Wallet):
             return None
         # TODO: this could be done with multiple coins and assert_consumed in the future, but for now...
 
-        solution = make_solution(primaries=[{'puzzlehash': self.get_new_puzzlehash(), 'amount': chia_coin.amount + chia_discrepancy}])
+        solution = self.make_solution(primaries=[{'puzzlehash': self.get_new_puzzlehash(), 'amount': chia_coin.amount + chia_discrepancy}])
         pubkey, secretkey = self.get_keys(chia_coin.puzzle_hash)
-        puzzle = self.puzzle_for_pk(pubkey.serialize())
-        temp_fix_sol = clvm.to_sexp_f([solution, []])
+        puzzle = self.puzzle_for_pk(bytes(pubkey))
         sig = self.get_sigs_for_innerpuz_with_innersol(puzzle, solution)
         #breakpoint()
         aggsig = BLSSignature.aggregate([BLSSignature.aggregate(sig), aggsig])
 
-        coinsols.append(CoinSolution(chia_coin, clvm.to_sexp_f([puzzle, temp_fix_sol])))
+        coinsols.append(CoinSolution(chia_coin, clvm.to_sexp_f([puzzle, solution])))
         #breakpoint()
 
         # create coloured coin
@@ -414,14 +406,13 @@ class CCWallet(Wallet):
 
         newinnerpuzhash = self.get_new_puzzlehash()
         outputamount = coloured_coin.amount + cc_discrepancy
-        innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': outputamount}])
-        temp_fix_innersol = clvm.to_sexp_f([innersol, []])
+        innersol = self.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': outputamount}])
         sig = self.get_sigs_for_innerpuz_with_innersol(self.my_coloured_coins[coloured_coin][0], innersol)
         aggsig = BLSSignature.aggregate([BLSSignature.aggregate(sig), aggsig])
 
         # now to make solution so that cc_coinsols and new coin play nicely
 
-        spendslist.append((coloured_coin, self.parent_info[coloured_coin.parent_coin_info], outputamount, temp_fix_innersol))
+        spendslist.append((coloured_coin, self.parent_info[coloured_coin.parent_coin_info], outputamount, innersol))
         auditor = coloured_coin
         core = self.my_coloured_coins[auditor][1]
         auditor_info = (auditor.parent_coin_info, ProgramHash(self.my_coloured_coins[auditor][0]), auditor.amount)
@@ -440,7 +431,7 @@ class CCWallet(Wallet):
             #breakpoint()
 
         parent_info = self.parent_info[coloured_coin.parent_coin_info]
-        solution = self.cc_make_solution(core, parent_info, coloured_coin.amount, innerpuz, binutils.disassemble(temp_fix_innersol), auditor_info, spendslist)
+        solution = self.cc_make_solution(core, parent_info, coloured_coin.amount, innerpuz, binutils.disassemble(innersol), auditor_info, spendslist)
         coinsols.append(CoinSolution(coloured_coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coloured_coin][0]), core), solution])))
         coinsols.append(self.create_spend_for_ephemeral(coloured_coin, auditor, outputamount))
         coinsols.append(self.create_spend_for_auditor(auditor, coloured_coin))
