@@ -383,7 +383,7 @@ def test_partial_spend_market():
     spendslist.append((c, wallet_a.parent_info[c.parent_coin_info], 1000, innersol))
     spend_bundle = wallet_a.cc_generate_spends_for_coin_list(spendslist, sigs)
     _ = run(remote.push_tx(tx=spend_bundle))
-    commit_and_notify(remote, wallets, Wallet())
+    commit_and_notify(remote, wallets, wallet_b)
 
     assert len(wallet_a.my_coloured_coins) == 2
     assert len(wallet_b.my_coloured_coins) == 1
@@ -399,7 +399,13 @@ def test_partial_spend_market():
     sigs = wallet_b.get_sigs_for_innerpuz_with_innersol(wallet_b.my_coloured_coins[c][0], innersol)
     spendslist.append((c, wallet_b.parent_info[c.parent_coin_info], c.amount + 100, innersol))
 
-    coin = wallet_b.temp_utxos.copy().pop()
+    c = None
+    for coin in wallet_b.temp_utxos:
+        if coin.amount >= 100:
+            c = coin
+    if c is None:
+        breakpoint()
+    coin = c
     trade_offer = wallet_b.create_trade_offer(coin, coin.amount - 100, spendslist, sigs)
 
     spend_bundle = wallet_a.parse_trade_offer(trade_offer)

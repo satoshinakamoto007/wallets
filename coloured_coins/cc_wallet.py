@@ -358,9 +358,11 @@ class CCWallet(Wallet):
         chia_coin = None
         if chia_discrepancy < 0:
             for utxo in self.temp_utxos:
-                if utxo.amount - chia_discrepancy >= 0:
+                #breakpoint()
+                if utxo.amount + chia_discrepancy >= 0:
+                    #breakpoint()
                     chia_coin = utxo
-                    continue
+                    break
             self.temp_utxos.remove(chia_coin)
         else:
             chia_coin = self.temp_utxos.pop()
@@ -384,9 +386,11 @@ class CCWallet(Wallet):
         coloured_coin = None
         if cc_discrepancy < 0:
             for utxo in list(self.my_coloured_coins.keys()):
-                if utxo.amount - cc_discrepancy >= 0:
+                #breakpoint()
+                if utxo.amount + cc_discrepancy >= 0:
+                    #breakpoint()
                     coloured_coin = utxo
-                    continue
+                    break
         else:
             coloured_coin = list(self.my_coloured_coins.keys()).copy().pop()
 
