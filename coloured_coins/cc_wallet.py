@@ -1,4 +1,5 @@
 import clvm
+import string
 from standard_wallet.wallet import Wallet, make_solution
 from chiasim.validation.Conditions import ConditionOpcode
 from chiasim.hashable import Program, ProgramHash, Coin
@@ -41,22 +42,35 @@ class CCWallet(Wallet):
             if search_for_parent:
                 for cc in self.my_coloured_coins:
                     if coin.name() == cc.parent_coin_info:
-                        #breakpoint()
-                        # call ledger api get recent blocks and inspect it
+                        # inspect body object for solution reveal
                         result = clvm.eval_f(clvm.eval_f, body.solution_program, binutils.assemble("()"))
                         while result != b'':
                             tuple = result.first()
                             if tuple.first() == coin.name():
-                                #breakpoint()
                                 puzzle = tuple.rest().first().first()
-                                if len(binutils.disassemble(puzzle)) < 300:
-                                    self.parent_info[coin.name()] = coin.name()
-                                else:
+                                if self.check_is_cc_puzzle(puzzle):
                                     innerpuzhash = binutils.disassemble(puzzle)[9:75]
-                                    #breakpoint()
                                     self.parent_info[coin.name()] = (coin.parent_coin_info, innerpuzhash, coin.amount)
+                                else:
+                                    self.parent_info[coin.name()] = coin.name()
+
                             result = result.rest()
         return
+
+    def check_is_cc_puzzle(self, puzzle):
+        puzstring = binutils.disassemble(puzzle)
+        if len(puzstring) < 5300:
+            return False
+        innerpuz = puzstring[11:75]
+        if all(c in string.hexdigits for c in innerpuz) is not True:
+            return False
+        genesisCoin = puzstring[-602:].split(')')[0]
+        if all(c in string.hexdigits for c in genesisCoin) is not True:
+            return False
+        if self.cc_make_puzzle(innerpuz, self.cc_make_core(genesisCoin)) == puzzle:
+            return True
+        else:
+            return False
 
     def cc_can_generate(self, finalpuzhash):
         for i in reversed(range(self.next_address)):
@@ -339,7 +353,7 @@ class CCWallet(Wallet):
             solution = coinsol.solution.rest().first()
 
             # work out the deficits between coin amount and expected output for each
-            if len(binutils.disassemble(puzzle)) > 300:  # CC or chia? - TODO: make more nuanced
+            if self.check_is_cc_puzzle(puzzle):  # CC or chia? - TODO: make more nuanced
                 innerpuzzlereveal = solution.rest().rest().rest().first()
                 innersol = solution.rest().rest().rest().rest().first()
                 out_amount = self.get_output_amount_for_puzzle_and_solution(coinsol.coin, innerpuzzlereveal, innersol)

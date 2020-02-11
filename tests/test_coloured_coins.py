@@ -92,12 +92,12 @@ def test_cc_single():
     assert ProgramHash(clvm.to_sexp_f(wallet_a.cc_make_puzzle(ProgramHash(wallet_a.my_coloured_coins[coin][0]), core))) == coin.puzzle_hash
 
     # parent info is origin ID
-    parent_info = genesisCoin.name()
+    #parent_info = genesisCoin.name()
 
     # don't need sigs for eve spend
     sigs = []
 
-    spend_bundle = wallet_a.cc_generate_eve_spend([(coin, parent_info, amount, innersol)])
+    spend_bundle = wallet_a.cc_generate_eve_spend([(coin, wallet_a.parent_info[coin.parent_coin_info], amount, innersol)])
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
     assert len(wallet_b.my_coloured_coins) == 0
@@ -110,7 +110,7 @@ def test_cc_single():
 
     # parent info update
     innerpuzhash = ProgramHash(wallet_a.my_coloured_coins[list(wallet_a.my_coloured_coins.keys()).copy()[0]][0])  # have you ever seen something so disgusting
-    parent_info = (coin.parent_coin_info, innerpuzhash, coin.amount)
+    #parent_info = (coin.parent_coin_info, innerpuzhash, coin.amount)
     coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()  # this is a hack - design things properly
     assert ProgramHash(clvm.to_sexp_f(wallet_a.cc_make_puzzle(ProgramHash(wallet_a.my_coloured_coins[coin][0]), core))) == coin.puzzle_hash
 
@@ -118,14 +118,14 @@ def test_cc_single():
     sigs = wallet_a.get_sigs_for_innerpuz_with_innersol(wallet_a.my_coloured_coins[coin][0], innersol)
 
     assert sigs != []
-    spend_bundle = wallet_a.cc_generate_spends_for_coin_list([(coin, parent_info, amount, innersol)], sigs)
+    spend_bundle = wallet_a.cc_generate_spends_for_coin_list([(coin, wallet_a.parent_info[coin.parent_coin_info], amount, innersol)], sigs)
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
     assert len(wallet_b.my_coloured_coins) == 1
     assert len(wallet_a.my_coloured_coins) == 0
 
     # wallet B spends coloured coin back to wallet A
-    parent_info = (coin.parent_coin_info, innerpuzhash, coin.amount)
+    #parent_info = (coin.parent_coin_info, innerpuzhash, coin.amount)
     pubkey, secretkey = wallet_b.get_keys(newinnerpuzhash)
     innerpuzhash = newinnerpuzhash
     newinnerpuzhash = wallet_a.get_new_puzzlehash()
@@ -137,7 +137,7 @@ def test_cc_single():
     sigs = wallet_b.get_sigs_for_innerpuz_with_innersol(wallet_b.my_coloured_coins[coin][0], innersol)
 
     assert sigs != []
-    spend_bundle = wallet_b.cc_generate_spends_for_coin_list([(coin, parent_info, amount, innersol)], sigs)
+    spend_bundle = wallet_b.cc_generate_spends_for_coin_list([(coin, wallet_b.parent_info[coin.parent_coin_info], amount, innersol)], sigs)
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
     assert len(wallet_b.my_coloured_coins) == 0
@@ -166,20 +166,20 @@ def test_audit_coloured_coins():
     wallet_b.cc_add_core(core)
 
     # Eve spend coins
-    parent_info = coins[0].parent_coin_info
+    #parent_info = coins[0].parent_coin_info
 
     # don't need sigs or a proper innersol for eve spend
     spendlist = []
     innersol = binutils.assemble("()")
     for coin in coins:
-        spendlist.append((coin, parent_info, coin.amount, innersol))
+        spendlist.append((coin, wallet_a.parent_info[coin.parent_coin_info], coin.amount, innersol))
     spend_bundle = wallet_a.cc_generate_eve_spend(spendlist)
     _ = run(remote.push_tx(tx=spend_bundle))
 
     # update parent info before the information is lost
-    parent_info = dict()  # (coin.parent_coin_info, innerpuzhash, coin.amount)
-    for coin in coins:
-        parent_info[coin.name()] = (coin.parent_coin_info, ProgramHash(wallet_a.my_coloured_coins[coin][0]), coin.amount)
+    #parent_info = dict()  # (coin.parent_coin_info, innerpuzhash, coin.amount)
+    #for coin in coins:
+    #    parent_info[coin.name()] = (coin.parent_coin_info, ProgramHash(wallet_a.my_coloured_coins[coin][0]), coin.amount)
 
     commit_and_notify(remote, wallets, Wallet())
     assert len(wallet_a.my_coloured_coins) == 3
@@ -196,13 +196,13 @@ def test_audit_coloured_coins():
     newinnerpuzhash = wallet_b.get_new_puzzlehash()
     innersol = make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': 1500}])
     sigs = wallet_a.get_sigs_for_innerpuz_with_innersol(wallet_a.my_coloured_coins[coins[0]][0], innersol)
-    spendslist.append((coins[0], parent_info[coins[0].parent_coin_info], 1500, innersol))
+    spendslist.append((coins[0], wallet_a.parent_info[coins[0].parent_coin_info], 1500, innersol))
     innersol = binutils.assemble("(q ())")
     sigs = sigs + wallet_a.get_sigs_for_innerpuz_with_innersol(wallet_a.my_coloured_coins[coins[1]][0], innersol)
-    spendslist.append((coins[1], parent_info[coins[1].parent_coin_info], 0, innersol))
+    spendslist.append((coins[1], wallet_a.parent_info[coins[1].parent_coin_info], 0, innersol))
 
     # update parent info before coin disappears
-    parent_info[coins[0].name()] = (coins[0].parent_coin_info, ProgramHash(wallet_a.my_coloured_coins[coins[0]][0]), coins[0].amount)
+    #parent_info[coins[0].name()] = (coins[0].parent_coin_info, ProgramHash(wallet_a.my_coloured_coins[coins[0]][0]), coins[0].amount)
     #breakpoint()
     spend_bundle = wallet_a.cc_generate_spends_for_coin_list(spendslist, sigs)
     _ = run(remote.push_tx(tx=spend_bundle))
@@ -219,7 +219,7 @@ def test_audit_coloured_coins():
     #breakpoint()
     sigs = wallet_b.get_sigs_for_innerpuz_with_innersol(wallet_b.my_coloured_coins[coin][0], innersol)
 
-    spend_bundle = wallet_b.cc_generate_spends_for_coin_list([(coin, parent_info[coin.parent_coin_info], 1500, innersol)], sigs)
+    spend_bundle = wallet_b.cc_generate_spends_for_coin_list([(coin, wallet_b.parent_info[coin.parent_coin_info], 1500, innersol)], sigs)
     #breakpoint()
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
