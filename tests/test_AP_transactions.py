@@ -68,8 +68,8 @@ def test_AP_spend():
 
     wallets = [wallet_a, wallet_b, wallet_c, wallet_d]
 
-    a_pubkey = wallet_a.get_next_public_key().serialize()
-    b_pubkey = wallet_b.get_next_public_key().serialize()
+    a_pubkey = bytes(wallet_a.get_next_public_key())
+    b_pubkey = bytes(wallet_b.get_next_public_key())
     APpuzzlehash = ap_wallet_a_functions.ap_get_new_puzzlehash(
         a_pubkey, b_pubkey)
     wallet_b.set_sender_values(APpuzzlehash, a_pubkey)
@@ -183,8 +183,8 @@ def test_invalid_payee():
     wallet_d = Wallet()
     wallets = [wallet_a, wallet_b, wallet_c, wallet_d]
 
-    a_pubkey = wallet_a.get_next_public_key().serialize()
-    b_pubkey = wallet_b.get_next_public_key().serialize()
+    a_pubkey = bytes(wallet_a.get_next_public_key())
+    b_pubkey = bytes(wallet_b.get_next_public_key())
     APpuzzlehash = ap_wallet_a_functions.ap_get_new_puzzlehash(
         a_pubkey, b_pubkey)
     wallet_b.set_sender_values(APpuzzlehash, a_pubkey)
