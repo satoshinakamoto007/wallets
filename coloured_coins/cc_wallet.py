@@ -42,7 +42,7 @@ class CCWallet(Wallet):
                 for cc in self.my_coloured_coins:
                     if coin.name() == cc.parent_coin_info:
                         # inspect body object for solution reveal
-                        breakpoint()
+                        #breakpoint()
                         result = clvm.run_program(body.solution_program, binutils.assemble("()"))
                         while result != b'':
                             tuple = result.first()
