@@ -404,7 +404,7 @@ def test_partial_spend_market():
         breakpoint()
     coin = c
     trade_offer = wallet_b.create_trade_offer(coin, coin.amount - 100, spendslist, sigs)
-
+    #breakpoint()
     spend_bundle = wallet_a.parse_trade_offer(trade_offer)
     _ = run(remote.push_tx(tx=spend_bundle))
 

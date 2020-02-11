@@ -42,7 +42,8 @@ class CCWallet(Wallet):
                 for cc in self.my_coloured_coins:
                     if coin.name() == cc.parent_coin_info:
                         # inspect body object for solution reveal
-                        result = clvm.eval_f(clvm.eval_f, body.solution_program, binutils.assemble("()"))
+                        breakpoint()
+                        result = clvm.run_program(body.solution_program, binutils.assemble("()"))
                         while result != b'':
                             tuple = result.first()
                             if tuple.first() == coin.name():
@@ -441,7 +442,7 @@ class CCWallet(Wallet):
         return spend_bundle
 
     def get_output_discrepancy_for_puzzle_and_solution(self, coin, puzzle, solution):
-        conditions = clvm.eval_f(clvm.eval_f, puzzle, solution)
+        conditions = clvm.run_program(puzzle, solution)
         amount = 0
         while conditions != b'':
             opcode = conditions.first().first()
@@ -456,7 +457,7 @@ class CCWallet(Wallet):
         return discrepancy
 
     def get_output_amount_for_puzzle_and_solution(self, coin, puzzle, solution):
-        conditions = clvm.eval_f(clvm.eval_f, puzzle, solution)
+        conditions = clvm.run_program(puzzle, solution)
         amount = 0
         while conditions != b'':
             opcode = conditions.first().first()
