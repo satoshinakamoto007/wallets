@@ -3,7 +3,8 @@ import pathlib
 import tempfile
 from decimal import Decimal
 from aiter import map_aiter
-from recoverable_wallet.recoverable_wallet import RecoverableWallet, InsufficientFundsError
+from chiasim.atoms import uint64
+from recoverable_wallet.recoverable_wallet import RecoverableWallet, InsufficientFundsError, DurationType
 from chiasim.utils.log import init_logging
 from chiasim.remote.api_server import api_server
 from chiasim.remote.client import request_response_proxy, RemoteError
@@ -57,9 +58,9 @@ def commit_and_notify(remote, wallets, reward_recipient):
 def test_standard_spend():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
-    wallet_a = RecoverableWallet(Decimal('1.1'), 1)
-    wallet_b = RecoverableWallet(Decimal('1.1'), 1)
-    farmer = RecoverableWallet(Decimal('1.1'), 1)
+    wallet_a = RecoverableWallet(Decimal('1.1'), 1, DurationType.BLOCKS)
+    wallet_b = RecoverableWallet(Decimal('1.1'), 1, DurationType.BLOCKS)
+    farmer = RecoverableWallet(Decimal('1.1'), 1, DurationType.BLOCKS)
     wallets = [wallet_a, wallet_b, farmer]
     commit_and_notify(remote, wallets, wallet_a)
 
@@ -92,12 +93,12 @@ def test_standard_spend():
     assert wallet_b.current_balance == 0
 
 
-def test_recovery():
+def test_recovery_with_block_time():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
-    wallet_a = RecoverableWallet(Decimal('1.1'), 1)
-    wallet_b = RecoverableWallet(Decimal('1.1'), 1)
-    farmer = RecoverableWallet(Decimal('1.1'), 1)
+    wallet_a = RecoverableWallet(Decimal('1.1'), 1, DurationType.BLOCKS)
+    wallet_b = RecoverableWallet(Decimal('1.1'), 1, DurationType.BLOCKS)
+    farmer = RecoverableWallet(Decimal('1.1'), 1, DurationType.BLOCKS)
     wallets = [wallet_a, wallet_b, farmer]
     commit_and_notify(remote, wallets, wallet_a)
     commit_and_notify(remote, wallets, wallet_b)
@@ -114,13 +115,15 @@ def test_recovery():
         pubkey = wallet_b.find_pubkey_for_hash(coin.puzzle_hash,
                                                root_public_key_serialized,
                                                recovery_dict['stake_factor'],
-                                               recovery_dict['escrow_duration'])
+                                               recovery_dict['escrow_duration'],
+                                               recovery_dict['duration_type'])
         signed_transaction, destination_puzzlehash, amount = \
             wallet_b.generate_signed_recovery_to_escrow_transaction(coin,
                                                                     recovery_pubkey,
                                                                     pubkey,
                                                                     recovery_dict['stake_factor'],
-                                                                    recovery_dict['escrow_duration'])
+                                                                    recovery_dict['escrow_duration'],
+                                                                    recovery_dict['duration_type'])
         child = Coin(coin.name(), destination_puzzlehash, amount)
         r = run(remote.push_tx(tx=signed_transaction))
         assert(type(r) is not RemoteError)
@@ -128,6 +131,24 @@ def test_recovery():
         commit_and_notify(remote, wallets, farmer)
     assert wallet_a.current_balance == 0
     assert wallet_b.current_balance == 900000000
+
+    # check too soon recovery transaction
+    for recovery_string, coin_set in wallet_b.escrow_coins.items():
+        recovery_dict = recovery_string_to_dict(recovery_string)
+        root_public_key = recovery_dict['root_public_key']
+        secret_key = recovery_dict['secret_key']
+        escrow_duration = recovery_dict['escrow_duration']
+        duration_type = recovery_dict['duration_type']
+
+        signed_transaction = wallet_b.generate_recovery_transaction(coin_set,
+                                                                    root_public_key,
+                                                                    secret_key,
+                                                                    escrow_duration,
+                                                                    duration_type)
+        r = run(remote.push_tx(tx=signed_transaction))
+        assert type(r) is RemoteError
+
+    # pass time
     commit_and_notify(remote, wallets, farmer)
 
     for recovery_string, coin_set in wallet_b.escrow_coins.items():
@@ -135,11 +156,13 @@ def test_recovery():
         root_public_key = recovery_dict['root_public_key']
         secret_key = recovery_dict['secret_key']
         escrow_duration = recovery_dict['escrow_duration']
+        duration_type = recovery_dict['duration_type']
 
         signed_transaction = wallet_b.generate_recovery_transaction(coin_set,
                                                                     root_public_key,
                                                                     secret_key,
-                                                                    escrow_duration)
+                                                                    escrow_duration,
+                                                                    duration_type)
         r = run(remote.push_tx(tx=signed_transaction))
         assert type(r) is not RemoteError
     commit_and_notify(remote, wallets, farmer)
@@ -147,12 +170,16 @@ def test_recovery():
     assert wallet_b.current_balance == 2000000000
 
 
-def test_recovery_from_escrow_too_soon():
+def test_recovery_with_wallclock_time():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
-    wallet_a = RecoverableWallet(Decimal('1.1'), 1)
-    wallet_b = RecoverableWallet(Decimal('1.1'), 1)
-    farmer = RecoverableWallet(Decimal('1.1'), 1)
+    now = run(remote.skip_milliseconds(ms=uint64(0).to_bytes(4, 'big')))
+    duration = 1000
+    min_time = now + duration
+
+    wallet_a = RecoverableWallet(Decimal('1.1'), min_time, DurationType.WALLCLOCK_TIME)
+    wallet_b = RecoverableWallet(Decimal('1.1'), min_time, DurationType.WALLCLOCK_TIME)
+    farmer = RecoverableWallet(Decimal('1.1'), min_time, DurationType.WALLCLOCK_TIME)
     wallets = [wallet_a, wallet_b, farmer]
     commit_and_notify(remote, wallets, wallet_a)
     commit_and_notify(remote, wallets, wallet_b)
@@ -169,13 +196,15 @@ def test_recovery_from_escrow_too_soon():
         pubkey = wallet_b.find_pubkey_for_hash(coin.puzzle_hash,
                                                root_public_key_serialized,
                                                recovery_dict['stake_factor'],
-                                               recovery_dict['escrow_duration'])
+                                               recovery_dict['escrow_duration'],
+                                               recovery_dict['duration_type'])
         signed_transaction, destination_puzzlehash, amount = \
             wallet_b.generate_signed_recovery_to_escrow_transaction(coin,
                                                                     recovery_pubkey,
                                                                     pubkey,
                                                                     recovery_dict['stake_factor'],
-                                                                    recovery_dict['escrow_duration'])
+                                                                    recovery_dict['escrow_duration'],
+                                                                    recovery_dict['duration_type'])
         child = Coin(coin.name(), destination_puzzlehash, amount)
         r = run(remote.push_tx(tx=signed_transaction))
         assert(type(r) is not RemoteError)
@@ -184,26 +213,50 @@ def test_recovery_from_escrow_too_soon():
     assert wallet_a.current_balance == 0
     assert wallet_b.current_balance == 900000000
 
+    # check recovery too soon
     for recovery_string, coin_set in wallet_b.escrow_coins.items():
         recovery_dict = recovery_string_to_dict(recovery_string)
         root_public_key = recovery_dict['root_public_key']
         secret_key = recovery_dict['secret_key']
         escrow_duration = recovery_dict['escrow_duration']
+        duration_type = recovery_dict['duration_type']
 
         signed_transaction = wallet_b.generate_recovery_transaction(coin_set,
                                                                     root_public_key,
                                                                     secret_key,
-                                                                    escrow_duration)
+                                                                    escrow_duration,
+                                                                    duration_type)
         r = run(remote.push_tx(tx=signed_transaction))
         assert type(r) is RemoteError
+
+    # pass time
+    run(remote.skip_milliseconds(ms=uint64(duration + 1).to_bytes(4, 'big')))
+
+    for recovery_string, coin_set in wallet_b.escrow_coins.items():
+        recovery_dict = recovery_string_to_dict(recovery_string)
+        root_public_key = recovery_dict['root_public_key']
+        secret_key = recovery_dict['secret_key']
+        escrow_duration = recovery_dict['escrow_duration']
+        duration_type = recovery_dict['duration_type']
+
+        signed_transaction = wallet_b.generate_recovery_transaction(coin_set,
+                                                                    root_public_key,
+                                                                    secret_key,
+                                                                    escrow_duration,
+                                                                    duration_type)
+        r = run(remote.push_tx(tx=signed_transaction))
+        assert type(r) is not RemoteError
+    commit_and_notify(remote, wallets, farmer)
+    assert wallet_a.current_balance == 0
+    assert wallet_b.current_balance == 2000000000
 
 
 def test_recovery_with_insufficient_funds():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
-    wallet_a = RecoverableWallet(Decimal('1.1'), 1)
-    wallet_b = RecoverableWallet(Decimal('1.1'), 1)
-    farmer = RecoverableWallet(Decimal('1.1'), 1)
+    wallet_a = RecoverableWallet(Decimal('1.1'), 1, DurationType.BLOCKS)
+    wallet_b = RecoverableWallet(Decimal('1.1'), 1, DurationType.BLOCKS)
+    farmer = RecoverableWallet(Decimal('1.1'), 1, DurationType.BLOCKS)
     wallets = [wallet_a, wallet_b, farmer]
     commit_and_notify(remote, wallets, wallet_a)
 
@@ -221,13 +274,15 @@ def test_recovery_with_insufficient_funds():
             pubkey = wallet_b.find_pubkey_for_hash(coin.puzzle_hash,
                                                    root_public_key_serialized,
                                                    recovery_dict['stake_factor'],
-                                                   recovery_dict['escrow_duration'])
+                                                   recovery_dict['escrow_duration'],
+                                                   recovery_dict['duration_type'])
             signed_transaction, destination_puzzlehash, amount = \
                 wallet_b.generate_signed_recovery_to_escrow_transaction(coin,
                                                                         recovery_pubkey,
                                                                         pubkey,
                                                                         recovery_dict['stake_factor'],
-                                                                        recovery_dict['escrow_duration'])
+                                                                        recovery_dict['escrow_duration'],
+                                                                        recovery_dict['duration_type'])
             r = run(remote.push_tx(tx=signed_transaction))
             assert(type(r) is not RemoteError)
             commit_and_notify(remote, wallets, farmer)
@@ -236,9 +291,9 @@ def test_recovery_with_insufficient_funds():
 def test_clawback():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
-    wallet_a = RecoverableWallet(Decimal('1.1'), 1)
-    wallet_b = RecoverableWallet(Decimal('1.1'), 1)
-    farmer = RecoverableWallet(Decimal('1.1'), 1)
+    wallet_a = RecoverableWallet(Decimal('1.1'), 1, DurationType.BLOCKS)
+    wallet_b = RecoverableWallet(Decimal('1.1'), 1, DurationType.BLOCKS)
+    farmer = RecoverableWallet(Decimal('1.1'), 1, DurationType.BLOCKS)
     wallets = [wallet_a, wallet_b, farmer]
     commit_and_notify(remote, wallets, wallet_a)
     commit_and_notify(remote, wallets, wallet_b)
@@ -255,13 +310,15 @@ def test_clawback():
         pubkey = wallet_b.find_pubkey_for_hash(coin.puzzle_hash,
                                                root_public_key_serialized,
                                                recovery_dict['stake_factor'],
-                                               recovery_dict['escrow_duration'])
+                                               recovery_dict['escrow_duration'],
+                                               recovery_dict['duration_type'])
         signed_transaction, destination_puzzlehash, amount = \
             wallet_b.generate_signed_recovery_to_escrow_transaction(coin,
                                                                     recovery_pubkey,
                                                                     pubkey,
                                                                     recovery_dict['stake_factor'],
-                                                                    recovery_dict['escrow_duration'])
+                                                                    recovery_dict['escrow_duration'],
+                                                                    recovery_dict['duration_type'])
         r = run(remote.push_tx(tx=signed_transaction))
         assert(type(r) is not RemoteError)
     additions, deletions = commit_and_notify(remote, wallets, farmer)
