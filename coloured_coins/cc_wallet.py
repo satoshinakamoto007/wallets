@@ -14,7 +14,6 @@ from chiasim.validation.consensus import (
 
 
 class CCWallet(Wallet):
-
     def __init__(self):
         super().__init__()
         self.my_cores = []  # core is stored as a string
@@ -86,17 +85,17 @@ class CCWallet(Wallet):
     # This is for generating a new set of coloured coins
     def cc_generate_spend_for_genesis_coins(self, amounts, genesisCoin=None):
         total_amount = sum(amounts)
-        if genesisCoin is None:
-            my_utxos_copy = self.temp_utxos.copy()
-            genesisCoin = my_utxos_copy.pop()
-            while genesisCoin.amount < total_amount and len(my_utxos_copy) > 0:
-                genesisCoin = my_utxos_copy.pop()
-            if genesisCoin.amount < total_amount:
-                return None  # no reason why a coin couldn't have two parents, just want to make debugging simple for now
+        if total_amount > self.temp_balance:
+            return None
+        secondary_coins = []
+        genesisCoin = self.temp_utxos.pop()
+        while genesisCoin.amount + sum([x.amount for x in secondary_coins]) < total_amount:
+            secondary_coins.append(self.temp_utxos.pop())
         core = self.cc_make_core(genesisCoin.name())
         self.cc_add_core(core)
         spends = []
-        change = genesisCoin.amount - total_amount
+        change = genesisCoin.amount + sum([x.amount for x in secondary_coins])
+        change = change - total_amount
 
         # Aped from wallet.generate_unsigned_transaction()
         pubkey, secretkey = self.get_keys(genesisCoin.puzzle_hash)
@@ -116,6 +115,12 @@ class CCWallet(Wallet):
             self.temp_utxos.add(Coin(genesisCoin, changepuzzlehash, change))
         solution = self.make_solution(primaries=primaries)
         spends.append((puzzle, CoinSolution(genesisCoin, solution)))
+        solution = self.make_solution(consumed=[genesisCoin.name()])
+        for coin in secondary_coins:
+            pubkey, secretkey = self.get_keys(coin.puzzle_hash)
+            puzzle = self.puzzle_for_pk(bytes(pubkey))
+            spends.append((puzzle, CoinSolution(coin, solution)))
+
         self.temp_balance -= total_amount
 
         return self.sign_transaction(spends)

@@ -10,7 +10,7 @@ from chiasim.remote.api_server import api_server
 from chiasim.remote.client import request_response_proxy
 from chiasim.clients import ledger_sim
 from chiasim.ledger import ledger_api
-from chiasim.hashable import Coin, Program, ProgramHash
+from chiasim.hashable import Coin, Program, ProgramHash, SpendBundle, CoinSolution
 from chiasim.storage import RAM_DB
 from chiasim.utils.server import start_unix_server_aiter
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
@@ -68,13 +68,9 @@ def test_cc_single():
     wallets = [wallet_a, wallet_b]
     commit_and_notify(remote, wallets, wallet_a)
 
-    # Wallet A generates some genesis coins to itself.
+    # Wallet A generates some eve coins to itself.
     amount = 10000
-    my_utxos_copy = wallet_a.temp_utxos.copy()
-    genesisCoin = my_utxos_copy.pop()
-    while genesisCoin.amount < amount and len(my_utxos_copy) > 0:
-        genesisCoin = my_utxos_copy.pop()
-    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins([amount], genesisCoin=genesisCoin)
+    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins([amount])
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
 
@@ -83,8 +79,7 @@ def test_cc_single():
     # Wallet A does Eve spend to itself
     innersol = binutils.assemble("()")
 
-    coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()  # this is a hack - design things properly
-    assert coin.parent_coin_info == genesisCoin.name()
+    coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()
     core = wallet_a.my_coloured_coins[coin][1]
     wallet_b.cc_add_core(core)
     assert ProgramHash(clvm.to_sexp_f(wallet_a.cc_make_puzzle(ProgramHash(wallet_a.my_coloured_coins[coin][0]), core))) == coin.puzzle_hash
@@ -101,6 +96,7 @@ def test_cc_single():
     assert len(wallet_b.my_coloured_coins) == 0
     assert len(wallet_a.my_coloured_coins) == 1
     assert coin not in wallet_a.my_coloured_coins
+    assert wallet_a.current_balance == 1000000000 - amount
 
     # Generate spend so that Wallet B can receive the coin
     newinnerpuzhash = wallet_b.get_new_puzzlehash()
@@ -329,6 +325,49 @@ def test_forgery():
     assert len(wallet_b.my_coloured_coins) == 0
 
 
+def test_multiple_genesis_coins():
+    remote = make_client_server()
+    run = asyncio.get_event_loop().run_until_complete
+
+    # A gives some unique coloured Chia coins to B who is then able to spend it while retaining the colouration
+    wallet_a = CCWallet()
+    wallets = [wallet_a]
+    commit_and_notify(remote, wallets, wallet_a)
+
+    # Wallet A generates splits its coin.
+    my_utxos_copy = wallet_a.temp_utxos.copy()
+    coin = my_utxos_copy.pop()
+    while coin.amount < 1:
+        coin = my_utxos_copy.pop()
+
+    pubkey, secretkey = wallet_a.get_keys(coin.puzzle_hash)
+    puzzle = wallet_a.puzzle_for_pk(pubkey)
+    solution = wallet_a.make_solution(primaries=[{'puzzlehash': wallet_a.get_new_puzzlehash(), 'amount': 9000}, {'puzzlehash': wallet_a.get_new_puzzlehash(), 'amount': 400}, {'puzzlehash': wallet_a.get_new_puzzlehash(), 'amount': 1200}])
+    spend_bundle = wallet_a.sign_transaction([(puzzle, CoinSolution(coin, solution))])
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert len(wallet_a.temp_utxos) == 4
+    assert wallet_a.current_balance == 10600
+
+
+    # Generate coloured coin
+    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins([10000])
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert len(wallet_a.my_coloured_coins) == 1
+
+    # Eve spend to confirm that it worked fine
+    coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()
+    spend_bundle = wallet_a.cc_generate_eve_spend([(coin, wallet_a.parent_info[coin.parent_coin_info], 10000, binutils.assemble("(q ())"))])
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert len(wallet_a.my_coloured_coins) == 1
+    assert coin not in wallet_a.my_coloured_coins
+    assert wallet_a.current_balance == 600
+
+    return
+
+
 def test_partial_spend_market():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
@@ -397,10 +436,10 @@ def test_partial_spend_market():
             break
     coin = c
     trade_offer = wallet_b.create_trade_offer(coin, coin.amount - 100, spendslist, sigs)
+    trade_offer_hex = bytes(trade_offer).hex()
 
-    #breakpoint()
-
-    spend_bundle = wallet_a.parse_trade_offer(trade_offer)
+    received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
+    spend_bundle = wallet_a.parse_trade_offer(received_offer)
     _ = run(remote.push_tx(tx=spend_bundle))
 
     commit_and_notify(remote, wallets, Wallet())
