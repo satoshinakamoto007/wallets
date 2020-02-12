@@ -5,14 +5,12 @@ import clvm
 from aiter import map_aiter
 from coloured_coins.cc_wallet import CCWallet
 from standard_wallet.wallet import Wallet
-from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from chiasim.utils.log import init_logging
 from chiasim.remote.api_server import api_server
 from chiasim.remote.client import request_response_proxy
 from chiasim.clients import ledger_sim
 from chiasim.ledger import ledger_api
 from chiasim.hashable import Coin, Program, ProgramHash
-from chiasim.wallet.BLSPrivateKey import BLSPrivateKey
 from chiasim.storage import RAM_DB
 from chiasim.utils.server import start_unix_server_aiter
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
@@ -169,7 +167,7 @@ def test_audit_coloured_coins():
     spendlist = []
     innersol = binutils.assemble("()")
     for coin in coins:
-        spendlist.append((coin, wallet_a.parent_info[coin.parent_coin_info], coin.amount, innersol))
+        spendlist.append((coin, coin.parent_coin_info, coin.amount, innersol))
     spend_bundle = wallet_a.cc_generate_eve_spend(spendlist)
     _ = run(remote.push_tx(tx=spend_bundle))
 
@@ -199,8 +197,6 @@ def test_audit_coloured_coins():
     spendslist.append((coins[1], wallet_a.parent_info[coins[1].parent_coin_info], 0, innersol))
 
     # update parent info before coin disappears
-    #parent_info[coins[0].name()] = (coins[0].parent_coin_info, ProgramHash(wallet_a.my_coloured_coins[coins[0]][0]), coins[0].amount)
-    #breakpoint()
     spend_bundle = wallet_a.cc_generate_spends_for_coin_list(spendslist, sigs)
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
@@ -213,11 +209,9 @@ def test_audit_coloured_coins():
     innersol = wallet_b.make_solution(primaries=[{'puzzlehash': wallet_b.get_new_puzzlehash(), 'amount': 400}, {'puzzlehash': wallet_b.get_new_puzzlehash(), 'amount': 500}, {'puzzlehash': wallet_b.get_new_puzzlehash(), 'amount': 600}])
     coin = list(wallet_b.my_coloured_coins.keys()).copy().pop()
     assert coin.parent_coin_info == coins[0].name()
-    #breakpoint()
     sigs = wallet_b.get_sigs_for_innerpuz_with_innersol(wallet_b.my_coloured_coins[coin][0], innersol)
 
     spend_bundle = wallet_b.cc_generate_spends_for_coin_list([(coin, wallet_b.parent_info[coin.parent_coin_info], 1500, innersol)], sigs)
-    #breakpoint()
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
     assert len(wallet_a.my_coloured_coins) == 1
@@ -400,11 +394,12 @@ def test_partial_spend_market():
     for coin in wallet_b.temp_utxos:
         if coin.amount >= 100:
             c = coin
-    if c is None:
-        breakpoint()
+            break
     coin = c
     trade_offer = wallet_b.create_trade_offer(coin, coin.amount - 100, spendslist, sigs)
+
     #breakpoint()
+
     spend_bundle = wallet_a.parse_trade_offer(trade_offer)
     _ = run(remote.push_tx(tx=spend_bundle))
 

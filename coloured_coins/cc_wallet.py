@@ -42,8 +42,7 @@ class CCWallet(Wallet):
                 for cc in self.my_coloured_coins:
                     if coin.name() == cc.parent_coin_info:
                         # inspect body object for solution reveal
-                        #breakpoint()
-                        result = clvm.run_program(body.solution_program, binutils.assemble("()"))
+                        result = clvm.run_program(body.solution_program, binutils.assemble("()"))[1]
                         while result != b'':
                             tuple = result.first()
                             if tuple.first() == coin.name():
@@ -51,7 +50,7 @@ class CCWallet(Wallet):
                                 if self.check_is_cc_puzzle(puzzle):
                                     innerpuzhash = binutils.disassemble(puzzle)[9:75]
                                     self.parent_info[coin.name()] = (coin.parent_coin_info, innerpuzhash, coin.amount)
-                                else:
+                                else:  # must be a genesis parent
                                     self.parent_info[coin.name()] = coin.name()
 
                             result = result.rest()
@@ -64,7 +63,7 @@ class CCWallet(Wallet):
         innerpuz = puzstring[11:75]
         if all(c in string.hexdigits for c in innerpuz) is not True:
             return False
-        genesisCoin = puzstring[-602:].split(')')[0]
+        genesisCoin = puzstring[-584:].split(')')[0]
         if all(c in string.hexdigits for c in genesisCoin) is not True:
             return False
         if self.cc_make_puzzle(innerpuz, self.cc_make_core(genesisCoin)) == puzzle:
@@ -156,21 +155,21 @@ class CCWallet(Wallet):
         add_core_to_my_innerpuz_reveal = "(c (q 7) (c (c (q 5) (c (c (q 1) (c (sha256tree (f (r (r (r (a)))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))"
 
         # Because we add core to our innerpuz reveal as part of our ASSERT_MY_ID we also check that our innerpuzreveal is correct
-        assert_my_parent_is_origin = f"(c (q 0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()}) (c (sha256 (f (r (a))) (sha256tree {add_core_to_my_innerpuz_reveal}) (uint64 (f (r (r (a)))))) (q ())))"
+        assert_my_parent_is_origin = f"(c (q 0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()}) (c (sha256 (f (r (a))) (sha256tree {add_core_to_my_innerpuz_reveal}) (f (r (r (a))))) (q ())))"
 
-        assert_my_parent_follows_core_logic = f"(c (q 0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()}) (c (sha256 (sha256 (f (f (r (a)))) (sha256tree {add_core_to_parent_innerpuzhash}) (uint64 (f (r (r (f (r (a)))))))) (sha256tree {add_core_to_my_innerpuz_reveal}) (uint64 (f (r (r (a)))))) (q ())))"
+        assert_my_parent_follows_core_logic = f"(c (q 0x{ConditionOpcode.ASSERT_MY_COIN_ID.hex()}) (c (sha256 (sha256 (f (f (r (a)))) (sha256tree {add_core_to_parent_innerpuzhash}) (f (r (r (f (r (a))))))) (sha256tree {add_core_to_my_innerpuz_reveal}) (f (r (r (a))))) (q ())))"
 
         # heritage_check = f"((c (i (l (f (r (a)))) (q {assert_my_parent_follows_core_logic}) (q ((c (i (= (q 0x{originID}) (f (r (a)))) (q {assert_my_parent_is_origin}) (q (x))) (a)))) ) (a)))"
 
         add_core_to_auditor_innerpuzhash = f"(c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (f (r (r (r (r (r (a))))))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))"
-        create_a_puz_for_cn = f"(c (q #r) (c (c (q #c) (c (c (q #q) (c (sha256 (sha256 (f (f (r (a)))) (sha256tree {add_core_to_parent_innerpuzhash}) (uint64 (f (r (r (f (r (a)))))))) (sha256tree {add_core_to_my_innerpuz_reveal}) (uint64 (f (r (r (a)))))) (q ()))) (q ((q ()))))) (q ())))"
+        create_a_puz_for_cn = f"(c (q #r) (c (c (q #c) (c (c (q #q) (c (sha256 (sha256 (f (f (r (a)))) (sha256tree {add_core_to_parent_innerpuzhash}) (f (r (r (f (r (a))))))) (sha256tree {add_core_to_my_innerpuz_reveal}) (f (r (r (a))))) (q ()))) (q ((q ()))))) (q ())))"
 
-        consume_a = f"(c (q 52) (c (sha256 (sha256 (f (f (r (r (r (r (r (a)))))))) (sha256tree {add_core_to_auditor_innerpuzhash}) (uint64 (f (r (r (f (r (r (r (r (r (a)))))))))))) (sha256tree {create_a_puz_for_cn}) (uint64 (q 0))) (q ())))"
+        consume_a = f"(c (q 52) (c (sha256 (sha256 (f (f (r (r (r (r (r (a)))))))) (sha256tree {add_core_to_auditor_innerpuzhash}) (f (r (r (f (r (r (r (r (r (a))))))))))) (sha256tree {create_a_puz_for_cn}) (q 0)) (q ())))"
 
-        create_e_puz = f"(c (q #r) (c (c (q #r) (c (c (q #c) (c (c (q #q) (c (sha256 (f (f (r (r (r (r (r (a)))))))) (sha256tree {add_core_to_auditor_innerpuzhash}) (uint64 (f (r (r (f (r (r (r (r (r (a)))))))))))) (q ()))) (c (c (q #c) (c (c (q #uint64) (c (c (q #q) (c {sum_outputs} (q ()))) (q ()))) (q ((q ()))))) (q ())))) (q ()))) (q ())))"
-        create_e = f"(c (q 51) (c (sha256tree {create_e_puz}) (c (uint64 (q 0)) (q ()))))"
+        create_e_puz = f"(c (q #r) (c (c (q #r) (c (c (q #c) (c (c (q #q) (c (sha256 (f (f (r (r (r (r (r (a)))))))) (sha256tree {add_core_to_auditor_innerpuzhash}) (f (r (r (f (r (r (r (r (r (a))))))))))) (q ()))) (c (c (q #c) (c (c (q #q) (c {sum_outputs} (q ()))) (q ((q ()))))) (q ())))) (q ()))) (q ())))"
+        create_e = f"(c (q 51) (c (sha256tree {create_e_puz}) (c (q 0) (q ()))))"
 
-        consume_es_generate_as = f"((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (f (r (r (a)))) (c (f (r (r (r (a))))) (c (c (c (q 51) (c (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (sha256 (f (f (f (r (a))))) (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (f (f (r (a)))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (r (r (r (a))))) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))) (uint64 (f (r (r (f (f (r (a))))))))) (q ()))) (q ((q ()))))) (q ())))) (q (0x0000000000000000)))) (c (c (q 52) (c (sha256 (sha256 (f (f (f (r (a))))) (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (f (f (r (a)))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (r (r (r (a))))) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))) (uint64 (f (r (r (f (f (r (a))))))))) (sha256tree (c (q 7) (c (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (r (a)))) (q ()))) (c (c (q 5) (c (c (q 20) (c (c (q 1) (c (f (r (r (r (f (f (r (a)))))))) (q ()))) (q ()))) (q ((q ()))))) (q ())))) (q ()))) (q ())))) (q 0x0000000000000000)) (q ()))) (f (r (r (r (r (a)))))))) (q ()))))))))) (q (f (r (r (r (r (a)))))))) (a))))(c (f (r (r (r (r (r (r (a)))))))) (c (sha256 (sha256 (f (f (r (a)))) (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (f (r (a))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))) (uint64 (f (r (r (f (r (a)))))))) (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (sha256tree (f (r (r (r (a)))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))) (uint64 (f (r (r (a)))))) (c (f (a)) (q (()))))))))"
+        consume_es_generate_as = f"((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (f (r (r (a)))) (c (f (r (r (r (a))))) (c (c (c (q 51) (c (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (sha256 (f (f (f (r (a))))) (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (f (f (r (a)))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (r (r (r (a))))) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))) (f (r (r (f (f (r (a)))))))) (q ()))) (q ((q ()))))) (q ())))) (q (0)))) (c (c (q 52) (c (sha256 (sha256 (f (f (f (r (a))))) (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (f (f (r (a)))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (r (r (r (a))))) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))) (f (r (r (f (f (r (a)))))))) (sha256tree (c (q 7) (c (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (r (a)))) (q ()))) (c (c (q 5) (c (c (q 1) (c (f (r (r (r (f (f (r (a)))))))) (q ()))) (q ((q ()))))) (q ())))) (q ()))) (q ())))) (q 0)) (q ()))) (f (r (r (r (r (a)))))))) (q ()))))))))) (q (f (r (r (r (r (a)))))))) (a))))(c (f (r (r (r (r (r (r (a)))))))) (c (sha256 (sha256 (f (f (r (a)))) (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (f (r (f (r (a))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))) (f (r (r (f (r (a))))))) (sha256tree (c (q 7) (c (c (q 5) (c (c (q 1) (c (sha256tree (f (r (r (r (a)))))) (q ()))) (c (c (c (q 5) (c (c (q 1) (c (f (a)) (q ()))) (q ((a))))) (q ())) (q ())))) (q ())))) (f (r (r (a))))) (c (f (a)) (q (()))))))))"
 
         compare_sums = f"((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (c (+ (f (r (r (f (f (r (a))))))) (f (r (r (a))))) (c (+ (f (r (r (r (f (f (r (a)))))))) (f (r (r (r (a)))))) (q ())))))))) (q (= (f (r (r (a)))) (f (r (r (r (a)))))))) (a)))) (c (f (r (r (r (r (r (r (a)))))))) (q (() ()))))))"
 
@@ -178,7 +177,7 @@ class CCWallet(Wallet):
 
         normal_case = f"(c {consume_a} (c {create_e} (c {assert_my_parent_follows_core_logic} {self.merge_two_lists(replace_generated_createcoins, auditor_code_path)})))"
 
-        create_child_with_my_puzzle = f"(c (q 51) (c (sha256tree {add_core_to_my_innerpuz_reveal}) (c (uint64 (f (r (r (a))))) (q ()))))"
+        create_child_with_my_puzzle = f"(c (q 51) (c (sha256tree {add_core_to_my_innerpuz_reveal}) (c (f (r (r (a)))) (q ()))))"
         eve_case = f"((c (i (= (q 0x{originID}) (f (r (a)))) (q (c {assert_my_parent_is_origin} (c {create_child_with_my_puzzle} (q ())))) (q (x))) (a)))"
         core = f"((c (i (l (f (r (a)))) (q {normal_case}) (q {eve_case}) ) (a)))"
         #breakpoint()
@@ -256,7 +255,6 @@ class CCWallet(Wallet):
         list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
         list_of_solutions.append(self.create_spend_for_ephemeral(coin, auditor, spend[2]))
         list_of_solutions.append(self.create_spend_for_auditor(auditor, coin))
-        #breakpoint()
 
         # loop through remaining aggregatees
         for spend in spendslist[1:]:
@@ -268,19 +266,18 @@ class CCWallet(Wallet):
             list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
             list_of_solutions.append(self.create_spend_for_ephemeral(coin, auditor, spend[2]))
             list_of_solutions.append(self.create_spend_for_auditor(auditor, coin))
-            #breakpoint()
+
         solution_list = CoinSolutionList(list_of_solutions)
         aggsig = BLSSignature.aggregate(sigs)
         spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle
 
     def create_spend_for_ephemeral(self, parent_of_e, auditor_coin, spend_amount):
-        puzstring = f"(r (r (c (q 0x{auditor_coin.name()}) (c (uint64 (q {spend_amount})) (q ())))))"
+        puzstring = f"(r (r (c (q 0x{auditor_coin.name()}) (c (q {spend_amount}) (q ())))))"
         puzzle = Program(binutils.assemble(puzstring))
         coin = Coin(parent_of_e, ProgramHash(puzzle), 0)
         solution = Program(binutils.assemble("()"))
         coinsol = CoinSolution(coin, clvm.to_sexp_f([puzzle, solution]))
-        #breakpoint()
         return coinsol
 
     def create_spend_for_auditor(self, parent_of_a, auditee):
@@ -289,7 +286,6 @@ class CCWallet(Wallet):
         coin = Coin(parent_of_a, ProgramHash(puzzle), 0)
         solution = Program(binutils.assemble("()"))
         coinsol = CoinSolution(coin, clvm.to_sexp_f([puzzle, solution]))
-        #breakpoint()
         return coinsol
 
     # This runs an innerpuz for an innersol
@@ -356,7 +352,6 @@ class CCWallet(Wallet):
                 parent_info = binutils.disassemble(solution.rest().first()).split(' ')
                 parent_info[0] = parent_info[0].replace('(','')
                 parent_info[2] = parent_info[2].replace(')','')
-               #breakpoint()
                 spendslist.append((coinsol.coin, parent_info, self.get_output_amount_for_puzzle_and_solution(coinsol.coin, innerpuzzlereveal, innersol), innersol, ProgramHash(Program(innerpuzzlereveal))))
             else:  # standard chia coin
                 chia_discrepancy += self.get_output_discrepancy_for_puzzle_and_solution(coinsol.coin, puzzle, solution)
@@ -366,9 +361,7 @@ class CCWallet(Wallet):
         chia_coin = None
         if chia_discrepancy < 0:
             for utxo in self.temp_utxos:
-                #breakpoint()
                 if utxo.amount + chia_discrepancy >= 0:
-                    #breakpoint()
                     chia_coin = utxo
                     break
             self.temp_utxos.remove(chia_coin)
@@ -383,19 +376,15 @@ class CCWallet(Wallet):
         pubkey, secretkey = self.get_keys(chia_coin.puzzle_hash)
         puzzle = self.puzzle_for_pk(bytes(pubkey))
         sig = self.get_sigs_for_innerpuz_with_innersol(puzzle, solution)
-        #breakpoint()
         aggsig = BLSSignature.aggregate([BLSSignature.aggregate(sig), aggsig])
 
         coinsols.append(CoinSolution(chia_coin, clvm.to_sexp_f([puzzle, solution])))
-        #breakpoint()
 
         # create coloured coin
         coloured_coin = None
         if cc_discrepancy < 0:
             for utxo in list(self.my_coloured_coins.keys()):
-                #breakpoint()
                 if utxo.amount + cc_discrepancy >= 0:
-                    #breakpoint()
                     coloured_coin = utxo
                     break
         else:
@@ -429,20 +418,18 @@ class CCWallet(Wallet):
             coinsols.append(new_coinsol)
             coinsols.append(self.create_spend_for_ephemeral(cc_coinsol.coin, auditor, cc_coinsol_out[1]))
             coinsols.append(self.create_spend_for_auditor(auditor, cc_coinsol.coin))
-            #breakpoint()
 
         parent_info = self.parent_info[coloured_coin.parent_coin_info]
         solution = self.cc_make_solution(core, parent_info, coloured_coin.amount, innerpuz, binutils.disassemble(innersol), auditor_info, spendslist)
         coinsols.append(CoinSolution(coloured_coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coloured_coin][0]), core), solution])))
         coinsols.append(self.create_spend_for_ephemeral(coloured_coin, auditor, outputamount))
         coinsols.append(self.create_spend_for_auditor(auditor, coloured_coin))
-        #breakpoint()
         solution_list = CoinSolutionList(coinsols)
         spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle
 
     def get_output_discrepancy_for_puzzle_and_solution(self, coin, puzzle, solution):
-        conditions = clvm.run_program(puzzle, solution)
+        conditions = clvm.run_program(puzzle, solution)[1]
         amount = 0
         while conditions != b'':
             opcode = conditions.first().first()
@@ -457,7 +444,7 @@ class CCWallet(Wallet):
         return discrepancy
 
     def get_output_amount_for_puzzle_and_solution(self, coin, puzzle, solution):
-        conditions = clvm.run_program(puzzle, solution)
+        conditions = clvm.run_program(puzzle, solution)[1]
         amount = 0
         while conditions != b'':
             opcode = conditions.first().first()
