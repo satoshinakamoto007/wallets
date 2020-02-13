@@ -17,7 +17,8 @@ class CCWallet(Wallet):
     def __init__(self):
         super().__init__()
         self.my_cores = []  # core is stored as a string
-        self.my_coloured_coins = dict()  # {coin: (innerpuzzle, core)}
+        self.my_coloured_coins = dict()  # {coin: (innerpuzzle as Program, core as string)}
+        self.eve_coloured_coins = dict()
         self.parent_info = dict()
         return
 
@@ -102,11 +103,15 @@ class CCWallet(Wallet):
 
         puzzle = self.puzzle_for_pk(bytes(pubkey))
         primaries = []
+        evespendslist = []
         for amount in amounts:
-            innerpuzhash = self.get_new_puzzlehash()
+            innerpuz = self.get_new_puzzle()
+            innerpuzhash = ProgramHash(innerpuz)
             newpuzzle = self.cc_make_puzzle(innerpuzhash, core)
             newpuzzlehash = ProgramHash(newpuzzle)
             primaries.append({'puzzlehash': newpuzzlehash, 'amount': amount})
+            evespendslist.append((Coin(genesisCoin, newpuzzlehash, amount), genesisCoin.name(), amount, binutils.assemble("(q ())")))
+            self.eve_coloured_coins[Coin(genesisCoin, newpuzzlehash, amount)] = (innerpuz, core)
         if change > 0:
             changepuzzlehash = self.get_new_puzzlehash()
             primaries.append(
@@ -116,14 +121,16 @@ class CCWallet(Wallet):
         solution = self.make_solution(primaries=primaries)
         spends.append((puzzle, CoinSolution(genesisCoin, solution)))
         solution = self.make_solution(consumed=[genesisCoin.name()])
+
         for coin in secondary_coins:
             pubkey, secretkey = self.get_keys(coin.puzzle_hash)
             puzzle = self.puzzle_for_pk(bytes(pubkey))
             spends.append((puzzle, CoinSolution(coin, solution)))
 
         self.temp_balance -= total_amount
-
-        return self.sign_transaction(spends)
+        spend_bundle = self.sign_transaction(spends)
+        spend_bundle = spend_bundle.aggregate([spend_bundle, self.cc_generate_eve_spend(evespendslist)])
+        return spend_bundle
 
     # we use it to merge the outputs of two programs that create lists
     def merge_two_lists(self, list1=None, list2=None):
@@ -227,17 +234,29 @@ class CCWallet(Wallet):
     def cc_generate_eve_spend(self, spendslist, sigs=[]):
         # spendslist is [] of (coin, parent_info, outputamount, innersol)
         auditor = spendslist[0][0]
-        innerpuz = binutils.disassemble(self.my_coloured_coins[auditor][0])
-        core = self.my_coloured_coins[auditor][1]
-        auditor_info = (auditor.parent_coin_info, ProgramHash(self.my_coloured_coins[auditor][0]), auditor.amount)
+        core = None
+        if auditor in self.my_coloured_coins:
+            innerpuz = binutils.disassemble(self.my_coloured_coins[auditor][0])
+            core = self.my_coloured_coins[auditor][1]
+        else:
+            if auditor in self.eve_coloured_coins:
+                innerpuz = binutils.disassemble(self.eve_coloured_coins[auditor][0])
+                core = self.eve_coloured_coins[auditor][1]
         list_of_solutions = []
         for spend in spendslist:
             coin = spend[0]
-            innerpuz = binutils.disassemble(self.my_coloured_coins[coin][0])
             innersol = spend[3]
             parent_info = spend[1]
-            solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(innersol), auditor_info, None)
-            list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
+            if coin in self.my_coloured_coins:
+                innerpuz = binutils.disassemble(self.my_coloured_coins[coin][0])
+                solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(innersol), None, None)
+                list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
+            else:
+                if coin in self.eve_coloured_coins:
+                    innerpuz = binutils.disassemble(self.eve_coloured_coins[coin][0])
+                    solution = self.cc_make_solution(core, parent_info, coin.amount, innerpuz, binutils.disassemble(innersol), None, None)
+                    list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.eve_coloured_coins[coin][0]), core), solution])))
+
         solution_list = CoinSolutionList(list_of_solutions)
         aggsig = BLSSignature.aggregate(sigs)
         spend_bundle = SpendBundle(solution_list, aggsig)

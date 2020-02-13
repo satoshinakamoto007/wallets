@@ -83,19 +83,8 @@ def test_cc_single():
     core = wallet_a.my_coloured_coins[coin][1]
     wallet_b.cc_add_core(core)
     assert ProgramHash(clvm.to_sexp_f(wallet_a.cc_make_puzzle(ProgramHash(wallet_a.my_coloured_coins[coin][0]), core))) == coin.puzzle_hash
-
-    # parent info is origin ID
-    #parent_info = genesisCoin.name()
-
-    # don't need sigs for eve spend
-    sigs = []
-
-    spend_bundle = wallet_a.cc_generate_eve_spend([(coin, wallet_a.parent_info[coin.parent_coin_info], amount, innersol)])
-    _ = run(remote.push_tx(tx=spend_bundle))
-    commit_and_notify(remote, wallets, Wallet())
     assert len(wallet_b.my_coloured_coins) == 0
     assert len(wallet_a.my_coloured_coins) == 1
-    assert coin not in wallet_a.my_coloured_coins
     assert wallet_a.current_balance == 1000000000 - amount
 
     # Generate spend so that Wallet B can receive the coin
@@ -155,22 +144,6 @@ def test_audit_coloured_coins():
     coins = list(wallet_a.my_coloured_coins.keys()).copy()
     core = wallet_a.my_coloured_coins[coins[0]][1]
     wallet_b.cc_add_core(core)
-
-    # Eve spend coins
-    #parent_info = coins[0].parent_coin_info
-
-    # don't need sigs or a proper innersol for eve spend
-    spendlist = []
-    innersol = binutils.assemble("()")
-    for coin in coins:
-        spendlist.append((coin, coin.parent_coin_info, coin.amount, innersol))
-    spend_bundle = wallet_a.cc_generate_eve_spend(spendlist)
-    _ = run(remote.push_tx(tx=spend_bundle))
-
-    # update parent info before the information is lost
-    #parent_info = dict()  # (coin.parent_coin_info, innerpuzhash, coin.amount)
-    #for coin in coins:
-    #    parent_info[coin.name()] = (coin.parent_coin_info, ProgramHash(wallet_a.my_coloured_coins[coin][0]), coin.amount)
 
     commit_and_notify(remote, wallets, Wallet())
     assert len(wallet_a.my_coloured_coins) == 3
@@ -356,11 +329,6 @@ def test_multiple_genesis_coins():
     commit_and_notify(remote, wallets, Wallet())
     assert len(wallet_a.my_coloured_coins) == 1
 
-    # Eve spend to confirm that it worked fine
-    coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()
-    spend_bundle = wallet_a.cc_generate_eve_spend([(coin, wallet_a.parent_info[coin.parent_coin_info], 10000, binutils.assemble("(q ())"))])
-    _ = run(remote.push_tx(tx=spend_bundle))
-    commit_and_notify(remote, wallets, Wallet())
     assert len(wallet_a.my_coloured_coins) == 1
     assert coin not in wallet_a.my_coloured_coins
     assert wallet_a.current_balance == 600
