@@ -296,6 +296,18 @@ class CCWallet(Wallet):
         spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle
 
+    def cc_select_coins_for_colour(self, colour, amount):
+        coins = []
+
+        for x in list(self.my_coloured_coins.keys()):
+            if self.my_coloured_coins[x][1][-580:].split(')')[0] == colour:
+                coins.append(x)
+            if sum(y.amount for y in coins) >= amount:
+                break
+        if sum(y.amount for y in coins) < amount:
+            return None
+        return coins
+
     def create_spend_for_ephemeral(self, parent_of_e, auditor_coin, spend_amount):
         puzstring = f"(r (r (c (q 0x{auditor_coin.name()}) (c (q {spend_amount}) (q ())))))"
         puzzle = Program(binutils.assemble(puzstring))

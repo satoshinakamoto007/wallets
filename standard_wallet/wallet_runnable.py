@@ -23,7 +23,7 @@ def view_funds(wallet):
 
 def print_my_details(wallet):
     print(f"{informative} Name: {wallet.name}")
-    print(f"{informative} Pubkey: {hexlify(wallet.get_next_public_key().serialize()).decode('ascii')}")
+    print(f"{informative} Pubkey: {bytes(wallet.get_next_public_key()).hex()}")
     print(f"{informative} Puzzlehash: {wallet.get_new_puzzlehash()}")
 
 

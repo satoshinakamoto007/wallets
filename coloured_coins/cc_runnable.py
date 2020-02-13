@@ -4,31 +4,23 @@ from utilities.puzzle_utilities import puzzlehash_from_string
 from chiasim.hashable import Coin, Header, HeaderHash
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
-from chiasim.hashable.Body import Body
-from .cc_wallet import CCWallet
+from chiasim.hashable.Body import Body, Program
+from clvm_tools import binutils
+from standard_wallet.wallet_runnable import make_payment, set_name, print_my_details
+from coloured_coins.cc_wallet import CCWallet
 
 
 def view_funds(wallet):
     print(f"Current balance: {str(wallet.temp_balance)}")
     print(f"UTXOs: {[x.amount for x in wallet.temp_utxos]}")
-
-
-def set_name(wallet):
-    selection = input("Enter a new name: ")
-    wallet.set_name(selection)
-
-
-async def process_blocks(wallet, ledger_api, last_known_header, current_header_hash):
-    r = await ledger_api.hash_preimage(hash=current_header_hash)
-    header = Header.from_bytes(r)
-    body = Body.from_bytes(await ledger_api.hash_preimage(hash=header.body_hash))
-    if header.previous_hash != last_known_header:
-        await process_blocks(wallet, ledger_api, last_known_header, header.previous_hash)
-    print(f'processing block {HeaderHash(header)}')
-    additions = list(additions_for_body(body))
-    removals = removals_for_body(body)
-    removals = [Coin.from_bytes(await ledger_api.hash_preimage(hash=x)) for x in removals]
-    wallet.notify(additions, removals)
+    print(f"Coloured Coin info:")
+    for x in list(wallet.my_coloured_coins.keys()):
+        print("  ------------------------------------")
+        print(f"  Name:   {x.name()}")
+        print(f"  Colour: {wallet.my_coloured_coins[x][1][-580:].split(')')[0]}")
+        print(f"  Amount: {x.amount}")
+    print("------------------------------------")
+    print(f"CC Total: {sum(x.amount for x in list(wallet.my_coloured_coins.keys()))}")
 
 
 async def farm_block(wallet, ledger_api, last_known_header):
@@ -45,6 +37,19 @@ async def farm_block(wallet, ledger_api, last_known_header):
     return header_hash
 
 
+async def process_blocks(wallet, ledger_api, last_known_header, current_header_hash):
+    r = await ledger_api.hash_preimage(hash=current_header_hash)
+    header = Header.from_bytes(r)
+    body = Body.from_bytes(await ledger_api.hash_preimage(hash=header.body_hash))
+    if header.previous_hash != last_known_header:
+        await process_blocks(wallet, ledger_api, last_known_header, header.previous_hash)
+    print(f'processing block {HeaderHash(header)}')
+    additions = list(additions_for_body(body))
+    removals = removals_for_body(body)
+    removals = [Coin.from_bytes(await ledger_api.hash_preimage(hash=x)) for x in removals]
+    wallet.notify(additions, removals, body)
+
+
 async def update_ledger(wallet, ledger_api, most_recent_header):
     r = await ledger_api.get_tip()
     if r['tip_hash'] != most_recent_header:
@@ -53,6 +58,92 @@ async def update_ledger(wallet, ledger_api, most_recent_header):
                              r['genesis_hash'] if most_recent_header is None else most_recent_header,
                              r['tip_hash'])
     return r['tip_hash']
+
+
+async def choose_payment_type(wallet, ledger_api):
+    print()
+    print(f"    {selectable} 1: Uncoloured")
+    print(f"    {selectable} 2: Coloured")
+    selection = input(prompt)
+    if selection == "1":
+        make_payment(wallet, ledger_api)
+        return
+    elif selection == "2":
+        await make_cc_payment(wallet, ledger_api)
+        return
+
+
+async def make_cc_payment(wallet, ledger_api):
+    print("What colour coins would you like to spend?")
+    colour = input(prompt)
+    if colour == "q":
+        return
+    print("How much value of that colour would you like to send?")
+    amount = input(prompt)
+    if amount == "q":
+        return
+    else:
+        amount = int(amount)
+    coins = wallet.cc_select_coins_for_colour(colour, amount)
+    if coins is None:
+        print("You do not have enough of that colour.")
+        return
+    print("Please enter the recipient's puzzlehash:")
+    newinnerpuzhash = puzzlehash_from_string(input(prompt))
+    actual_total = sum(x.amount for x in coins)
+    change = actual_total - amount
+    spendslist = []
+    innersol = wallet.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': amount},{'puzzlehash': wallet.get_new_puzzlehash(), 'amount': change}])
+    sigs = wallet.get_sigs_for_innerpuz_with_innersol(wallet.my_coloured_coins[coins[0]][0], innersol)
+    spendslist.append((coins[0], wallet.parent_info[coins[0].parent_coin_info], actual_total, innersol))
+    innersol = Program(binutils.assemble("((q ()) ())"))
+    for coin in coins[1:]:
+        sigs = sigs + wallet.get_sigs_for_innerpuz_with_innersol(wallet.my_coloured_coins[coin][0], innersol)
+        spendslist.append((coin, wallet.parent_info[coin.parent_coin_info], 0, innersol))
+    spend_bundle = wallet.cc_generate_spends_for_coin_list(spendslist, sigs)
+    await ledger_api.push_tx(tx=spend_bundle)
+    return
+
+
+async def make_trade_offer(wallet):
+
+    return
+
+
+async def respond_to_trade_offer(wallet):
+
+    return
+
+
+async def create_new_cc_batch(wallet, ledger_api):
+    print(divider)
+    if (wallet.temp_balance <= 0):
+        print("You need to have some chia first")
+        return
+
+    print(f"Your current balance: {wallet.temp_balance}")
+    print()
+    print("How many new coins would you like to create?")
+    number = input(prompt)
+    if number == "q":
+        return
+    else:
+        number = int(number)
+
+    amounts = [None] * number
+    for i in range(len(amounts)):
+        print(f"How much value for coin #{i}?")
+        number = input(prompt)
+        if number == "q":
+            return
+        else:
+            amounts[i] = int(number)
+    if sum(amounts) > wallet.temp_balance:
+        print("You do not have enough money for those amounts.")
+        return
+    spend_bundle = wallet.cc_generate_spend_for_genesis_coins(amounts)
+    await ledger_api.push_tx(tx=spend_bundle)
+    return
 
 
 async def main_loop():
@@ -74,11 +165,12 @@ async def main_loop():
         print(f"{selectable} 3: Farm Block")
         print(f"{selectable} 4: Print my details for somebody else")
         print(f"{selectable} 5: Set my wallet name")
+        print(f"{selectable} 6: Coloured Coins Options")
         print(f"{selectable} q: Quit")
         print(close_list)
         selection = input(prompt)
         if selection == "1":
-            r = await make_payment(wallet, ledger_api)
+            r = await choose_payment_type(wallet, ledger_api)
         elif selection == "2":
             most_recent_header = await update_ledger(wallet, ledger_api, most_recent_header)
         elif selection == "3":
@@ -87,6 +179,20 @@ async def main_loop():
             print_my_details(wallet)
         elif selection == "5":
             set_name(wallet)
+        elif selection == "6":
+            print()
+            print(f" {selectable} 1: Add Core")
+            print(f" {selectable} 2: Generate New Colour")
+            selection = input(prompt)
+            if selection == "1":
+                print("Enter colour: ")
+                colour = input(prompt)
+                if colour[0:2] == "0x":
+                    colour = colour[2:]
+                core = wallet.cc_make_core(colour)
+                wallet.cc_add_core(core)
+            elif selection == "2":
+                await create_new_cc_batch(wallet, ledger_api)
 
 
 def main():
@@ -99,7 +205,7 @@ if __name__ == "__main__":
 
 
 """
-Copyright 2018 Chia Network Inc
+Copyright 2020 Chia Network Inc
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
