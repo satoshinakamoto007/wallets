@@ -105,12 +105,41 @@ async def make_cc_payment(wallet, ledger_api):
     return
 
 
-async def make_trade_offer(wallet):
+def create_offer(wallet):
+    spendslist = []
+    print("What colour coins would you like to spend?")
+    colour = input(prompt)
+    if colour == "q":
+        return
+    print("How much value of that colour would you like to send?")
+    amount = input(prompt)
+    if amount == "q":
+        return
+    else:
+        amount = int(amount)
+    coins = wallet.cc_select_coins_for_colour(colour, amount)
+    if coins is None:
+        print("You do not have enough of that colour.")
+        return
 
+    newinnerpuzhash = wallet.get_new_puzzlehash()
+    innersol = wallet.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': c.amount + 100}])
+    sigs = wallet.get_sigs_for_innerpuz_with_innersol(wallet.my_coloured_coins[c][0], innersol)
+    spendslist.append((c, wallet.parent_info[c.parent_coin_info], c.amount + 100, innersol))
+
+    c = None
+    for coin in wallet_b.temp_utxos:
+        if coin.amount >= 100:
+            c = coin
+            break
+    coin = c
+    trade_offer = wallet_b.create_trade_offer(coin, coin.amount - 100, spendslist, sigs)
+    trade_offer_hex = bytes(trade_offer).hex()
+    print(f"Your trade offer is: {trade_offer_hex}")
     return
 
 
-async def respond_to_trade_offer(wallet):
+async def respond_to_offer(wallet, ledger_api):
 
     return
 
@@ -166,6 +195,7 @@ async def main_loop():
         print(f"{selectable} 4: Print my details for somebody else")
         print(f"{selectable} 5: Set my wallet name")
         print(f"{selectable} 6: Coloured Coins Options")
+        print(f"{selectable} 7: Trade Offer Options")
         print(f"{selectable} q: Quit")
         print(close_list)
         selection = input(prompt)
@@ -193,6 +223,15 @@ async def main_loop():
                 wallet.cc_add_core(core)
             elif selection == "2":
                 await create_new_cc_batch(wallet, ledger_api)
+        elif selection == "7":
+            print()
+            print(f" {selectable} 1: Create Offer")
+            print(f" {selectable} 2: Respond to Offer")
+            selection = input(prompt)
+            if selection == "1":
+                create_offer(wallet)
+            elif selection == "2":
+                await respond_to_offer(wallet, ledger_api)
 
 
 def main():

@@ -49,7 +49,7 @@ def commit_and_notify(remote, wallets, reward_recipient):
     additions = list(additions_for_body(body))
     removals = removals_for_body(body)
     removals = [Coin.from_bytes(run(remote.hash_preimage(hash=x)))
-                              for x in removals]
+                for x in removals]
 
     for wallet in wallets:
         if isinstance(wallet, CCWallet):
@@ -357,18 +357,6 @@ def test_partial_spend_market():
     core = wallet_a.my_coloured_coins[coins[0]][1]
     wallet_b.cc_add_core(core)
 
-    # Eve spend coins
-
-    # don't need sigs or a proper innersol for eve spend
-    spendslist = []
-    innersol = binutils.assemble("()")
-    for coin in coins:
-        spendslist.append((coin,  coins[0].parent_coin_info, coin.amount, innersol))
-    spend_bundle = wallet_a.cc_generate_eve_spend(spendslist)
-    _ = run(remote.push_tx(tx=spend_bundle))
-
-    commit_and_notify(remote, wallets, wallet_b)
-
     # Give Wallet B some 1000 of our coloured coin
     spendslist = []
     coins = list(wallet_a.my_coloured_coins.keys()).copy()
@@ -413,3 +401,33 @@ def test_partial_spend_market():
     commit_and_notify(remote, wallets, Wallet())
     assert list(wallet_b.my_coloured_coins.keys()).copy().pop().amount == 1100
     assert wallet_a.current_balance == 999988600
+
+
+def test_trade_with_zero_val():
+    remote = make_client_server()
+    run = asyncio.get_event_loop().run_until_complete
+
+    wallet_a = CCWallet()
+    wallet_b = CCWallet()
+    wallets = [wallet_a, wallet_b]
+    commit_and_notify(remote, wallets, wallet_a)
+
+    # Wallet A generates some genesis coins to itself.
+    amounts = [10000, 500, 1000]
+    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amounts)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, wallet_b)
+    assert len(wallet_a.my_coloured_coins) == 3
+    assert wallet_a.current_balance == 999988500
+
+    coins = list(wallet_a.my_coloured_coins.keys()).copy()
+    core = wallet_a.my_coloured_coins[coins[0]][1]
+    wallet_b.cc_add_core(core)
+
+    # Wallet B makes a zero val copy of A's colour
+
+    spend_bundle = wallet_b.cc_create_zero_val_for_core(core)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert len(wallet_b.my_coloured_coins) == 1
+    assert list(wallet_b.my_coloured_coins.keys()).copy().pop().amount == 0

@@ -63,7 +63,7 @@ class CCWallet(Wallet):
         innerpuz = puzstring[11:75]
         if all(c in string.hexdigits for c in innerpuz) is not True:
             return False
-        genesisCoin = puzstring[-584:].split(')')[0]
+        genesisCoin = puzstring[-598:].split(')')[0]
         if all(c in string.hexdigits for c in genesisCoin) is not True:
             return False
         if self.cc_make_puzzle(innerpuz, self.cc_make_core(genesisCoin)) == puzzle:
@@ -132,6 +132,22 @@ class CCWallet(Wallet):
         spend_bundle = spend_bundle.aggregate([spend_bundle, self.cc_generate_eve_spend(evespendslist)])
         return spend_bundle
 
+    def cc_create_zero_val_for_core(self, core):
+        innerpuz = self.get_new_puzzle()
+        newpuzzle = self.cc_make_puzzle(ProgramHash(innerpuz), core)
+        spend_bundle = self.generate_signed_transaction(0, ProgramHash(newpuzzle))
+        for coinsol in spend_bundle.coin_solutions:
+            coin = coinsol.coin
+            break
+
+        # Eve spend
+        coin = Coin(coin.name(), ProgramHash(newpuzzle), 0)
+        solution = self.cc_make_solution(core, coin.parent_coin_info, coin.amount, binutils.disassemble(innerpuz), "(q ())", None, None)
+        aggsig = BLSSignature.aggregate([])
+        eve_spend = SpendBundle([CoinSolution(coin, clvm.to_sexp_f([newpuzzle, solution]))], aggsig)
+        spend_bundle = spend_bundle.aggregate([spend_bundle, eve_spend])
+        return spend_bundle
+
     # we use it to merge the outputs of two programs that create lists
     def merge_two_lists(self, list1=None, list2=None):
         if (list1 is None) or (list2 is None):
@@ -190,9 +206,11 @@ class CCWallet(Wallet):
         normal_case = f"(c {consume_a} (c {create_e} (c {assert_my_parent_follows_core_logic} {self.merge_two_lists(replace_generated_createcoins, auditor_code_path)})))"
 
         create_child_with_my_puzzle = f"(c (q 51) (c (sha256tree {add_core_to_my_innerpuz_reveal}) (c (f (r (r (a)))) (q ()))))"
-        eve_case = f"((c (i (= (q 0x{originID}) (f (r (a)))) (q (c {assert_my_parent_is_origin} (c {create_child_with_my_puzzle} (q ())))) (q (x))) (a)))"
+        #eve_case = f"((c (i (= (q 0x{originID}) (f (r (a)))) (q (c {assert_my_parent_is_origin} (c {create_child_with_my_puzzle} (q ())))) (q (x))) (a)))"
+        assert_my_value_zero = f"(c (q 53) (c (sha256 (f (r (a))) (sha256tree {add_core_to_my_innerpuz_reveal}) (q 0)) (q ())))"
+        eve_case = f"(c {create_child_with_my_puzzle} ((c (i (= (q 0x{originID}) (f (r (a)))) (q (c {assert_my_parent_is_origin} (q ()))) (q (c {assert_my_value_zero} (q ())))) (a))))"
         core = f"((c (i (l (f (r (a)))) (q {normal_case}) (q {eve_case}) ) (a)))"
-        #breakpoint()
+        breakpoint()
         return core
 
     # This is for spending a recieved coloured coin
@@ -227,7 +245,7 @@ class CCWallet(Wallet):
         aggees = aggees + ")"
 
         sol = f"({core} {parent_str} {amount} {innerpuzreveal} {innersol} {auditor_formatted} {aggees})"
-        #print(f"DEBUG solstring: {sol}")
+        print(f"DEBUG solstring: {sol}")
         return Program(binutils.assemble(sol))
 
     # A newly minted coloured coin has a special spend before it can act like normal
@@ -337,8 +355,8 @@ class CCWallet(Wallet):
             sigs.append(signature)
         return sigs
 
-    # This creates an incomplete/incorrect spend SpendBundle
-    # solution is missing auditor info, output amount != input amount
+    # This creates an incomplete/incorrect spend SpendBundle - output amount != input amount
+    # solution is missing auditor info.
     def create_trade_offer(self, chiacoin, amount, ccspendslist, sigs=[]):
         # ccspendslist is [] of (coin, parent_info, outputamount, innersol)
         core = self.my_coloured_coins[ccspendslist[0][0]][1]
