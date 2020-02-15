@@ -63,7 +63,7 @@ class CCWallet(Wallet):
         innerpuz = puzstring[11:75]
         if all(c in string.hexdigits for c in innerpuz) is not True:
             return False
-        genesisCoin = puzstring[-598:].split(')')[0]
+        genesisCoin = puzstring[-596:].split(')')[0]
         if all(c in string.hexdigits for c in genesisCoin) is not True:
             return False
         if self.cc_make_puzzle(innerpuz, self.cc_make_core(genesisCoin)) == puzzle:
