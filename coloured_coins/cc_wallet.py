@@ -210,7 +210,7 @@ class CCWallet(Wallet):
         assert_my_value_zero = f"(c (q 53) (c (sha256 (f (r (a))) (sha256tree {add_core_to_my_innerpuz_reveal}) (q 0)) (q ())))"
         eve_case = f"(c {create_child_with_my_puzzle} ((c (i (= (q 0x{originID}) (f (r (a)))) (q (c {assert_my_parent_is_origin} (q ()))) (q (c {assert_my_value_zero} (q ())))) (a))))"
         core = f"((c (i (l (f (r (a)))) (q {normal_case}) (q {eve_case}) ) (a)))"
-        breakpoint()
+        #breakpoint()
         return core
 
     # This is for spending a recieved coloured coin
@@ -397,7 +397,7 @@ class CCWallet(Wallet):
             solution = coinsol.solution.rest().first()
 
             # work out the deficits between coin amount and expected output for each
-            if self.check_is_cc_puzzle(puzzle):  # CC or chia? - TODO: make more nuanced
+            if self.check_is_cc_puzzle(puzzle):
                 innerpuzzlereveal = solution.rest().rest().rest().first()
                 innersol = solution.rest().rest().rest().rest().first()
                 out_amount = self.get_output_amount_for_puzzle_and_solution(coinsol.coin, innerpuzzlereveal, innersol)
