@@ -489,7 +489,10 @@ class CCWallet(Wallet):
             opcode = conditions.first().first()
             if opcode == b'3':
                 amount_str = binutils.disassemble(conditions.first().rest().rest().first())
-                if amount_str[0:2] == "0x":
+                if amount_str == "()":
+                    conditions = conditions.rest()
+                    continue
+                elif amount_str[0:2] == "0x":
                     amount += int(amount_str, 16)
                 else:
                     amount += int(amount_str, 10)
@@ -504,7 +507,10 @@ class CCWallet(Wallet):
             opcode = conditions.first().first()
             if opcode == b'3':
                 amount_str = binutils.disassemble(conditions.first().rest().rest().first())
-                if amount_str[0:2] == "0x":
+                if amount_str == "()":
+                    conditions = conditions.rest()
+                    continue
+                elif amount_str[0:2] == "0x":
                     amount += int(amount_str, 16)
                 else:
                     amount += int(amount_str, 10)

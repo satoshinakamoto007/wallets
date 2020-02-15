@@ -403,6 +403,35 @@ def test_partial_spend_market():
     assert wallet_a.current_balance == 999988600
 
 
+    # Create market trade (+100 chia, -100 coloured coin)
+    spendslist = []
+    coins = list(wallet_b.my_coloured_coins.keys()).copy()
+    for coin in coins:
+        if coin.amount >= 100:
+            c = coin
+    newinnerpuzhash = wallet_b.get_new_puzzlehash()
+    innersol = wallet_b.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': c.amount - 100}])
+    sigs = wallet_b.get_sigs_for_innerpuz_with_innersol(wallet_b.my_coloured_coins[c][0], innersol)
+    spendslist.append((c, wallet_b.parent_info[c.parent_coin_info], c.amount - 100, innersol))
+
+    c = None
+    for coin in wallet_b.temp_utxos:
+        if coin.amount >= 100:
+            c = coin
+            break
+    coin = c
+    trade_offer = wallet_b.create_trade_offer(coin, coin.amount + 100, spendslist, sigs)
+    trade_offer_hex = bytes(trade_offer).hex()
+
+    received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
+    spend_bundle = wallet_a.parse_trade_offer(received_offer)
+    _ = run(remote.push_tx(tx=spend_bundle))
+
+    commit_and_notify(remote, wallets, Wallet())
+    assert list(wallet_b.my_coloured_coins.keys()).copy().pop().amount == 1000
+    assert sum(x.amount for x in list(wallet_a.my_coloured_coins.keys())) == 10500
+
+
 def test_trade_with_zero_val():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
@@ -412,13 +441,13 @@ def test_trade_with_zero_val():
     wallets = [wallet_a, wallet_b]
     commit_and_notify(remote, wallets, wallet_a)
 
-    # Wallet A generates some genesis coins to itself.
-    amounts = [10000, 500, 1000]
+    # Wallet A generates a genesis coins to itself.
+    amounts = [1000]
     spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amounts)
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, wallet_b)
-    assert len(wallet_a.my_coloured_coins) == 3
-    assert wallet_a.current_balance == 999988500
+    assert len(wallet_a.my_coloured_coins) == 1
+    assert wallet_a.current_balance == 999999000
 
     coins = list(wallet_a.my_coloured_coins.keys()).copy()
     core = wallet_a.my_coloured_coins[coins[0]][1]
@@ -431,3 +460,27 @@ def test_trade_with_zero_val():
     commit_and_notify(remote, wallets, Wallet())
     assert len(wallet_b.my_coloured_coins) == 1
     assert list(wallet_b.my_coloured_coins.keys()).copy().pop().amount == 0
+
+    # Create market trade (-100 chia, +100 coloured coin)
+    c = list(wallet_b.my_coloured_coins.keys()).copy().pop()
+    newinnerpuzhash = wallet_b.get_new_puzzlehash()
+    innersol = wallet_b.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': c.amount + 100}])
+    sigs = wallet_b.get_sigs_for_innerpuz_with_innersol(wallet_b.my_coloured_coins[c][0], innersol)
+    spendslist = [(c, wallet_b.parent_info[c.parent_coin_info], c.amount + 100, innersol)]
+
+    c = None
+    for coin in wallet_b.temp_utxos:
+        if coin.amount >= 100:
+            c = coin
+            break
+    coin = c
+    trade_offer = wallet_b.create_trade_offer(coin, coin.amount - 100, spendslist, sigs)
+    trade_offer_hex = bytes(trade_offer).hex()
+
+    received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
+    spend_bundle = wallet_a.parse_trade_offer(received_offer)
+    _ = run(remote.push_tx(tx=spend_bundle))
+
+    commit_and_notify(remote, wallets, Wallet())
+    assert list(wallet_b.my_coloured_coins.keys()).copy().pop().amount == 100
+    assert wallet_a.current_balance == 999999100

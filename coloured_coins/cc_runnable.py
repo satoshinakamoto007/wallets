@@ -128,12 +128,12 @@ def create_offer(wallet):
     spendslist.append((c, wallet.parent_info[c.parent_coin_info], c.amount + 100, innersol))
 
     c = None
-    for coin in wallet_b.temp_utxos:
+    for coin in wallet.temp_utxos:
         if coin.amount >= 100:
             c = coin
             break
     coin = c
-    trade_offer = wallet_b.create_trade_offer(coin, coin.amount - 100, spendslist, sigs)
+    trade_offer = wallet.create_trade_offer(coin, coin.amount - 100, spendslist, sigs)
     trade_offer_hex = bytes(trade_offer).hex()
     print(f"Your trade offer is: {trade_offer_hex}")
     return
