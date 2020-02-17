@@ -122,7 +122,7 @@ class Wallet:
             return None  # TODO: Should we throw a proper error here, or just return None?
         utxos = self.select_coins(amount)
         spends = []
-        output_created = False
+        output_created = None
         spend_value = sum([coin.amount for coin in utxos])
         change = spend_value - amount
         for coin in utxos:
@@ -130,7 +130,7 @@ class Wallet:
 
             pubkey, secretkey = self.get_keys(puzzle_hash)
             puzzle = puzzle_for_pk(pubkey)
-            if output_created is False:
+            if output_created is None:
                 primaries = [{'puzzlehash': newpuzzlehash, 'amount': amount}]
                 if change > 0:
                     changepuzzlehash = self.get_new_puzzlehash()
@@ -139,9 +139,9 @@ class Wallet:
                     # add change coin into temp_utxo set
                     self.temp_utxos.add(Coin(coin, changepuzzlehash, change))
                 solution = self.make_solution(primaries=primaries)
-                output_created = True
+                output_created = coin
             else:
-                solution = self.make_solution(consumed=[coin.name()])
+                solution = self.make_solution(consumed=[output_created.name()])
             spends.append((puzzle, CoinSolution(coin, solution)))
         self.temp_balance -= amount
         return spends

@@ -357,7 +357,8 @@ class CCWallet(Wallet):
 
     # This creates an incomplete/incorrect spend SpendBundle - output amount != input amount
     # solution is missing auditor info.
-    def create_trade_offer(self, chiacoin, amount, ccspendslist, sigs=[]):
+    def create_trade_offer(self, amount, ccspendslist, sigs=[]):
+
         # ccspendslist is [] of (coin, parent_info, outputamount, innersol)
         core = self.my_coloured_coins[ccspendslist[0][0]][1]
         list_of_solutions = []
@@ -370,12 +371,22 @@ class CCWallet(Wallet):
             list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
 
         # standard coin CoinSolution generation
-        newpuzhash = self.get_new_puzzlehash()
-        solution = self.make_solution(primaries=[{'puzzlehash': newpuzhash, 'amount': amount}])
-        pubkey, secretkey = self.get_keys(chiacoin.puzzle_hash)
-        puzzle = self.puzzle_for_pk(bytes(pubkey))
-        list_of_solutions.append(CoinSolution(chiacoin, clvm.to_sexp_f([puzzle, solution])))
-        sigs = sigs + self.get_sigs_for_innerpuz_with_innersol(puzzle, solution)
+        utxos = self.select_coins(abs(amount))
+        spend_value = sum([coin.amount for coin in utxos])
+        amount = spend_value + amount
+        output_created = None
+        for coin in utxos:
+            pubkey, secretkey = self.get_keys(coin.puzzle_hash)
+            puzzle = self.puzzle_for_pk(bytes(pubkey))
+            if output_created is None:
+                newpuzhash = self.get_new_puzzlehash()
+                solution = self.make_solution(primaries=[{'puzzlehash': newpuzhash, 'amount': amount}])
+
+                output_created = coin
+            else:
+                solution = self.make_solution(consumed=[output_created.name()])
+            list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([puzzle, solution])))
+            sigs = sigs + self.get_sigs_for_innerpuz_with_innersol(puzzle, solution)
 
         solution_list = CoinSolutionList(list_of_solutions)
         aggsig = BLSSignature.aggregate(sigs)

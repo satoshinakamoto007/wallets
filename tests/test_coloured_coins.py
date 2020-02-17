@@ -391,7 +391,7 @@ def test_partial_spend_market():
             c = coin
             break
     coin = c
-    trade_offer = wallet_b.create_trade_offer(coin, coin.amount - 100, spendslist, sigs)
+    trade_offer = wallet_b.create_trade_offer(-100, spendslist, sigs)
     trade_offer_hex = bytes(trade_offer).hex()
 
     received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
@@ -412,7 +412,7 @@ def test_partial_spend_market():
     newinnerpuzhash = wallet_b.get_new_puzzlehash()
     innersol = wallet_b.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': c.amount - 100}])
     sigs = wallet_b.get_sigs_for_innerpuz_with_innersol(wallet_b.my_coloured_coins[c][0], innersol)
-    spendslist.append((c, wallet_b.parent_info[c.parent_coin_info], c.amount - 100, innersol))
+    spendslist.append((c, wallet_b.parent_info[c.parent_coin_info], c.amount -100, innersol))
 
     c = None
     for coin in wallet_b.temp_utxos:
@@ -420,7 +420,7 @@ def test_partial_spend_market():
             c = coin
             break
     coin = c
-    trade_offer = wallet_b.create_trade_offer(coin, coin.amount + 100, spendslist, sigs)
+    trade_offer = wallet_b.create_trade_offer(100, spendslist, sigs)
     trade_offer_hex = bytes(trade_offer).hex()
 
     received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
@@ -474,7 +474,7 @@ def test_trade_with_zero_val():
             c = coin
             break
     coin = c
-    trade_offer = wallet_b.create_trade_offer(coin, coin.amount - 100, spendslist, sigs)
+    trade_offer = wallet_b.create_trade_offer(-100, spendslist, sigs)
     trade_offer_hex = bytes(trade_offer).hex()
 
     received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
