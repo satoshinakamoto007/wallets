@@ -24,7 +24,8 @@ setuptools.setup(
             "multisig_wallet = multisig.wallet:main",
             "signer = multisig.signer:main",
             "rl_wallet = rate_limit.rl_wallet_runnable:main",
-            "recoverable_wallet = recoverable_wallet.recoverable_wallet_runnable:main"
+            "recoverable_wallet = recoverable_wallet.recoverable_wallet_runnable:main",
+            "cc_wallet = coloured_coins.cc_runnable:main"
         ]
     },
     setup_requires=["clvm_tools", "setuptools_scm"],

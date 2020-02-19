@@ -17,7 +17,7 @@ def view_funds(wallet):
     for x in list(wallet.my_coloured_coins.keys()):
         print("  ------------------------------------")
         print(f"  Name:   {x.name()}")
-        print(f"  Colour: {wallet.my_coloured_coins[x][1][-580:].split(')')[0]}")
+        print(f"  Colour: {wallet.get_genesis_from_core(wallet.my_coloured_coins[x][1])}")
         print(f"  Amount: {x.amount}")
     print("------------------------------------")
     print(f"CC Total: {sum(x.amount for x in list(wallet.my_coloured_coins.keys()))}")
@@ -106,17 +106,53 @@ async def make_cc_payment(wallet, ledger_api):
 
 
 def create_offer(wallet):
+    print("Do you want to buy or sell coloured coins?")
+    print("1: Buy")
+    print("2: Sell")
+    choice = input(prompt)
+    if choice == "1":
+        buying = "buy"
+    elif choice == "2":
+        buying = "sell"
+    else:
+        print("Not a valid option.")
+        return
+
     spendslist = []
-    print("What colour coins would you like to spend?")
+    print(f"What colour coins would you like to {buying}?")
     colour = input(prompt)
     if colour == "q":
         return
-    print("How much value of that colour would you like to send?")
+    print(f"How much value of that colour would you like to {buying}?")
     amount = input(prompt)
     if amount == "q":
         return
     else:
         amount = int(amount)
+
+    if buying == "buy":
+        print(f"How much chia would you like to spend to buy {amount} coins of colour {colour}?")
+        chia_price = input(prompt)
+        chia_price = int(chia_price)
+        if chia_price > wallet.temp_balance:
+            print("You do not have that much money.")
+            return
+        core = wallet.cc_make_core(colour)
+        spend_bundle = wallet.cc_create_zero_val_for_core(core)
+        for coinsol in spend_bundle.coin_solutions:
+            coin = coinsol.coin
+            break
+        coin = Coin(coin.name(), coin.puzzle_hash, coin.amount)
+        newinnerpuzhash = wallet.get_new_puzzlehash()
+        innersol = wallet.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': coin.amount + amount}])
+        sigs = wallet.get_sigs_for_innerpuz_with_innersol(wallet.my_coloured_coins[coin][0], innersol)
+        spendslist = [(coin, wallet.parent_info[coin.parent_coin_info], coin.amount + amount, innersol)]
+        spend_bundle = spend_bundle.aggregate([spend_bundle, wallet.create_trade_offer(chia_price, spendslist, sigs)])
+        print("Your trade offer is:")
+        print(bytes(spend_bundle).hex())
+
+    else:
+        print()
     coins = wallet.cc_select_coins_for_colour(colour, amount)
     if coins is None:
         print("You do not have enough of that colour.")
