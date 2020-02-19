@@ -63,7 +63,7 @@ class CCWallet(Wallet):
         innerpuz = puzstring[11:75]
         if all(c in string.hexdigits for c in innerpuz) is not True:
             return False
-        genesisCoin = self.get_genesis_from_core(puzstring)
+        genesisCoin = self.get_genesis_from_puzzle(puzstring)
         if all(c in string.hexdigits for c in genesisCoin) is not True:
             return False
         if self.cc_make_puzzle(innerpuz, self.cc_make_core(genesisCoin)) == puzzle:
@@ -71,8 +71,11 @@ class CCWallet(Wallet):
         else:
             return False
 
-    def get_genesis_from_core(self, core):
+    def get_genesis_from_puzzle(self, core):
         return core[-596:].split(')')[0]
+
+    def get_genesis_from_core(self, core):
+        return core[-589:].split(')')[0]
 
     def cc_can_generate(self, finalpuzhash):
         for i in reversed(range(self.next_address)):
@@ -322,7 +325,7 @@ class CCWallet(Wallet):
     def cc_select_coins_for_colour(self, colour, amount):
         coins = []
         for x in list(self.my_coloured_coins.keys()):
-            if self.my_coloured_coins[x][1][-589:].split(')')[0] == colour:
+            if self.get_genesis_from_core(self.my_coloured_coins[x][1]) == colour:
                 coins.append(x)
             if sum(y.amount for y in coins) >= amount:
                 break
@@ -379,7 +382,7 @@ class CCWallet(Wallet):
 
         # Coloured Coin processing
         spend_bundle = None
-        cc_spends = self.cc_select_coins_for_colour(core[-589:].split(')')[0], abs(cc_amount))
+        cc_spends = self.cc_select_coins_for_colour(self.get_genesis_from_core(core), abs(cc_amount))
         if cc_spends is None and cc_amount >= 0:
             spend_bundle = self.cc_create_zero_val_for_core(core)
             for coin in list(self.my_coloured_coins.keys()):
