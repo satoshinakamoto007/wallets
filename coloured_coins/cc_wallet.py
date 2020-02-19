@@ -139,15 +139,24 @@ class CCWallet(Wallet):
         return spend_bundle
 
     def cc_create_zero_val_for_core(self, core):
+        if self.temp_utxos == set():
+            return None
         innerpuz = self.get_new_puzzle()
         newpuzzle = self.cc_make_puzzle(ProgramHash(innerpuz), core)
-        spend_bundle = self.generate_signed_transaction(0, ProgramHash(newpuzzle))
-        for coinsol in spend_bundle.coin_solutions:
-            coin = coinsol.coin
-            break
+        coin = self.temp_utxos.pop()
+        primaries = [{'puzzlehash': ProgramHash(newpuzzle), 'amount': 0}]
+        changepuzzlehash = self.get_new_puzzlehash()
+        primaries.append(
+        {'puzzlehash': changepuzzlehash, 'amount': coin.amount})
+        # add change coin into temp_utxo set
+        self.temp_utxos.add(Coin(coin, changepuzzlehash, coin.amount))
+        solution = self.make_solution(primaries=primaries)
+        pubkey, secretkey = self.get_keys(coin.puzzle_hash)
+        puzzle = puzzle_for_pk(pubkey)
+        spend_bundle = self.sign_transaction([(puzzle, CoinSolution(coin, solution))])
 
         # Eve spend
-        coin = Coin(coin.name(), ProgramHash(newpuzzle), 0)
+        coin = Coin(coin, ProgramHash(newpuzzle), 0)
         solution = self.cc_make_solution(core, coin.parent_coin_info, coin.amount, binutils.disassemble(innerpuz), "((q ()) ())", None, None)
         aggsig = BLSSignature.aggregate([])
         eve_spend = SpendBundle([CoinSolution(coin, clvm.to_sexp_f([newpuzzle, solution]))], aggsig)
