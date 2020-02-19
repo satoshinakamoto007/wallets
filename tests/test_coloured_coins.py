@@ -373,25 +373,11 @@ def test_partial_spend_market():
 
     assert len(wallet_a.my_coloured_coins) == 2
     assert len(wallet_b.my_coloured_coins) == 1
+    assert list(wallet_b.my_coloured_coins.keys()).copy().pop().amount == 1000
+    assert sum(x.amount for x in list(wallet_a.my_coloured_coins.keys())) == 10500
 
     # Create market trade (-100 chia, +100 coloured coin)
-    spendslist = []
-    coins = list(wallet_b.my_coloured_coins.keys()).copy()
-    for coin in coins:
-        if coin.amount == 1000:
-            c = coin
-    newinnerpuzhash = wallet_b.get_new_puzzlehash()
-    innersol = wallet_b.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': c.amount + 100}])
-    sigs = wallet_b.get_sigs_for_innerpuz_with_innersol(wallet_b.my_coloured_coins[c][0], innersol)
-    spendslist.append((c, wallet_b.parent_info[c.parent_coin_info], c.amount + 100, innersol))
-
-    c = None
-    for coin in wallet_b.temp_utxos:
-        if coin.amount >= 100:
-            c = coin
-            break
-    coin = c
-    trade_offer = wallet_b.create_trade_offer(-100, spendslist, sigs)
+    trade_offer = wallet_b.create_trade_offer(-100, 100, core)
     trade_offer_hex = bytes(trade_offer).hex()
 
     received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
@@ -404,23 +390,7 @@ def test_partial_spend_market():
 
 
     # Create market trade (+100 chia, -100 coloured coin)
-    spendslist = []
-    coins = list(wallet_b.my_coloured_coins.keys()).copy()
-    for coin in coins:
-        if coin.amount >= 100:
-            c = coin
-    newinnerpuzhash = wallet_b.get_new_puzzlehash()
-    innersol = wallet_b.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': c.amount - 100}])
-    sigs = wallet_b.get_sigs_for_innerpuz_with_innersol(wallet_b.my_coloured_coins[c][0], innersol)
-    spendslist.append((c, wallet_b.parent_info[c.parent_coin_info], c.amount -100, innersol))
-
-    c = None
-    for coin in wallet_b.temp_utxos:
-        if coin.amount >= 100:
-            c = coin
-            break
-    coin = c
-    trade_offer = wallet_b.create_trade_offer(100, spendslist, sigs)
+    trade_offer = wallet_b.create_trade_offer(100, -100, core)
     trade_offer_hex = bytes(trade_offer).hex()
 
     received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
@@ -462,19 +432,7 @@ def test_trade_with_zero_val():
     assert list(wallet_b.my_coloured_coins.keys()).copy().pop().amount == 0
 
     # Create market trade (-100 chia, +100 coloured coin)
-    c = list(wallet_b.my_coloured_coins.keys()).copy().pop()
-    newinnerpuzhash = wallet_b.get_new_puzzlehash()
-    innersol = wallet_b.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': c.amount + 100}])
-    sigs = wallet_b.get_sigs_for_innerpuz_with_innersol(wallet_b.my_coloured_coins[c][0], innersol)
-    spendslist = [(c, wallet_b.parent_info[c.parent_coin_info], c.amount + 100, innersol)]
-
-    c = None
-    for coin in wallet_b.temp_utxos:
-        if coin.amount >= 100:
-            c = coin
-            break
-    coin = c
-    trade_offer = wallet_b.create_trade_offer(-100, spendslist, sigs)
+    trade_offer = wallet_b.create_trade_offer(-100, 100, core)
     trade_offer_hex = bytes(trade_offer).hex()
 
     received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
