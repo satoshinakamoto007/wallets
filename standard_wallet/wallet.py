@@ -78,19 +78,13 @@ class Wallet:
         self.temp_balance = self.current_balance
 
     def select_coins(self, amount):
-        actual_sum = 0
         if amount > self.temp_balance:
             return None
         used_utxos = set()
-        if amount == 0:
+        while sum(map(lambda coin: coin.amount, used_utxos)) < amount:
             temp = self.temp_utxos.pop()
             used_utxos.add(temp)
-            actual_sum += temp.amount
-        while actual_sum < amount:
-            temp = self.temp_utxos.pop()
-            used_utxos.add(temp)
-            actual_sum += temp.amount
-        self.temp_balance -= actual_sum
+            self.temp_balance -= temp.amount
         return used_utxos
 
     def puzzle_for_pk(self, pubkey):
