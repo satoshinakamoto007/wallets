@@ -162,7 +162,7 @@ class CCWallet(Wallet):
         eve_spend = SpendBundle([CoinSolution(coin, clvm.to_sexp_f([newpuzzle, solution]))], aggsig)
         spend_bundle = spend_bundle.aggregate([spend_bundle, eve_spend])
         self.parent_info[coin.name()] = (coin.parent_coin_info, coin.puzzle_hash, coin.amount)
-        self.my_coloured_coins[Coin(coin.name(), ProgramHash(newpuzzle), coin.amount)] = (innerpuz, core)
+        self.eve_coloured_coins[Coin(coin, coin.puzzle_hash, coin.amount)] = (innerpuz, core)
         return spend_bundle
 
     # we use it to merge the outputs of two programs that create lists
@@ -372,6 +372,7 @@ class CCWallet(Wallet):
         return sigs
 
     def create_trade_offer(self, list):
+        # list is [] of (relativeamount, core)
         spend_bundle = None
         for amountcore in list:
             if amountcore[1] is None:
@@ -389,13 +390,19 @@ class CCWallet(Wallet):
     def create_spend_bundle_relative_core(self, cc_amount, core):
         # Coloured Coin processing
         spend_bundle = None
-        cc_spends = self.cc_select_coins_for_colour(self.get_genesis_from_core(core), abs(cc_amount))
+        if cc_amount < 0:
+            cc_spends = self.cc_select_coins_for_colour(self.get_genesis_from_core(core), abs(cc_amount))
+        else:
+            cc_spends = self.cc_select_coins_for_colour(self.get_genesis_from_core(core), 0)
+
         if cc_spends is None and cc_amount >= 0:
+            breakpoint()
             spend_bundle = self.cc_create_zero_val_for_core(core)
-            for coin in list(self.my_coloured_coins.keys()):
-                if coin.amount == 0:
-                    cc_spends = [coin]
-                    break
+            for coinsol in spend_bundle.coin_solutions:
+                if coinsol.coin.name() in self.parent_info:
+                    if len(self.parent_info[coinsol.coin.name()]) == 3:
+                        cc_spends = [Coin(coinsol.coin, coinsol.coin.puzzle_hash, coinsol.coin.amount)]
+                        break
 
         spend_value = sum([coin.amount for coin in cc_spends])
         cc_amount = spend_value + cc_amount
@@ -409,9 +416,13 @@ class CCWallet(Wallet):
                 output_created = coin
             else:
                 innersol = self.make_solution(consumed=[output_created.name()])
-            solution = self.cc_make_solution(core, self.parent_info[coin.parent_coin_info], coin.amount, binutils.disassemble(self.my_coloured_coins[coin][0]), binutils.disassemble(innersol), None, None)
-            list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
-            sigs = sigs + self.get_sigs_for_innerpuz_with_innersol(self.my_coloured_coins[coin][0], innersol)
+            if coin in self.my_coloured_coins:
+                innerpuz = self.my_coloured_coins[coin][0]
+            elif coin in self.eve_coloured_coins:
+                innerpuz = self.eve_coloured_coins[coin][0]
+            solution = self.cc_make_solution(core, self.parent_info[coin.parent_coin_info], coin.amount, binutils.disassemble(innerpuz), binutils.disassemble(innersol), None, None)
+            list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(innerpuz), core), solution])))
+            sigs = sigs + self.get_sigs_for_innerpuz_with_innersol(innerpuz, innersol)
 
         solution_list = CoinSolutionList(list_of_solutions)
         aggsig = BLSSignature.aggregate(sigs)
