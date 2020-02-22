@@ -371,24 +371,22 @@ class CCWallet(Wallet):
             sigs.append(signature)
         return sigs
 
-    def create_cc_spendlist_for_cc_amount_core(self, cc_amount, core):
-        cc_spends = self.cc_select_coins_for_colour(self.get_genesis_from_core(core), abs(cc_amount))
-        if cc_spends is None and cc_amount >= 0:
-            spend_bundle = self.cc_create_zero_val_for_core(core)
-            for coin in list(self.my_coloured_coins.keys()):
-                if coin.amount == 0:
-                    cc_spends = [coin]
-                    break
+    def create_trade_offer(self, list):
+        spend_bundle = None
+        for amountcore in list:
+            if amountcore[1] is None:
+                if spend_bundle is None:
+                    spend_bundle = self.create_spend_bundle_relative_chia(amountcore[0])
+                else:
+                    spend_bundle = spend_bundle.aggregate([spend_bundle, self.create_spend_bundle_relative_chia(amountcore[0])])
+            else:
+                if spend_bundle is None:
+                    spend_bundle = self.create_spend_bundle_relative_core(amountcore[0], amountcore[1])
+                else:
+                    spend_bundle = spend_bundle.aggregate([spend_bundle, self.create_spend_bundle_relative_core(amountcore[0], amountcore[1])])
+        return spend_bundle
 
-        spend_value = sum([coin.amount for coin in cc_spends])
-        cc_amount = spend_value + cc_amount
-        spendslist = []
-        for coin in cc_spends:
-            spendslist.append()
-        return spendslist
-
-    def create_trade_offer(self, chia_amount, cc_amount, core):
-
+    def create_spend_bundle_relative_core(self, cc_amount, core):
         # Coloured Coin processing
         spend_bundle = None
         cc_spends = self.cc_select_coins_for_colour(self.get_genesis_from_core(core), abs(cc_amount))
@@ -415,6 +413,16 @@ class CCWallet(Wallet):
             list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coin][0]), core), solution])))
             sigs = sigs + self.get_sigs_for_innerpuz_with_innersol(self.my_coloured_coins[coin][0], innersol)
 
+        solution_list = CoinSolutionList(list_of_solutions)
+        aggsig = BLSSignature.aggregate(sigs)
+        if spend_bundle is None:
+            spend_bundle = SpendBundle(solution_list, aggsig)
+        else:
+            spend_bundle = spend_bundle.aggregate([spend_bundle, SpendBundle(solution_list, aggsig)])
+        return spend_bundle
+
+    def create_spend_bundle_relative_chia(self, chia_amount):
+        list_of_solutions = []
         # standard coin CoinSolution generation
         utxos = self.select_coins(abs(chia_amount))
         spend_value = sum([coin.amount for coin in utxos])
@@ -430,16 +438,13 @@ class CCWallet(Wallet):
             else:
                 solution = self.make_solution(consumed=[output_created.name()])
             list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([puzzle, solution])))
-            sigs = sigs + self.get_sigs_for_innerpuz_with_innersol(puzzle, solution)
+            sigs = self.get_sigs_for_innerpuz_with_innersol(puzzle, solution)
 
         solution_list = CoinSolutionList(list_of_solutions)
         aggsig = BLSSignature.aggregate(sigs)
-        if spend_bundle is None:
-            spend_bundle = SpendBundle(solution_list, aggsig)
-        else:
-            spend_bundle = spend_bundle.aggregate([spend_bundle, SpendBundle(solution_list, aggsig)])
-
+        spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle
+
 
     # Take an incomplete SpendBundle, fill in auditor information and add missing amounts
     def parse_trade_offer(self, trade_offer):

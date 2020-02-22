@@ -377,7 +377,7 @@ def test_partial_spend_market():
     assert sum(x.amount for x in list(wallet_a.my_coloured_coins.keys())) == 10500
 
     # Create market trade (-100 chia, +100 coloured coin)
-    trade_offer = wallet_b.create_trade_offer(-100, 100, core)
+    trade_offer = wallet_b.create_trade_offer([(-100, None), (100, core)])
     trade_offer_hex = bytes(trade_offer).hex()
 
     received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
@@ -390,7 +390,7 @@ def test_partial_spend_market():
 
 
     # Create market trade (+100 chia, -100 coloured coin)
-    trade_offer = wallet_b.create_trade_offer(100, -100, core)
+    trade_offer = wallet_b.create_trade_offer([(100, None), (-100, core)])
     trade_offer_hex = bytes(trade_offer).hex()
 
     received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
@@ -432,7 +432,7 @@ def test_trade_with_zero_val():
     assert list(wallet_b.my_coloured_coins.keys()).copy().pop().amount == 0
 
     # Create market trade (-100 chia, +100 coloured coin)
-    trade_offer = wallet_b.create_trade_offer(-100, 100, core)
+    trade_offer = wallet_b.create_trade_offer([(-100, None), (100, core)])
     trade_offer_hex = bytes(trade_offer).hex()
 
     received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
