@@ -83,7 +83,9 @@ class Wallet:
             return None
         used_utxos = set()
         while sum(map(lambda coin: coin.amount, used_utxos)) < amount:
-            used_utxos.add(self.temp_utxos.pop())
+            temp = self.temp_utxos.pop()
+            used_utxos.add(temp)
+            self.temp_balance -= temp.amount
         return used_utxos
 
     def puzzle_for_pk(self, pubkey):
@@ -137,12 +139,12 @@ class Wallet:
                         {'puzzlehash': changepuzzlehash, 'amount': change})
                     # add change coin into temp_utxo set
                     self.temp_utxos.add(Coin(coin, changepuzzlehash, change))
+                    self.temp_balance += change
                 solution = self.make_solution(primaries=primaries)
                 output_created = True
             else:
                 solution = self.make_solution(consumed=[coin.name()])
             spends.append((puzzle, CoinSolution(coin, solution)))
-        self.temp_balance -= amount
         return spends
 
     def sign_transaction(self, spends: (Program, [CoinSolution])):
