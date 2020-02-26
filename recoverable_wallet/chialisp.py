@@ -58,7 +58,7 @@ def make_list(*argv, terminator=nil):
 
 
 def fail(*argv):
-    return apply('fail', argv)
+    return apply('x', argv)
 
 
 def sha256(*argv):
@@ -67,10 +67,6 @@ def sha256(*argv):
 
 def sha256tree(*argv):
     return apply('sha256tree', argv)
-
-
-def uint64(obj):
-    return sexp('uint64', obj)
 
 
 def equal(*argv):

@@ -85,7 +85,7 @@ def transform_dict(d, xformer):
     """
     Transform elements of the dict d using the xformer (also a dict,
     where the keys match the keys in d and the values of d are transformed
-    by invoking the correspding values in xformer.
+    by invoking the corresponding values in xformer.
     """
     for k, v in xformer.items():
         if k in d:

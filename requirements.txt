@@ -1,6 +1,6 @@
--e git+https://git@github.com/Chia-Network/clvm.git@116667ab79cb38a42a7737eef6bed9e1b5dde5da#egg=clvm
--e git+https://git@github.com/Chia-Network/clvm_tools.git@aca0c1577991a9349df53817249d0088656c7608#egg=clvm_tools
--e git+https://git@github.com/Chia-Network/ledger_sim.git@472f2f64d2631c8705ca791f21a2e4d00f08f8b8#egg=ledger_sim
+-e git+https://git@github.com/Chia-Network/clvm.git@e6e37f16374d491a69819ede2d7f4537871c0fc3#egg=clvm
+-e git+https://git@github.com/Chia-Network/clvm_tools.git@f2c380a6ce268edc3baf77dcb7a685febc7291f0#egg=clvm_tools
+-e git+https://git@github.com/Chia-Network/ledger_sim.git@be41ec4f805ad6dcb25a6e8d512ccc2cb60caed8#egg=ledger_sim
 aiter==0.1.2
 blspy==0.1.8
 cbor==1.0.0

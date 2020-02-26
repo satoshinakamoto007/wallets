@@ -7,10 +7,7 @@ import pytest
 def test_pubkey_format():
     wallet = Wallet()
     pubkey = wallet.get_next_public_key()
-    assert pu.pubkey_format(pubkey) == f"0x{hexlify(pubkey.serialize()).decode('ascii')}"
-    assert pu.pubkey_format(pubkey.serialize()) == f"0x{hexlify(pubkey.serialize()).decode('ascii')}"
-    assert pu.pubkey_format(hexlify(pubkey.serialize()).decode('ascii')) == f"0x{hexlify(pubkey.serialize()).decode('ascii')}"
-    assert pu.pubkey_format(f"0x{hexlify(pubkey.serialize()).decode('ascii')}") == f"0x{hexlify(pubkey.serialize()).decode('ascii')}"
+    assert pu.pubkey_format(pubkey) == f"0x{bytes(pubkey).hex()}"
 
 
 def test_pubkey_format_exception():

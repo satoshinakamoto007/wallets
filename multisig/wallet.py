@@ -13,10 +13,6 @@ from chiasim.hashable import (
 )
 from chiasim.validation import validate_spend_bundle_signature
 from chiasim.validation.Conditions import make_create_coin_condition
-from .pst import PartiallySignedTransaction
-from .storage import Storage
-from .BLSHDKeys import BLSPublicHDKey, fingerprint_for_pk
-from .MultisigHDWallet import MultisigHDWallet
 
 from chiasim.puzzles.p2_m_of_n_delegate_direct import solution_for_delegated_puzzle
 from chiasim.puzzles.p2_conditions import puzzle_for_conditions, solution_for_conditions
@@ -24,6 +20,13 @@ from chiasim.validation.consensus import (
     conditions_dict_for_solution,
     hash_key_pairs_for_conditions_dict,
 )
+
+
+from utilities.BLSHDKey import BLSPublicHDKey, fingerprint_for_pk
+
+from .pst import PartiallySignedTransaction
+from .storage import Storage
+from .MultisigHDWallet import MultisigHDWallet
 
 
 # we hard-code a gap limit for now (ie. the number

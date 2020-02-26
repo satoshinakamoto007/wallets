@@ -13,8 +13,6 @@ from chiasim.storage import RAM_DB
 from chiasim.utils.server import start_unix_server_aiter
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
 from atomic_swaps.as_wallet import ASWallet
-from atomic_swaps.as_wallet_runnable import pull_preimage
-from binascii import hexlify
 
 
 async def proxy_for_unix_connection(path):
@@ -22,70 +20,70 @@ async def proxy_for_unix_connection(path):
     return request_response_proxy(reader, writer, ledger_sim.REMOTE_SIGNATURES)
 
 
-def create_swap_for_two_wallet_numbers(remote, wallets, as_list_list, a, b, amount, a_pubkey, b_pubkey):
+def create_swap_for_two_wallet_numbers(remote, wallets, as_list_list, a, b, amount_a, amount_b, a_pubkey, b_pubkey):
     run = asyncio.get_event_loop().run_until_complete
     wallet_a = wallets[a]
     wallet_b = wallets[b]
     as_swap_list_a = as_list_list[a]
     as_swap_list_b = as_list_list[b]
     # Setup for A
-    secret = hexlify(os.urandom(256)).decode('ascii')
+    secret = os.urandom(256).hex()
     secret_hash = wallet_a.as_generate_secret_hash(secret)
     tip = run(remote.get_tip())
-    timelock_outgoing = 10
-    timelock_block_outgoing = int(timelock_outgoing + tip["tip_index"])
-    puzzlehash_outgoing = wallet_a.as_get_new_puzzlehash(a_pubkey.serialize(), b_pubkey.serialize(), amount, timelock_block_outgoing, secret_hash)
-    spend_bundle_a = wallet_a.generate_signed_transaction(amount, puzzlehash_outgoing)
+    timelock_a = 10
+    timelock_block_a = int(timelock_a + tip["tip_index"])
+    puzzlehash_a = wallet_a.as_get_new_puzzlehash(bytes(a_pubkey), bytes(b_pubkey), amount_a, timelock_block_a, secret_hash)
+    spend_bundle_a = wallet_a.generate_signed_transaction(amount_a, puzzlehash_a)
 
-    puzzlehash_incoming = "unknown"
-    timelock_incoming = int(0.5 * timelock_outgoing)
-    timelock_block_incoming = "unknown"
+    puzzlehash_b = "unknown"
+    timelock_b = int(0.5 * timelock_a)
+    timelock_block_b = "unknown"
     new_swap = {
             "swap partner": "wallet_b",
             "partner pubkey": b_pubkey,
-            "amount": amount,
+            "amount_outgoing" : amount_a,
+            "amount_incoming" : amount_b,
             "secret": secret,
             "secret hash": secret_hash,
             "my swap pubkey": a_pubkey,
-            "outgoing puzzlehash": hexlify(puzzlehash_outgoing).decode('ascii'),
-            "timelock time outgoing": timelock_outgoing,
-            "timelock block height outgoing": timelock_block_outgoing,
-            "incoming puzzlehash": puzzlehash_incoming,
-            "timelock time incoming": timelock_incoming,
-            "timelock block height incoming": timelock_block_incoming
+            "outgoing puzzlehash": puzzlehash_a.hex(),
+            "timelock time outgoing": timelock_a,
+            "timelock block height outgoing": timelock_block_a,
+            "incoming puzzlehash": puzzlehash_b,
+            "timelock time incoming": timelock_b,
+            "timelock block height incoming": timelock_block_b
     }
     as_swap_list_a.append(new_swap)
 
     # Setup for B
-    puzzlehash_incoming = puzzlehash_outgoing
-    timelock_block_incoming = timelock_block_outgoing
     tip = run(remote.get_tip())
-    timelock_block_outgoing = int(timelock_outgoing + tip["tip_index"])-2  # buffer
-    puzzlehash_outgoing = wallet_b.as_get_new_puzzlehash(b_pubkey.serialize(), a_pubkey.serialize(), amount, timelock_block_outgoing, secret_hash)
-    spend_bundle_b = wallet_b.generate_signed_transaction(amount, puzzlehash_outgoing)
+    timelock_block_b = int(timelock_b + tip["tip_index"])
+    puzzlehash_b = wallet_b.as_get_new_puzzlehash(bytes(b_pubkey), bytes(a_pubkey), amount_b, timelock_block_b, secret_hash)
+    spend_bundle_b = wallet_b.generate_signed_transaction(amount_b, puzzlehash_b)
     secret = "unknown"
 
-    assert puzzlehash_incoming != puzzlehash_outgoing
+    assert puzzlehash_b != puzzlehash_a
 
     new_swap = {
             "swap partner": "wallet_a",
             "partner pubkey": a_pubkey,
-            "amount": amount,
+            "amount_outgoing" : amount_b,
+            "amount_incoming" : amount_a,
             "secret": secret,
             "secret hash": secret_hash,
             "my swap pubkey": b_pubkey,
-            "outgoing puzzlehash": hexlify(puzzlehash_outgoing).decode('ascii'),
-            "timelock time outgoing": timelock_outgoing,
-            "timelock block height outgoing": timelock_block_outgoing,
-            "incoming puzzlehash": hexlify(puzzlehash_incoming).decode('ascii'),
-            "timelock time incoming": as_swap_list_a[len(as_swap_list_a)-1]["timelock time outgoing"],
-            "timelock block height incoming": timelock_block_incoming
+            "outgoing puzzlehash": puzzlehash_b.hex(),
+            "timelock time outgoing": timelock_b,
+            "timelock block height outgoing": timelock_block_b,
+            "incoming puzzlehash": puzzlehash_a.hex(),
+            "timelock time incoming": timelock_a,
+            "timelock block height incoming": timelock_block_a
     }
     as_swap_list_b.append(new_swap)
 
     # Finish information for wallet_a
-    as_swap_list_a[len(as_swap_list_a)-1]["incoming puzzlehash"] = hexlify(puzzlehash_outgoing).decode('ascii')
-    as_swap_list_a[len(as_swap_list_a)-1]["timelock block height incoming"] = timelock_block_outgoing
+    as_swap_list_a[len(as_swap_list_a)-1]["incoming puzzlehash"] = puzzlehash_b.hex()
+    as_swap_list_a[len(as_swap_list_a)-1]["timelock block height incoming"] = timelock_block_b
     return spend_bundle_a, spend_bundle_b
 
 
@@ -120,14 +118,14 @@ def commit_and_notify(remote, wallets, reward_recipient, as_list_list):
     i = 0
     for wallet in wallets:
         if isinstance(wallet, ASWallet):
-            spend_bundle = wallet.notify(additions, removals, as_list_list[i])
+            spend_bundle = wallet.notify(additions, removals)
         else:
             spend_bundle = wallet.notify(additions, removals)
         if spend_bundle is not None:
             for bun in spend_bundle:
                 _ = run(remote.push_tx(tx=bun))
         if as_list_list[i] != []:
-            pull_preimage(wallet, as_list_list[i], body, removals)
+            wallet.pull_preimage(body, removals)
         i = i + 1
 
 
@@ -138,8 +136,8 @@ def test_AS_standardcase():
     wallet_a = ASWallet()
     wallet_b = ASWallet()
     wallets = [wallet_a, wallet_b]
-    as_swap_list_a = []
-    as_swap_list_b = []
+    as_swap_list_a = wallet_a.as_swap_list
+    as_swap_list_b = wallet_b.as_swap_list
     as_list_list = [as_swap_list_a, as_swap_list_b]
 
     # Give money to both wallets
@@ -152,35 +150,36 @@ def test_AS_standardcase():
 
     # Start swap logic
     amount_a = 1000
+    amount_b = 5000
 
-    spend_bundle_a, spend_bundle_b = create_swap_for_two_wallet_numbers(remote, wallets, as_list_list, 0, 1, amount_a, a_pubkey, b_pubkey)
+    spend_bundle_a, spend_bundle_b = create_swap_for_two_wallet_numbers(remote, wallets, as_list_list, 0, 1, amount_a, amount_b, a_pubkey, b_pubkey)
     # Commit B's transaction
     _ = run(remote.push_tx(tx=spend_bundle_a))
     _ = run(remote.push_tx(tx=spend_bundle_b))
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
 
     assert wallet_a.current_balance == 999999000
-    assert wallet_b.current_balance == 999999000
+    assert wallet_b.current_balance == 999995000
     assert len(wallet_a.as_pending_utxos) == 2
     assert len(wallet_b.as_pending_utxos) == 2
     assert as_swap_list_b[0]["secret"] == "unknown"
 
     # Wallet A claim swap
     swap = as_swap_list_a[0]
-    spend_bundle = wallet_a.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount"], int(swap["timelock block height incoming"]), swap["secret hash"], as_pubkey_sender = swap["partner pubkey"].serialize(), as_pubkey_receiver = swap["my swap pubkey"].serialize(), who = "receiver", as_sec_to_try = swap["secret"])
+    spend_bundle = wallet_a.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount_incoming"], int(swap["timelock block height incoming"]), swap["secret hash"], as_pubkey_sender = bytes(swap["partner pubkey"]), as_pubkey_receiver = bytes(swap["my swap pubkey"]), who = "receiver", as_sec_to_try = swap["secret"])
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
-    assert wallet_b.current_balance == 999999000
-    assert wallet_a.current_balance == 1000000000
+    assert wallet_a.current_balance == 1000004000
+    assert wallet_b.current_balance == 999995000
     assert as_swap_list_b[0]["secret"] == as_swap_list_a[0]["secret"]
 
     # Wallet B claim swap
     swap = as_swap_list_b[0]
-    spend_bundle = wallet_b.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount"], int(swap["timelock block height incoming"]), swap["secret hash"], as_pubkey_sender = swap["partner pubkey"].serialize(), as_pubkey_receiver = swap["my swap pubkey"].serialize(), who = "receiver", as_sec_to_try = swap["secret"])
+    spend_bundle = wallet_b.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount_incoming"], int(swap["timelock block height incoming"]), swap["secret hash"], as_pubkey_sender = bytes(swap["partner pubkey"]), as_pubkey_receiver = bytes(swap["my swap pubkey"]), who = "receiver", as_sec_to_try = swap["secret"])
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
-    assert wallet_b.current_balance == 1000000000
-    assert wallet_a.current_balance == 1000000000
+    assert wallet_a.current_balance == 1000004000
+    assert wallet_b.current_balance == 999996000
 
 
 def test_as_claim_back():
@@ -190,8 +189,8 @@ def test_as_claim_back():
     wallet_a = ASWallet()
     wallet_b = ASWallet()
     wallets = [wallet_a, wallet_b]
-    as_swap_list_a = []
-    as_swap_list_b = []
+    as_swap_list_a = wallet_a.as_swap_list
+    as_swap_list_b = wallet_b.as_swap_list
     as_list_list = [as_swap_list_a, as_swap_list_b]
 
     # Give money to both wallets
@@ -203,26 +202,27 @@ def test_as_claim_back():
     b_pubkey = wallet_b.get_next_public_key()
 
     # Start swap logic
-    amount = 1000
+    amount_a = 1000
+    amount_b = 5000
 
-    spend_bundle_a, spend_bundle_b = create_swap_for_two_wallet_numbers(remote, wallets, as_list_list, 0, 1, amount, a_pubkey, b_pubkey)
+    spend_bundle_a, spend_bundle_b = create_swap_for_two_wallet_numbers(remote, wallets, as_list_list, 0, 1, amount_a, amount_b, a_pubkey, b_pubkey)
     # Commit B's transaction
     _ = run(remote.push_tx(tx=spend_bundle_a))
     _ = run(remote.push_tx(tx=spend_bundle_b))
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
 
     assert wallet_a.current_balance == 999999000
-    assert wallet_b.current_balance == 999999000
+    assert wallet_b.current_balance == 999995000
     assert len(wallet_a.as_pending_utxos) == 2
     assert len(wallet_b.as_pending_utxos) == 2
 
     # Wallet A tries to claim their own coin before waiting period has passed
     swap = as_swap_list_a[0]
-    spend_bundle = wallet_a.as_create_spend_bundle(swap["outgoing puzzlehash"], swap["amount"], int(swap["timelock block height outgoing"]), swap["secret hash"], as_pubkey_sender = swap["my swap pubkey"].serialize(), as_pubkey_receiver = swap["partner pubkey"].serialize(), who = "sender", as_sec_to_try = swap["secret"])
+    spend_bundle = wallet_a.as_create_spend_bundle(swap["outgoing puzzlehash"], swap["amount_outgoing"], int(swap["timelock block height outgoing"]), swap["secret hash"], as_pubkey_sender = bytes(swap["my swap pubkey"]), as_pubkey_receiver = bytes(swap["partner pubkey"]), who = "sender", as_sec_to_try = swap["secret"])
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
-    assert wallet_b.current_balance == 999999000
     assert wallet_a.current_balance == 999999000  # no new money
+    assert wallet_b.current_balance == 999995000
 
     # Wait 6 blocks
     for i in range(6):
@@ -230,14 +230,14 @@ def test_as_claim_back():
 
     # Wallet B should be able to claim back at this point and Wallet A should not be able to
     swap = as_swap_list_a[0]
-    spend_bundle = wallet_a.as_create_spend_bundle(swap["outgoing puzzlehash"], swap["amount"], int(swap["timelock block height outgoing"]), swap["secret hash"], as_pubkey_sender = swap["my swap pubkey"].serialize(), as_pubkey_receiver = swap["partner pubkey"].serialize(), who = "sender", as_sec_to_try = swap["secret"])
+    spend_bundle = wallet_a.as_create_spend_bundle(swap["outgoing puzzlehash"], swap["amount_outgoing"], int(swap["timelock block height outgoing"]), swap["secret hash"], as_pubkey_sender = bytes(swap["my swap pubkey"]), as_pubkey_receiver = bytes(swap["partner pubkey"]), who = "sender", as_sec_to_try = swap["secret"])
     _ = run(remote.push_tx(tx=spend_bundle))
     swap = as_swap_list_b[0]
-    spend_bundle = wallet_b.as_create_spend_bundle(swap["outgoing puzzlehash"], swap["amount"], int(swap["timelock block height outgoing"]), swap["secret hash"], as_pubkey_sender = swap["my swap pubkey"].serialize(), as_pubkey_receiver = swap["partner pubkey"].serialize(), who = "sender", as_sec_to_try = swap["secret"])
+    spend_bundle = wallet_b.as_create_spend_bundle(swap["outgoing puzzlehash"], swap["amount_outgoing"], int(swap["timelock block height outgoing"]), swap["secret hash"], as_pubkey_sender = bytes(swap["my swap pubkey"]), as_pubkey_receiver = bytes(swap["partner pubkey"]), who = "sender", as_sec_to_try = swap["secret"])
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
-    assert wallet_b.current_balance == 1000000000
     assert wallet_a.current_balance == 999999000
+    assert wallet_b.current_balance == 1000000000
 
     # Some time passes
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
@@ -247,7 +247,7 @@ def test_as_claim_back():
 
     # Wallet A tries to claim their own coin
     swap = as_swap_list_a[0]
-    spend_bundle = wallet_a.as_create_spend_bundle(swap["outgoing puzzlehash"], swap["amount"], int(swap["timelock block height outgoing"]), swap["secret hash"], as_pubkey_sender = swap["my swap pubkey"].serialize(), as_pubkey_receiver = swap["partner pubkey"].serialize(), who = "sender", as_sec_to_try = swap["secret"])
+    spend_bundle = wallet_a.as_create_spend_bundle(swap["outgoing puzzlehash"], swap["amount_outgoing"], int(swap["timelock block height outgoing"]), swap["secret hash"], as_pubkey_sender = bytes(swap["my swap pubkey"]), as_pubkey_receiver = bytes(swap["partner pubkey"]), who = "sender", as_sec_to_try = swap["secret"])
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
     assert wallet_b.current_balance == 1000000000
@@ -262,9 +262,9 @@ def test_multiple_concurrent_swaps():
     wallet_b = ASWallet()
     wallet_c = ASWallet()
     wallets = [wallet_a, wallet_b, wallet_c]
-    as_swap_list_a = []
-    as_swap_list_b = []
-    as_swap_list_c = []
+    as_swap_list_a = wallet_a.as_swap_list
+    as_swap_list_b = wallet_b.as_swap_list
+    as_swap_list_c = wallet_c.as_swap_list
     as_list_list = [as_swap_list_a, as_swap_list_b, as_swap_list_c]
 
     # Give money to all wallets
@@ -280,48 +280,51 @@ def test_multiple_concurrent_swaps():
     c_pubkey = wallet_c.get_next_public_key()
 
     # Start swap logic
-    amount_ab = 1000
-    amount_bc = 500
-    amount_ca = 100
+    amount_a_to_b = 100
+    amount_b_to_a = 200
+    amount_b_to_c = 3000
+    amount_c_to_b = 4000
+    amount_c_to_a = 50000
+    amount_a_to_c = 60000
 
     # Setup for AB swap
-    spend_bundle_a, spend_bundle_b = create_swap_for_two_wallet_numbers(remote, wallets, as_list_list, 0, 1, amount_ab, a_pubkey, b_pubkey)
+    spend_bundle_a, spend_bundle_b = create_swap_for_two_wallet_numbers(remote, wallets, as_list_list, 0, 1, amount_a_to_b, amount_b_to_a, a_pubkey, b_pubkey)
     # Commit transactions
     _ = run(remote.push_tx(tx=spend_bundle_a))
     _ = run(remote.push_tx(tx=spend_bundle_b))
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
 
-    assert wallet_a.current_balance == 999999000
-    assert wallet_b.current_balance == 999999000
+    assert wallet_a.current_balance == 999999900
+    assert wallet_b.current_balance == 999999800
     assert wallet_c.current_balance == 1000000000
     assert len(wallet_a.as_pending_utxos) == 2
     assert len(wallet_b.as_pending_utxos) == 2
     assert len(wallet_c.as_pending_utxos) == 0
 
     # Setup for BC swap
-    spend_bundle_a, spend_bundle_b = create_swap_for_two_wallet_numbers(remote, wallets, as_list_list, 1, 2, amount_bc, b_pubkey, c_pubkey)
+    spend_bundle_a, spend_bundle_b = create_swap_for_two_wallet_numbers(remote, wallets, as_list_list, 1, 2, amount_b_to_c, amount_c_to_b, b_pubkey, c_pubkey)
     # Commit transactions
     _ = run(remote.push_tx(tx=spend_bundle_a))
     _ = run(remote.push_tx(tx=spend_bundle_b))
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
 
-    assert wallet_a.current_balance == 999999000
-    assert wallet_b.current_balance == 999998500
-    assert wallet_c.current_balance == 999999500
+    assert wallet_a.current_balance == 999999900
+    assert wallet_b.current_balance == 999996800
+    assert wallet_c.current_balance == 999996000
     assert len(wallet_a.as_pending_utxos) == 2
     assert len(wallet_b.as_pending_utxos) == 4
     assert len(wallet_c.as_pending_utxos) == 2
 
     # Setup for CA swap
-    spend_bundle_a, spend_bundle_b = create_swap_for_two_wallet_numbers(remote, wallets, as_list_list, 2, 0, amount_ca, c_pubkey, a_pubkey)
+    spend_bundle_a, spend_bundle_b = create_swap_for_two_wallet_numbers(remote, wallets, as_list_list, 2, 0, amount_c_to_a, amount_a_to_c, c_pubkey, a_pubkey)
     # Commit transactions
     _ = run(remote.push_tx(tx=spend_bundle_a))
     _ = run(remote.push_tx(tx=spend_bundle_b))
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
 
-    assert wallet_a.current_balance == 999998900
-    assert wallet_b.current_balance == 999998500
-    assert wallet_c.current_balance == 999999400
+    assert wallet_a.current_balance == 999939900
+    assert wallet_b.current_balance == 999996800
+    assert wallet_c.current_balance == 999946000
     assert len(wallet_a.as_pending_utxos) == 4
     assert len(wallet_b.as_pending_utxos) == 4
     assert len(wallet_c.as_pending_utxos) == 4
@@ -330,47 +333,47 @@ def test_multiple_concurrent_swaps():
 
     # Wallet B claim swap BC
     swap = as_swap_list_b[1]
-    spend_bundle = wallet_b.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount"], int(swap["timelock block height incoming"]), swap["secret hash"], as_pubkey_sender = swap["partner pubkey"].serialize(), as_pubkey_receiver = swap["my swap pubkey"].serialize(), who = "receiver", as_sec_to_try = swap["secret"])
+    spend_bundle = wallet_b.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount_incoming"], int(swap["timelock block height incoming"]), swap["secret hash"], as_pubkey_sender = bytes(swap["partner pubkey"]), as_pubkey_receiver = bytes(swap["my swap pubkey"]), who = "receiver", as_sec_to_try = swap["secret"])
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
-    assert wallet_a.current_balance == 999998900
-    assert wallet_b.current_balance == 999999000
-    assert wallet_c.current_balance == 999999400
+    assert wallet_a.current_balance == 999939900
+    assert wallet_b.current_balance == 1000000800
+    assert wallet_c.current_balance == 999946000
     assert as_swap_list_c[0]["secret"] == as_swap_list_b[1]["secret"]
 
     # Wallet C claim swap CA
     swap = as_swap_list_c[1]
-    spend_bundle = wallet_c.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount"], int(swap["timelock block height incoming"]), swap["secret hash"], as_pubkey_sender = swap["partner pubkey"].serialize(), as_pubkey_receiver = swap["my swap pubkey"].serialize(), who = "receiver", as_sec_to_try = swap["secret"])
+    spend_bundle = wallet_c.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount_incoming"], int(swap["timelock block height incoming"]), swap["secret hash"], as_pubkey_sender = bytes(swap["partner pubkey"]), as_pubkey_receiver = bytes(swap["my swap pubkey"]), who = "receiver", as_sec_to_try = swap["secret"])
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
-    assert wallet_a.current_balance == 999998900
-    assert wallet_b.current_balance == 999999000
-    assert wallet_c.current_balance == 999999500
+    assert wallet_a.current_balance == 999939900
+    assert wallet_b.current_balance == 1000000800
+    assert wallet_c.current_balance == 1000006000
     assert as_swap_list_a[1]["secret"] == as_swap_list_c[1]["secret"]
 
     # Wallet C claim swap BC
     swap = as_swap_list_c[0]
-    spend_bundle = wallet_c.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount"], int(swap["timelock block height incoming"]), swap["secret hash"], as_pubkey_sender = swap["partner pubkey"].serialize(), as_pubkey_receiver = swap["my swap pubkey"].serialize(), who = "receiver", as_sec_to_try = swap["secret"])
+    spend_bundle = wallet_c.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount_incoming"], int(swap["timelock block height incoming"]), swap["secret hash"], as_pubkey_sender = bytes(swap["partner pubkey"]), as_pubkey_receiver = bytes(swap["my swap pubkey"]), who = "receiver", as_sec_to_try = swap["secret"])
     _ = run(remote.push_tx(tx=spend_bundle))
     # Wallet A claim swap AB
     swap = as_swap_list_a[0]
-    spend_bundle = wallet_a.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount"], int(swap["timelock block height incoming"]), swap["secret hash"], as_pubkey_sender = swap["partner pubkey"].serialize(), as_pubkey_receiver = swap["my swap pubkey"].serialize(), who = "receiver", as_sec_to_try = swap["secret"])
+    spend_bundle = wallet_a.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount_incoming"], int(swap["timelock block height incoming"]), swap["secret hash"], as_pubkey_sender = bytes(swap["partner pubkey"]), as_pubkey_receiver = bytes(swap["my swap pubkey"]), who = "receiver", as_sec_to_try = swap["secret"])
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
-    assert wallet_a.current_balance == 999999900
-    assert wallet_b.current_balance == 999999000
-    assert wallet_c.current_balance == 1000000000
+    assert wallet_a.current_balance == 999940100
+    assert wallet_b.current_balance == 1000000800
+    assert wallet_c.current_balance == 1000009000
     assert as_swap_list_a[0]["secret"] == as_swap_list_b[0]["secret"]
 
     # Wallet B claim swap AB
     swap = as_swap_list_b[0]
-    spend_bundle = wallet_b.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount"], int(swap["timelock block height incoming"]), swap["secret hash"], as_pubkey_sender = swap["partner pubkey"].serialize(), as_pubkey_receiver = swap["my swap pubkey"].serialize(), who = "receiver", as_sec_to_try = swap["secret"])
+    spend_bundle = wallet_b.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount_incoming"], int(swap["timelock block height incoming"]), swap["secret hash"], as_pubkey_sender = bytes(swap["partner pubkey"]), as_pubkey_receiver = bytes(swap["my swap pubkey"]), who = "receiver", as_sec_to_try = swap["secret"])
     _ = run(remote.push_tx(tx=spend_bundle))
-
+    # Wallet A claim swap CA
     swap = as_swap_list_a[1]
-    spend_bundle = wallet_a.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount"], int(swap["timelock block height incoming"]), swap["secret hash"], as_pubkey_sender = swap["partner pubkey"].serialize(), as_pubkey_receiver = swap["my swap pubkey"].serialize(), who = "receiver", as_sec_to_try = swap["secret"])
+    spend_bundle = wallet_a.as_create_spend_bundle(swap["incoming puzzlehash"], swap["amount_incoming"], int(swap["timelock block height incoming"]), swap["secret hash"], as_pubkey_sender = bytes(swap["partner pubkey"]), as_pubkey_receiver = bytes(swap["my swap pubkey"]), who = "receiver", as_sec_to_try = swap["secret"])
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, ASWallet(), as_list_list)
-    assert wallet_a.current_balance == 1000000000
-    assert wallet_b.current_balance == 1000000000
-    assert wallet_c.current_balance == 1000000000
+    assert wallet_a.current_balance == 999990100
+    assert wallet_b.current_balance == 1000000900
+    assert wallet_c.current_balance == 1000009000

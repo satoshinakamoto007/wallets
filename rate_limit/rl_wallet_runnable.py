@@ -2,12 +2,11 @@ import asyncio
 from rate_limit.rl_wallet import RLWallet
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
-from chiasim.hashable import Coin
+from chiasim.hashable import BLSPublicKey, Coin
 from chiasim.hashable.Body import BodyList
 from utilities.decorations import print_leaf, divider, prompt
 from chiasim.hashable import ProgramHash
 from binascii import hexlify
-from blspy import PublicKey
 from chiasim.atoms import hexbytes
 
 
@@ -91,7 +90,7 @@ async def create_rl_coin(wallet, ledger_api):
     print("\nPaste Initialization string to the receiver")
     print("Press Enter to continue:")
     input(prompt)
-    pubkey = PublicKey.from_bytes(bytes.fromhex(pubkey)).serialize()
+    pubkey = bytes(BLSPublicKey.from_bytes(bytes.fromhex(pubkey)))
     rl_puzzle = wallet.rl_puzzle_for_pk(pubkey, rate, interval, origin.name(), my_pubkey)
     rl_puzzlehash = ProgramHash(rl_puzzle)
     wallet.clawback_puzzlehash = rl_puzzlehash
@@ -111,7 +110,7 @@ async def spend_rl_coin(wallet, ledger_api):
         print("Available rate limited coin balance is 0!")
         return
     receiver_pubkey = input("Enter receiver's pubkey: 0x")
-    receiver_pubkey = PublicKey.from_bytes(bytes.fromhex(receiver_pubkey)).serialize()
+    receiver_pubkey = bytes(BLSPublicKey.from_bytes(bytes.fromhex(receiver_pubkey)))
     amount = -1
     while amount > wallet.current_rl_balance or amount < 0:
         amount = input("Enter amount to give recipient: ")
