@@ -2,6 +2,9 @@ import asyncio
 import pathlib
 import tempfile
 from aiter import map_aiter
+from chiasim.farming import best_solution_program
+from chiasim.utils.run_program import run_program
+
 from standard_wallet.wallet import Wallet
 from rate_limit.rl_wallet import RLWallet
 from chiasim.utils.log import init_logging
@@ -94,6 +97,7 @@ def test_rl_spend():
     # wallet A is normal wallet, it sends coin that's rate limited to wallet B
     amount = 5000
     spend_bundle = wallet_a.generate_signed_transaction_with_origin(amount, rl_puzzlehash, origin_coin.name())
+
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
 
@@ -109,6 +113,9 @@ def test_rl_spend():
 
     amount = 20
     spend_bundle = wallet_b.rl_generate_signed_transaction(amount, wallet_c.get_new_puzzlehash())
+    program = best_solution_program(spend_bundle)
+    cost, sexp = run_program(program, [])
+    breakpoint()
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
 
