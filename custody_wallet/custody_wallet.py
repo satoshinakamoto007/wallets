@@ -46,7 +46,7 @@ class CPWallet(Wallet):
         if self.pubkey_permission is None:
             return None
         return any(map(lambda child: hash == ProgramHash(self.cp_puzzle(
-            hexbytes(self.extended_secret_key.public_child(child).get_public_key().serialize()), self.pubkey_permission, self.unlock_time)),
+            hexbytes(self.extended_secret_key.public_child(child)), self.pubkey_permission, self.unlock_time)),
                        reversed(range(self.next_address))))
 
     def merge_two_lists(self, list1=None, list2=None):
@@ -91,18 +91,16 @@ class CPWallet(Wallet):
         if s is not None:
             return s
         for child in reversed(range(self.next_address)):
-            pubkey = self.extended_secret_key.public_child(
-                child).get_public_key()
+            pubkey = self.extended_secret_key.public_child(child)
             if hash == ProgramHash(
-                    self.cp_puzzle(hexbytes(pubkey.serialize()), self.pubkey_permission, self.unlock_time)):
-                return pubkey, self.extended_secret_key.private_child(child).get_private_key()
+                    self.cp_puzzle(hexbytes(pubkey), self.pubkey_permission, self.unlock_time)):
+                return pubkey, self.extended_secret_key.private_child(child)
 
     def get_keys_pk(self, approval_pubkey):
         for child in reversed(range(self.next_address)):
-            pubkey = self.extended_secret_key.public_child(
-                child).get_public_key()
-            if hexbytes(pubkey.serialize()) == approval_pubkey:
-                return pubkey, self.extended_secret_key.private_child(child).get_private_key()
+            pubkey = self.extended_secret_key.public_child(child)
+            if hexbytes(pubkey) == approval_pubkey:
+                return pubkey, self.extended_secret_key.private_child(child)
 
     def cp_generate_unsigned_transaction(self, new_puzzle_hash, amount, mode):
         outputs = []
@@ -115,7 +113,7 @@ class CPWallet(Wallet):
         spends = []
         puzzle_hash = self.cp_coin.puzzle_hash
         pubkey, secretkey = self.get_keys(puzzle_hash)
-        puzzle = self.cp_puzzle(hexbytes(pubkey.serialize()), self.pubkey_permission, self.unlock_time)
+        puzzle = self.cp_puzzle(hexbytes(pubkey), self.pubkey_permission, self.unlock_time)
         if mode == 1:
             solution = self.solution_for_cp_solo(outputs)
         else:
@@ -141,7 +139,6 @@ class CPWallet(Wallet):
 
     def cp_approval_signature_for_transaction(self, solution):
         pubkey, secretkey = self.get_keys_pk(self.pubkey_approval)
-        secretkey = BLSPrivateKey(secretkey)
         signature = secretkey.sign(ProgramHash(Program(solution)))
         return signature
 
@@ -150,7 +147,6 @@ class CPWallet(Wallet):
         for puzzle, solution in spends:
             pubkey, secretkey = self.get_keys(
                 solution.coin.puzzle_hash)
-            secretkey = BLSPrivateKey(secretkey)
             signature = secretkey.sign(
                 ProgramHash(Program(solution.solution)))
             sigs.append(signature)

@@ -69,8 +69,8 @@ def test_cp_receive():
     wallet_b = CPWallet()
     wallet_c = CPWallet()
     wallets = [wallet_a, wallet_b, wallet_c]
-    pub_a = hexbytes(wallet_a.get_next_public_key().serialize())
-    pub_b = hexbytes(wallet_b.get_next_public_key().serialize())
+    pub_a = hexbytes(wallet_a.get_next_public_key())
+    pub_b = hexbytes(wallet_b.get_next_public_key())
     wallet_b.pubkey_permission = pub_a
     wallet_b.unlock_time = 100
     b_puzzle = wallet_b.cp_puzzle(pub_b, pub_a, 100)
@@ -100,8 +100,8 @@ def test_cp_send_solo():
     wallet_b = CPWallet()
     wallet_c = CPWallet()
     wallets = [wallet_a, wallet_b, wallet_c]
-    pub_a = hexbytes(wallet_a.get_next_public_key().serialize())
-    pub_b = hexbytes(wallet_b.get_next_public_key().serialize())
+    pub_a = hexbytes(wallet_a.get_next_public_key())
+    pub_b = hexbytes(wallet_b.get_next_public_key())
     wallet_b.pubkey_permission = pub_a
     wallet_b.unlock_time = 3
     b_puzzle = wallet_b.cp_puzzle(pub_b, pub_a, 3)
@@ -144,8 +144,8 @@ def test_cp_send_solo_fail():
     wallet_b = CPWallet()
     wallet_c = CPWallet()
     wallets = [wallet_a, wallet_b, wallet_c]
-    pub_a = hexbytes(wallet_a.get_next_public_key().serialize())
-    pub_b = hexbytes(wallet_b.get_next_public_key().serialize())
+    pub_a = hexbytes(wallet_a.get_next_public_key())
+    pub_b = hexbytes(wallet_b.get_next_public_key())
     wallet_b.pubkey_permission = pub_a
     wallet_b.unlock_time = 3
     b_puzzle = wallet_b.cp_puzzle(pub_b, pub_a, 3)
@@ -185,8 +185,8 @@ def test_cp_with_permission():
     wallet_b = CPWallet()
     wallet_c = CPWallet()
     wallets = [wallet_a, wallet_b, wallet_c]
-    pub_a = hexbytes(wallet_a.get_next_public_key().serialize())
-    pub_b = hexbytes(wallet_b.get_next_public_key().serialize())
+    pub_a = hexbytes(wallet_a.get_next_public_key())
+    pub_b = hexbytes(wallet_b.get_next_public_key())
     unlock_time = 5
     wallet_b.pubkey_permission = pub_a
     wallet_b.unlock_time = unlock_time
@@ -233,8 +233,8 @@ def test_cp_without_permission():
     wallet_b = CPWallet()
     wallet_c = CPWallet()
     wallets = [wallet_a, wallet_b, wallet_c]
-    pub_a = hexbytes(wallet_a.get_next_public_key().serialize())
-    pub_b = hexbytes(wallet_b.get_next_public_key().serialize())
+    pub_a = hexbytes(wallet_a.get_next_public_key())
+    pub_b = hexbytes(wallet_b.get_next_public_key())
     unlock_time = 5
     wallet_b.pubkey_permission = pub_a
     wallet_b.unlock_time = unlock_time
