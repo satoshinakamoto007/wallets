@@ -158,8 +158,7 @@ class CCWallet(Wallet):
         # Eve spend
         coin = Coin(coin, ProgramHash(newpuzzle), 0)
         solution = self.cc_make_solution(core, coin.parent_coin_info, coin.amount, binutils.disassemble(innerpuz), "((q ()) ())", None, None)
-        aggsig = BLSSignature.aggregate([])
-        eve_spend = SpendBundle([CoinSolution(coin, clvm.to_sexp_f([newpuzzle, solution]))], aggsig)
+        eve_spend = SpendBundle([CoinSolution(coin, clvm.to_sexp_f([newpuzzle, solution]))], BLSSignature.aggregate([]))
         spend_bundle = spend_bundle.aggregate([spend_bundle, eve_spend])
         self.parent_info[coin.name()] = (coin.parent_coin_info, coin.puzzle_hash, coin.amount)
         self.eve_coloured_coins[Coin(coin, coin.puzzle_hash, coin.amount)] = (innerpuz, core)
