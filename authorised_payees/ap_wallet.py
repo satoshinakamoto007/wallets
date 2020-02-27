@@ -4,10 +4,11 @@ from chiasim.hashable import Program, ProgramHash, CoinSolution, SpendBundle, BL
 from chiasim.hashable.Coin import Coin
 from chiasim.hashable.CoinSolution import CoinSolutionList
 from clvm_tools import binutils
-from chiasim.puzzles.p2_delegated_puzzle import puzzle_for_pk
 from .ap_wallet_a_functions import ap_make_puzzle, ap_make_aggregation_puzzle
 from utilities.puzzle_utilities import puzzlehash_from_string
 from chiasim.validation.Conditions import ConditionOpcode
+
+from puzzles.p2_delegated_puzzle import puzzle_for_pk
 
 
 class APWallet(Wallet):

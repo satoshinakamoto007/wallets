@@ -6,6 +6,8 @@ from chiasim.wallet.keychain import Keychain
 
 from .BLSHDKey import BLSPrivateHDKey
 
+from puzzles import p2_delegated_puzzle
+
 
 HIERARCHICAL_PRIVATE_KEY = BLSPrivateHDKey.from_seed(b"foo")
 
