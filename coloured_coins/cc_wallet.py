@@ -481,8 +481,8 @@ class CCWallet(Wallet):
                     parent_info[0] = parent_info[0].replace('(','')
                     parent_info[2] = parent_info[2].replace(')','')
                     spendslist.append((coinsol.coin, parent_info, out_amount, innersol, ProgramHash(Program(innerpuzzlereveal))))
-                #else:
-                    #coinsols.append(coinsol)
+                else:
+                    coinsols.append(coinsol)
             else:  # standard chia coin
                 chia_discrepancy += self.get_output_discrepancy_for_puzzle_and_solution(coinsol.coin, puzzle, solution)
                 coinsols.append(coinsol)

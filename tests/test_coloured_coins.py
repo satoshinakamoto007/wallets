@@ -344,7 +344,6 @@ def test_partial_spend_market():
     wallet_b = CCWallet()
     wallets = [wallet_a, wallet_b]
     commit_and_notify(remote, wallets, wallet_a)
-
     # Wallet A generates some genesis coins to itself.
     amounts = [10000, 500, 1000]
     spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amounts)
@@ -442,3 +441,41 @@ def test_trade_with_zero_val():
     commit_and_notify(remote, wallets, Wallet())
     assert list(wallet_b.my_coloured_coins.keys()).copy().pop().amount == 100
     assert wallet_a.current_balance == 999999100
+
+
+def test_zero_val_no_trade():
+    remote = make_client_server()
+    run = asyncio.get_event_loop().run_until_complete
+
+    wallet_a = CCWallet()
+    wallet_b = CCWallet()
+    wallets = [wallet_a, wallet_b]
+    commit_and_notify(remote, wallets, wallet_a)
+    # Wallet A generates a genesis coins to itself.
+    amounts = [1000]
+    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amounts)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, wallet_b)
+    assert len(wallet_a.my_coloured_coins) == 1
+    assert wallet_a.current_balance == 999999000
+
+    coins = list(wallet_a.my_coloured_coins.keys()).copy()
+    core = wallet_a.my_coloured_coins[coins[0]][1]
+    wallet_b.cc_add_core(core)
+
+    # Wallet B makes a zero val copy of A's colour
+
+    spend_bundle = wallet_b.cc_create_zero_val_for_core(core)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert len(wallet_b.my_coloured_coins) == 1
+    coin = list(wallet_b.my_coloured_coins.keys()).copy().pop()
+    assert coin.amount == 0
+    innersol = wallet_b.make_solution(primaries=[{'puzzlehash': wallet_a.get_new_puzzlehash(), 'amount': 0}])
+
+    sigs = wallet_b.get_sigs_for_innerpuz_with_innersol(wallet_b.my_coloured_coins[coin][0], innersol)
+
+    spend_bundle = wallet_b.cc_generate_spends_for_coin_list([(coin, wallet_b.parent_info[coin.parent_coin_info], 0, innersol)], sigs)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert len(wallet_a.my_coloured_coins) == 2
