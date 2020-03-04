@@ -438,6 +438,7 @@ class CCWallet(Wallet):
         spend_value = sum([coin.amount for coin in utxos])
         chia_amount = spend_value + chia_amount
         output_created = None
+        sigs = []
         for coin in utxos:
             pubkey, secretkey = self.get_keys(coin.puzzle_hash)
             puzzle = self.puzzle_for_pk(bytes(pubkey))
@@ -448,7 +449,7 @@ class CCWallet(Wallet):
             else:
                 solution = self.make_solution(consumed=[output_created.name()])
             list_of_solutions.append(CoinSolution(coin, clvm.to_sexp_f([puzzle, solution])))
-            sigs = self.get_sigs_for_innerpuz_with_innersol(puzzle, solution)
+            sigs = sigs + self.get_sigs_for_innerpuz_with_innersol(puzzle, solution)
 
         solution_list = CoinSolutionList(list_of_solutions)
         aggsig = BLSSignature.aggregate(sigs)
