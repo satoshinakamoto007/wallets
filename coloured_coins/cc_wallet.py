@@ -337,7 +337,7 @@ class CCWallet(Wallet):
                 coins.append(x)
             if sum(y.amount for y in coins) >= amount:
                 break
-        if sum(y.amount for y in coins) < amount:
+        if sum(y.amount for y in coins) < amount or coins == []:
             return None
         return coins
 
@@ -400,15 +400,6 @@ class CCWallet(Wallet):
         else:
             cc_spends = self.cc_select_coins_for_colour(self.get_genesis_from_core(core), 0)
 
-        if cc_spends is None and cc_amount >= 0:
-            spend_bundle = self.cc_create_zero_val_for_core(core)
-            if spend_bundle is None:
-                return None
-            for coinsol in spend_bundle.coin_solutions:
-                if coinsol.coin.name() in self.parent_info:
-                    if len(self.parent_info[coinsol.coin.name()]) == 3:
-                        cc_spends = [Coin(coinsol.coin, coinsol.coin.puzzle_hash, coinsol.coin.amount)]
-                        break
         if cc_spends is None:
             return None
 
@@ -455,7 +446,9 @@ class CCWallet(Wallet):
             puzzle = self.puzzle_for_pk(bytes(pubkey))
             if output_created is None:
                 newpuzhash = self.get_new_puzzlehash()
-                solution = self.make_solution(primaries=[{'puzzlehash': newpuzhash, 'amount': chia_amount}])
+                primaries = [{'puzzlehash': newpuzhash, 'amount': chia_amount}]
+                self.temp_utxos.add(Coin(coin, newpuzhash, chia_amount))
+                solution = self.make_solution(primaries=primaries)
                 output_created = coin
             else:
                 solution = self.make_solution(consumed=[output_created.name()])
@@ -502,7 +495,7 @@ class CCWallet(Wallet):
                         spendslist[colour].append((coinsol.coin, parent_info, out_amount, innersol, ProgramHash(Program(innerpuzzlereveal))))
                     else:
                         spendslist[colour] = [(coinsol.coin, parent_info, out_amount, innersol, ProgramHash(Program(innerpuzzlereveal)))]
-                else:  # Eve spend
+                else:  # Eve spend - TODO remove support for 0 generation "not my problem"
                     coinsols.append(coinsol)
             else:  # standard chia coin
                 chia_discrepancy += self.get_output_discrepancy_for_puzzle_and_solution(coinsol.coin, puzzle, solution)
