@@ -370,20 +370,26 @@ class CCWallet(Wallet):
             sigs.append(signature)
         return sigs
 
-    def create_trade_offer(self, list):
-        # list is [] of (relativeamount, core)
+    def create_trade_offer(self, trade_list):
+        # trade_list is [] of (relativeamount, core)
         spend_bundle = None
-        for amountcore in list:
+        for amountcore in trade_list:
             if amountcore[1] is None:
+                new_spend_bundle = self.create_spend_bundle_relative_chia(amountcore[0])
+                if new_spend_bundle is None:
+                    return None
                 if spend_bundle is None:
-                    spend_bundle = self.create_spend_bundle_relative_chia(amountcore[0])
+                    spend_bundle = new_spend_bundle
                 else:
-                    spend_bundle = spend_bundle.aggregate([spend_bundle, self.create_spend_bundle_relative_chia(amountcore[0])])
+                    spend_bundle = spend_bundle.aggregate([spend_bundle, new_spend_bundle])
             else:
+                new_spend_bundle = self.create_spend_bundle_relative_core(amountcore[0], amountcore[1])
+                if new_spend_bundle is None:
+                    return None
                 if spend_bundle is None:
-                    spend_bundle = self.create_spend_bundle_relative_core(amountcore[0], amountcore[1])
+                    spend_bundle = new_spend_bundle
                 else:
-                    spend_bundle = spend_bundle.aggregate([spend_bundle, self.create_spend_bundle_relative_core(amountcore[0], amountcore[1])])
+                    spend_bundle = spend_bundle.aggregate([spend_bundle, new_spend_bundle])
         return spend_bundle
 
     def create_spend_bundle_relative_core(self, cc_amount, core):
@@ -395,13 +401,16 @@ class CCWallet(Wallet):
             cc_spends = self.cc_select_coins_for_colour(self.get_genesis_from_core(core), 0)
 
         if cc_spends is None and cc_amount >= 0:
-            breakpoint()
             spend_bundle = self.cc_create_zero_val_for_core(core)
+            if spend_bundle is None:
+                return None
             for coinsol in spend_bundle.coin_solutions:
                 if coinsol.coin.name() in self.parent_info:
                     if len(self.parent_info[coinsol.coin.name()]) == 3:
                         cc_spends = [Coin(coinsol.coin, coinsol.coin.puzzle_hash, coinsol.coin.amount)]
                         break
+        if cc_spends is None:
+            return None
 
         spend_value = sum([coin.amount for coin in cc_spends])
         cc_amount = spend_value + cc_amount
@@ -435,6 +444,8 @@ class CCWallet(Wallet):
         list_of_solutions = []
         # standard coin CoinSolution generation
         utxos = self.select_coins(abs(chia_amount))
+        if utxos is None:
+            return None
         spend_value = sum([coin.amount for coin in utxos])
         chia_amount = spend_value + chia_amount
         output_created = None
@@ -456,15 +467,14 @@ class CCWallet(Wallet):
         spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle
 
-
     # Take an incomplete SpendBundle, fill in auditor information and add missing amounts
     def parse_trade_offer(self, trade_offer):
         coinsols = []  # [] of CoinSolutions
-        cc_coinsol_outamounts = []
+        cc_coinsol_outamounts = dict()
         # spendslist is [] of (coin, parent_info, outputamount, innersol, innerpuzzlehash=None)
-        spendslist = []  # used for generating auditor solution
+        spendslist = dict()  # used for generating auditor solution
         aggsig = trade_offer.aggregated_signature
-        cc_discrepancy = 0
+        cc_discrepancy = dict()
         chia_discrepancy = 0
         for coinsol in trade_offer.coin_solutions:
             puzzle = coinsol.solution.first()
@@ -474,15 +484,25 @@ class CCWallet(Wallet):
             if self.check_is_cc_puzzle(puzzle):
                 parent_info = binutils.disassemble(solution.rest().first()).split(' ')
                 if len(parent_info) > 1:
+                    colour = self.get_genesis_from_puzzle(binutils.disassemble(puzzle))
                     innerpuzzlereveal = solution.rest().rest().rest().first()
                     innersol = solution.rest().rest().rest().rest().first()
                     out_amount = self.get_output_amount_for_puzzle_and_solution(innerpuzzlereveal, innersol)
-                    cc_discrepancy += coinsol.coin.amount - out_amount
-                    cc_coinsol_outamounts.append((coinsol, out_amount))
+                    if colour in cc_discrepancy:
+                        cc_discrepancy[colour] += coinsol.coin.amount - out_amount
+                    else:
+                        cc_discrepancy[colour] = coinsol.coin.amount - out_amount
+                    if colour in cc_coinsol_outamounts:
+                        cc_coinsol_outamounts[colour].append((coinsol, out_amount))
+                    else:
+                        cc_coinsol_outamounts[colour] = [(coinsol, out_amount)]
                     parent_info[0] = parent_info[0].replace('(','')
                     parent_info[2] = parent_info[2].replace(')','')
-                    spendslist.append((coinsol.coin, parent_info, out_amount, innersol, ProgramHash(Program(innerpuzzlereveal))))
-                else:
+                    if colour in spendslist:
+                        spendslist[colour].append((coinsol.coin, parent_info, out_amount, innersol, ProgramHash(Program(innerpuzzlereveal))))
+                    else:
+                        spendslist[colour] = [(coinsol.coin, parent_info, out_amount, innersol, ProgramHash(Program(innerpuzzlereveal)))]
+                else:  # Eve spend
                     coinsols.append(coinsol)
             else:  # standard chia coin
                 chia_discrepancy += self.get_output_discrepancy_for_puzzle_and_solution(coinsol.coin, puzzle, solution)
@@ -512,49 +532,50 @@ class CCWallet(Wallet):
         coinsols.append(CoinSolution(chia_coin, clvm.to_sexp_f([puzzle, solution])))
 
         # create coloured coin
-        coloured_coin = None
-        if cc_discrepancy < 0:
-            for utxo in list(self.my_coloured_coins.keys()):
-                if utxo.amount + cc_discrepancy >= 0:
-                    coloured_coin = utxo
-                    break
-        else:
-            coloured_coin = list(self.my_coloured_coins.keys()).copy().pop()
+        for colour in cc_discrepancy.keys():
+            coloured_coin = None
+            if cc_discrepancy[colour] < 0:
+                for utxo in list(self.my_coloured_coins.keys()):
+                    if utxo.amount + cc_discrepancy[colour] >= 0:
+                        coloured_coin = utxo
+                        break
+            else:
+                coloured_coin = list(self.my_coloured_coins.keys()).copy().pop()
 
-        if coloured_coin is None:
-            return None
-        # TODO: support multiple coloured coins in same spend
+            if coloured_coin is None:
+                return None
+            # TODO: support multiple coloured coins in same spend
 
-        newinnerpuzhash = self.get_new_puzzlehash()
-        outputamount = coloured_coin.amount + cc_discrepancy
-        innersol = self.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': outputamount}])
-        sig = self.get_sigs_for_innerpuz_with_innersol(self.my_coloured_coins[coloured_coin][0], innersol)
-        aggsig = BLSSignature.aggregate([BLSSignature.aggregate(sig), aggsig])
+            newinnerpuzhash = self.get_new_puzzlehash()
+            outputamount = coloured_coin.amount + cc_discrepancy[colour]
+            innersol = self.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': outputamount}])
+            sig = self.get_sigs_for_innerpuz_with_innersol(self.my_coloured_coins[coloured_coin][0], innersol)
+            aggsig = BLSSignature.aggregate([BLSSignature.aggregate(sig), aggsig])
 
-        # now to make solution so that cc_coinsols and new coin play nicely
+            # now to make solution so that cc_coinsols and new coin play nicely
 
-        spendslist.append((coloured_coin, self.parent_info[coloured_coin.parent_coin_info], outputamount, innersol))
-        auditor = coloured_coin
-        core = self.my_coloured_coins[auditor][1]
-        auditor_info = (auditor.parent_coin_info, ProgramHash(self.my_coloured_coins[auditor][0]), auditor.amount)
-        auditor_formatted = f"(0x{auditor.parent_coin_info} 0x{ProgramHash(self.my_coloured_coins[auditor][0])} {auditor.amount})"
-        innerpuz = binutils.disassemble(self.my_coloured_coins[coloured_coin][0])
+            spendslist[colour].append((coloured_coin, self.parent_info[coloured_coin.parent_coin_info], outputamount, innersol))
+            auditor = coloured_coin
+            core = self.my_coloured_coins[auditor][1]
+            auditor_info = (auditor.parent_coin_info, ProgramHash(self.my_coloured_coins[auditor][0]), auditor.amount)
+            auditor_formatted = f"(0x{auditor.parent_coin_info} 0x{ProgramHash(self.my_coloured_coins[auditor][0])} {auditor.amount})"
+            innerpuz = binutils.disassemble(self.my_coloured_coins[coloured_coin][0])
 
-        for cc_coinsol_out in cc_coinsol_outamounts:
-            cc_coinsol = cc_coinsol_out[0]
-            offer_sol = binutils.disassemble(cc_coinsol.solution)
-            # auditor is (primary_input, innerpuzzlehash, amount)
-            offer_sol = offer_sol.replace("))) ()) () ()))", f"))) ()) {auditor_formatted} ()))")
-            new_coinsol = CoinSolution(cc_coinsol.coin, binutils.assemble(offer_sol))
-            coinsols.append(new_coinsol)
-            coinsols.append(self.create_spend_for_ephemeral(cc_coinsol.coin, auditor, cc_coinsol_out[1]))
-            coinsols.append(self.create_spend_for_auditor(auditor, cc_coinsol.coin))
+            for cc_coinsol_out in cc_coinsol_outamounts[colour]:
+                cc_coinsol = cc_coinsol_out[0]
+                offer_sol = binutils.disassemble(cc_coinsol.solution)
+                # auditor is (primary_input, innerpuzzlehash, amount)
+                offer_sol = offer_sol.replace("))) ()) () ()))", f"))) ()) {auditor_formatted} ()))")
+                new_coinsol = CoinSolution(cc_coinsol.coin, binutils.assemble(offer_sol))
+                coinsols.append(new_coinsol)
+                coinsols.append(self.create_spend_for_ephemeral(cc_coinsol.coin, auditor, cc_coinsol_out[1]))
+                coinsols.append(self.create_spend_for_auditor(auditor, cc_coinsol.coin))
 
-        parent_info = self.parent_info[coloured_coin.parent_coin_info]
-        solution = self.cc_make_solution(core, parent_info, coloured_coin.amount, innerpuz, binutils.disassemble(innersol), auditor_info, spendslist)
-        coinsols.append(CoinSolution(coloured_coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coloured_coin][0]), core), solution])))
-        coinsols.append(self.create_spend_for_ephemeral(coloured_coin, auditor, outputamount))
-        coinsols.append(self.create_spend_for_auditor(auditor, coloured_coin))
+            parent_info = self.parent_info[coloured_coin.parent_coin_info]
+            solution = self.cc_make_solution(core, parent_info, coloured_coin.amount, innerpuz, binutils.disassemble(innersol), auditor_info, spendslist[colour])
+            coinsols.append(CoinSolution(coloured_coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coloured_coin][0]), core), solution])))
+            coinsols.append(self.create_spend_for_ephemeral(coloured_coin, auditor, outputamount))
+            coinsols.append(self.create_spend_for_auditor(auditor, coloured_coin))
         solution_list = CoinSolutionList(coinsols)
         spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle
