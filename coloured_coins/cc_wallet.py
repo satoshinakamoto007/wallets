@@ -333,9 +333,10 @@ class CCWallet(Wallet):
     def cc_select_coins_for_colour(self, colour, amount):
         coins = []
         for x in list(self.my_coloured_coins.keys()):
+            #breakpoint()
             if self.get_genesis_from_core(self.my_coloured_coins[x][1]) == colour:
                 coins.append(x)
-            if sum(y.amount for y in coins) >= amount:
+            if sum(y.amount for y in coins) >= amount and coins != []:
                 break
         if sum(y.amount for y in coins) < amount or coins == []:
             return None
@@ -399,7 +400,6 @@ class CCWallet(Wallet):
             cc_spends = self.cc_select_coins_for_colour(self.get_genesis_from_core(core), abs(cc_amount))
         else:
             cc_spends = self.cc_select_coins_for_colour(self.get_genesis_from_core(core), 0)
-
         if cc_spends is None:
             return None
 

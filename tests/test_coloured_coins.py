@@ -481,40 +481,52 @@ def test_zero_val_no_trade():
     assert len(wallet_a.my_coloured_coins) == 2
 
 
-# def test_trade_multiple_colours():
-#     remote = make_client_server()
-#     run = asyncio.get_event_loop().run_until_complete
-#
-#     wallet_a = CCWallet()
-#     wallet_b = CCWallet()
-#     wallets = [wallet_a, wallet_b]
-#     commit_and_notify(remote, wallets, wallet_a)
-#
-#     # Wallet A generates a set of genesis coins to itself.
-#     amounts = [100, 200, 300, 400]
-#     spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amounts)
-#     _ = run(remote.push_tx(tx=spend_bundle))
-#     commit_and_notify(remote, wallets, wallet_b)
-#     assert len(wallet_a.my_coloured_coins) == 4
-#     assert wallet_a.current_balance == 999999000
-#
-#     coins = list(wallet_a.my_coloured_coins.keys()).copy()
-#     core_a = wallet_a.my_coloured_coins[coins[0]][1]
-#     wallet_b.cc_add_core(core_a)
-#
-#     # Wallet B generates a new set of genesis coins to itself.
-#     amounts = [400, 500, 600]
-#     spend_bundle = wallet_b.cc_generate_spend_for_genesis_coins(amounts)
-#     _ = run(remote.push_tx(tx=spend_bundle))
-#     commit_and_notify(remote, wallets, Wallet())
-#     assert len(wallet_b.my_coloured_coins) == 3
-#     assert wallet_b.current_balance == 999998500
+def test_trade_multiple_colours():
+    remote = make_client_server()
+    run = asyncio.get_event_loop().run_until_complete
+
+    wallet_a = CCWallet()
+    wallet_b = CCWallet()
+    wallets = [wallet_a, wallet_b]
+    commit_and_notify(remote, wallets, wallet_a)
+
+    # Wallet A generates a set of genesis coins to itself.
+    amounts = [100, 200, 300, 400]
+    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amounts)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, wallet_b)
+    assert len(wallet_a.my_coloured_coins) == 4
+    assert wallet_a.current_balance == 999999000
 
     coins = list(wallet_a.my_coloured_coins.keys()).copy()
-    core_b = wallet_a.my_coloured_coins[coins[0]][1]
+    core_a = wallet_a.my_coloured_coins[coins[0]][1]
+    wallet_b.cc_add_core(core_a)
+
+    # Wallet B generates a new set of genesis coins to itself.
+    amounts = [400, 500, 600]
+    spend_bundle = wallet_b.cc_generate_spend_for_genesis_coins(amounts)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert len(wallet_b.my_coloured_coins) == 3
+    assert wallet_b.current_balance == 999998500
+
+    coins = list(wallet_b.my_coloured_coins.keys()).copy()
+    core_b = wallet_b.my_coloured_coins[coins[0]][1]
     wallet_a.cc_add_core(core_b)
 
-    # Create market trade (-100 chia, +100 coloured coin)
+    # Wallet B makes a zero val copy of A's colour
+
+    spend_bundle = wallet_b.cc_create_zero_val_for_core(core_a)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+
+    # Wallet A makes a zero val copy of B's colour
+
+    spend_bundle = wallet_a.cc_create_zero_val_for_core(core_b)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+
+    # Create market trade (-150 colour b, +100 colour a)
     trade_offer = wallet_b.create_trade_offer([(-150, core_b), (900, core_a)])
     trade_offer_hex = bytes(trade_offer).hex()
 
