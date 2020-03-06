@@ -535,5 +535,8 @@ def test_trade_multiple_colours():
     _ = run(remote.push_tx(tx=spend_bundle))
 
     commit_and_notify(remote, wallets, Wallet())
+    #breakpoint()
     assert wallet_a.current_balance == 999999000
     assert wallet_b.current_balance == 999998500
+    assert wallet_a.cc_select_coins_for_colour(wallet_a.get_genesis_from_core(core_b), 100) is not None
+    assert wallet_b.cc_select_coins_for_colour(wallet_b.get_genesis_from_core(core_a), 100) is not None

@@ -527,32 +527,34 @@ class CCWallet(Wallet):
         # create coloured coin
         for colour in cc_discrepancy.keys():
             coloured_coin = None
+
             if cc_discrepancy[colour] < 0:
-                for utxo in list(self.my_coloured_coins.keys()):
-                    if utxo.amount + cc_discrepancy[colour] >= 0:
-                        coloured_coin = utxo
-                        break
+                my_cc_spends = self.cc_select_coins_for_colour(colour, abs(cc_discrepancy[colour]))
             else:
-                coloured_coin = list(self.my_coloured_coins.keys()).copy().pop()
+                my_cc_spends = self.cc_select_coins_for_colour(colour, 0)
 
-            if coloured_coin is None:
+            if my_cc_spends == [] or my_cc_spends is None:
+                # TODO: create a 0 val automatically
                 return None
-            # TODO: support multiple coloured coins in same spend
 
-            newinnerpuzhash = self.get_new_puzzlehash()
-            outputamount = coloured_coin.amount + cc_discrepancy[colour]
-            innersol = self.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': outputamount}])
-            sig = self.get_sigs_for_innerpuz_with_innersol(self.my_coloured_coins[coloured_coin][0], innersol)
-            aggsig = BLSSignature.aggregate([BLSSignature.aggregate(sig), aggsig])
+            auditor = None
+            for coloured_coin in my_cc_spends:
+                if auditor is None:
+                    auditor = coloured_coin
+                    auditor_info = (auditor.parent_coin_info, ProgramHash(self.my_coloured_coins[auditor][0]), auditor.amount)
+                    auditor_formatted = f"(0x{auditor.parent_coin_info} 0x{ProgramHash(self.my_coloured_coins[auditor][0])} {auditor.amount})"
+                    core = self.my_coloured_coins[auditor][1]
+                else:
+                    innersol = self.make_solution(consumed=[auditor.name()])
+                    sig = self.get_sigs_for_innerpuz_with_innersol(self.my_coloured_coins[coloured_coin][0], innersol)
+                    aggsig = BLSSignature.aggregate([BLSSignature.aggregate(sig), aggsig])
+                    spendslist[colour].append((coloured_coin, self.parent_info[coloured_coin.parent_coin_info], 0, innersol))
 
-            # now to make solution so that cc_coinsols and new coin play nicely
-
-            spendslist[colour].append((coloured_coin, self.parent_info[coloured_coin.parent_coin_info], outputamount, innersol))
-            auditor = coloured_coin
-            core = self.my_coloured_coins[auditor][1]
-            auditor_info = (auditor.parent_coin_info, ProgramHash(self.my_coloured_coins[auditor][0]), auditor.amount)
-            auditor_formatted = f"(0x{auditor.parent_coin_info} 0x{ProgramHash(self.my_coloured_coins[auditor][0])} {auditor.amount})"
-            innerpuz = binutils.disassemble(self.my_coloured_coins[coloured_coin][0])
+                    innerpuz = binutils.disassemble(self.my_coloured_coins[coloured_coin][0])
+                    solution = self.cc_make_solution(core, self.parent_info[coloured_coin.parent_coin_info], coloured_coin.amount, innerpuz, binutils.disassemble(innersol), auditor_info, None)
+                    coinsols.append(CoinSolution(coloured_coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coloured_coin][0]), core), solution])))
+                    coinsols.append(self.create_spend_for_ephemeral(coloured_coin, auditor, 0))
+                    coinsols.append(self.create_spend_for_auditor(auditor, coloured_coin))
 
             for cc_coinsol_out in cc_coinsol_outamounts[colour]:
                 cc_coinsol = cc_coinsol_out[0]
@@ -564,11 +566,18 @@ class CCWallet(Wallet):
                 coinsols.append(self.create_spend_for_ephemeral(cc_coinsol.coin, auditor, cc_coinsol_out[1]))
                 coinsols.append(self.create_spend_for_auditor(auditor, cc_coinsol.coin))
 
-            parent_info = self.parent_info[coloured_coin.parent_coin_info]
-            solution = self.cc_make_solution(core, parent_info, coloured_coin.amount, innerpuz, binutils.disassemble(innersol), auditor_info, spendslist[colour])
-            coinsols.append(CoinSolution(coloured_coin, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[coloured_coin][0]), core), solution])))
-            coinsols.append(self.create_spend_for_ephemeral(coloured_coin, auditor, outputamount))
-            coinsols.append(self.create_spend_for_auditor(auditor, coloured_coin))
+            newinnerpuzhash = self.get_new_puzzlehash()
+            outputamount = sum([c.amount for c in my_cc_spends]) + cc_discrepancy[colour]
+            innersol = self.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': outputamount}])
+            spendslist[colour].append((auditor, self.parent_info[auditor.parent_coin_info], outputamount, innersol))
+            parent_info = self.parent_info[auditor.parent_coin_info]
+            innerpuz = binutils.disassemble(self.my_coloured_coins[auditor][0])
+            sig = self.get_sigs_for_innerpuz_with_innersol(self.my_coloured_coins[auditor][0], innersol)
+            aggsig = BLSSignature.aggregate([BLSSignature.aggregate(sig), aggsig])
+            solution = self.cc_make_solution(core, parent_info, auditor.amount, innerpuz, binutils.disassemble(innersol), auditor_info, spendslist[colour])
+            coinsols.append(CoinSolution(auditor, clvm.to_sexp_f([self.cc_make_puzzle(ProgramHash(self.my_coloured_coins[auditor][0]), core), solution])))
+            coinsols.append(self.create_spend_for_ephemeral(auditor, auditor, outputamount))
+            coinsols.append(self.create_spend_for_auditor(auditor, auditor))
         solution_list = CoinSolutionList(coinsols)
         spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle
