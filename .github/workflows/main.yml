@@ -17,21 +17,18 @@ jobs:
       run: |
         python3 -m venv env
         ln -s env/bin/activate
-        . activate
     - name: Install dependencies
-      env:
-        CHIA_MACHINE_SSH_KEY: ${{ secrets.CHIA_MACHINE_SSH_KEY }}
-        GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
       run: |
-        eval "$(ssh-agent -s)"
-        ssh-add - <<< "${CHIA_MACHINE_SSH_KEY}"
+        . activate
         python -m pip install --upgrade pip
         # this next nasty line install the first three things
         # in requirements.txt individually
         head -3 requirements.txt | xargs -L1 pip install
         pip install -r requirements.txt 
         pip install -e .
+        pip wheel .
     - name: Test with pytest
       run: |
+        . activate
         pip install pytest
         py.test tests

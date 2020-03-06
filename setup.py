@@ -4,7 +4,6 @@ from clvm_tools.setuptools import build_clvm, monkey_patch
 
 monkey_patch()
 
-dependencies = ["aiter", "blspy", "cbor"]
 
 setuptools.setup(
     name="wallets",
@@ -18,6 +17,8 @@ setuptools.setup(
         "rate_limit",
         "recoverable_wallet",
         "custody_wallet",
+        "puzzles",
+        "multisig",
     ],
     license="Apache License",
     python_requires=">=3.7, <4",
@@ -33,9 +34,6 @@ setuptools.setup(
             "custody_wallet = custody_wallet.custody_wallet_runnable:main",
         ]
     },
-    setup_requires=["clvm_tools", "setuptools_scm"],
-    use_scm_version={"fallback_version": "unknown"},
-    install_requires=dependencies,
     long_description=open("README.md").read(),
     cmdclass={"build_clvm": build_clvm, },
     clvm_extensions=[
@@ -46,8 +44,8 @@ setuptools.setup(
         (
             "puzzles",
             [
-                "make_p2_delegated_puzzle_or_hidden_puzzle.clvm.hex",
-                "chiasim/puzzles/make_puzzle_m_of_n_direct.clvm.hex",
+                "puzzles/make_p2_delegated_puzzle_or_hidden_puzzle.clvm.hex",
+                "puzzles/make_puzzle_m_of_n_direct.clvm.hex",
             ],
         )
     ],
