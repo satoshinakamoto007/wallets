@@ -15,7 +15,6 @@ To install this repository, and all requirements, clone this repository and then
 ```
 $ python3 -m venv .venv
 $ . .venv/bin/activate
-$ head -3 requirements.txt | xargs -L1 pip install
 $ pip install -r requirements.txt
 $ pip install -e .
 ```
