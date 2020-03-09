@@ -460,6 +460,32 @@ class CCWallet(Wallet):
         spend_bundle = SpendBundle(solution_list, aggsig)
         return spend_bundle
 
+    def get_relative_amounts_for_trade_offer(self, trade_offer):
+        cc_discrepancy = dict()
+        for coinsol in trade_offer.coin_solutions:
+            puzzle = coinsol.solution.first()
+            solution = coinsol.solution.rest().first()
+
+            # work out the deficits between coin amount and expected output for each
+            if self.check_is_cc_puzzle(puzzle):
+                parent_info = binutils.disassemble(solution.rest().first()).split(' ')
+                if len(parent_info) > 1:
+                    colour = self.get_genesis_from_puzzle(binutils.disassemble(puzzle))
+                    innerpuzzlereveal = solution.rest().rest().rest().first()
+                    innersol = solution.rest().rest().rest().rest().first()
+                    out_amount = self.get_output_amount_for_puzzle_and_solution(innerpuzzlereveal, innersol)
+                    if colour in cc_discrepancy:
+                        cc_discrepancy[colour] += coinsol.coin.amount - out_amount
+                    else:
+                        cc_discrepancy[colour] = coinsol.coin.amount - out_amount
+            else:  # standard chia coin
+                if None in cc_discrepancy:
+                    cc_discrepancy[None] += coinsol.coin.amount - self.get_output_amount_for_puzzle_and_solution(puzzle, solution)
+                else:
+                    cc_discrepancy[None] = coinsol.coin.amount - self.get_output_amount_for_puzzle_and_solution(puzzle, solution)
+
+        return cc_discrepancy
+
     # Take an incomplete SpendBundle, fill in auditor information and add missing amounts
     def parse_trade_offer(self, trade_offer):
         coinsols = []  # [] of CoinSolutions
@@ -502,27 +528,33 @@ class CCWallet(Wallet):
                 coinsols.append(coinsol)
 
         # make corresponding chia spend
-        chia_coin = None
         if chia_discrepancy < 0:
-            for utxo in self.temp_utxos:
-                if utxo.amount + chia_discrepancy >= 0:
-                    chia_coin = utxo
-                    break
-            self.temp_utxos.remove(chia_coin)
+            chia_spends = self.select_coins(abs(chia_discrepancy))
         else:
-            chia_coin = self.temp_utxos.pop()
+            chia_spends = set()
+            chia_spends.add(self.temp_utxos.pop())
 
-        if chia_coin is None:
+        if chia_spends is None or chia_spends == set():
             return None
-        # TODO: this could be done with multiple coins and assert_consumed in the future, but for now...
+        primary_coin = None
+        spend_value = sum(x.amount for x in chia_spends)
+        for chia_coin in chia_spends:
+            if primary_coin is None:
+                newpuzhash = self.get_new_puzzlehash()
+                primaries = [{'puzzlehash': newpuzhash, 'amount': spend_value + chia_discrepancy}]
+                if spend_value + chia_discrepancy > 0:
+                    self.temp_utxos.add(Coin(chia_coin, newpuzhash, spend_value + chia_discrepancy))
 
-        solution = self.make_solution(primaries=[{'puzzlehash': self.get_new_puzzlehash(), 'amount': chia_coin.amount + chia_discrepancy}])
-        pubkey, secretkey = self.get_keys(chia_coin.puzzle_hash)
-        puzzle = self.puzzle_for_pk(bytes(pubkey))
-        sig = self.get_sigs_for_innerpuz_with_innersol(puzzle, solution)
-        aggsig = BLSSignature.aggregate([BLSSignature.aggregate(sig), aggsig])
+                solution = self.make_solution(primaries=primaries)
+                primary_coin = chia_coin
+            else:
+                solution = self.make_solution(consumed=[primary_coin.name()])
+            pubkey, secretkey = self.get_keys(chia_coin.puzzle_hash)
+            puzzle = self.puzzle_for_pk(bytes(pubkey))
+            sig = self.get_sigs_for_innerpuz_with_innersol(puzzle, solution)
+            aggsig = BLSSignature.aggregate([BLSSignature.aggregate(sig), aggsig])
 
-        coinsols.append(CoinSolution(chia_coin, clvm.to_sexp_f([puzzle, solution])))
+            coinsols.append(CoinSolution(chia_coin, clvm.to_sexp_f([puzzle, solution])))
 
         # create coloured coin
         for colour in cc_discrepancy.keys():
