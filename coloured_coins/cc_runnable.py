@@ -1,7 +1,7 @@
 import asyncio
 from utilities.decorations import print_leaf, divider, prompt, start_list, close_list, selectable
 from utilities.puzzle_utilities import puzzlehash_from_string
-from chiasim.hashable import Coin, Header, HeaderHash
+from chiasim.hashable import Coin, Header, HeaderHash, SpendBundle
 from chiasim.clients.ledger_sim import connect_to_ledger_sim
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
 from chiasim.hashable.Body import Body, Program
@@ -105,78 +105,78 @@ async def make_cc_payment(wallet, ledger_api):
     return
 
 
+async def create_zero_val(wallet, ledger_api):
+    print("Enter a colour to print: ")
+    colour = input(prompt)
+    core = wallet.cc_make_core(colour)
+    wallet.my_cores.add(core)
+    spend_bundle = wallet.cc_create_zero_val_for_core(core)
+    await ledger_api.push_tx(tx=spend_bundle)
+    return
+
+
 def create_offer(wallet):
-    print("Do you want to buy or sell coloured coins?")
-    print("1: Buy")
-    print("2: Sell")
+    trade_list = []
+    print("Do you want to use chia in this transaction or just use coloured coins?")
+    print("1: Use chia")
+    print("2: Just coloured coins")
     choice = input(prompt)
     if choice == "1":
-        buying = "buy"
-    elif choice == "2":
-        buying = "sell"
-    else:
-        print("Not a valid option.")
-        return
-
-    spendslist = []
-    print(f"What colour coins would you like to {buying}?")
-    colour = input(prompt)
-    if colour == "q":
-        return
-    print(f"How much value of that colour would you like to {buying}?")
-    amount = input(prompt)
-    if amount == "q":
-        return
-    else:
+        print("Enter an amount you want to spend or gain - i.e '-100' '250':")
+        amount = input(prompt)
         amount = int(amount)
-
-    if buying == "buy":
-        print(f"How much chia would you like to spend to buy {amount} coins of colour {colour}?")
-        chia_price = input(prompt)
-        chia_price = int(chia_price)
-        if chia_price > wallet.temp_balance:
-            print("You do not have that much money.")
-            return
-        core = wallet.cc_make_core(colour)
-        spend_bundle = wallet.cc_create_zero_val_for_core(core)
-        for coinsol in spend_bundle.coin_solutions:
-            coin = coinsol.coin
-            break
-        coin = Coin(coin.name(), coin.puzzle_hash, coin.amount)
-        newinnerpuzhash = wallet.get_new_puzzlehash()
-        innersol = wallet.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': coin.amount + amount}])
-        sigs = wallet.get_sigs_for_innerpuz_with_innersol(wallet.my_coloured_coins[coin][0], innersol)
-        spendslist = [(coin, wallet.parent_info[coin.parent_coin_info], coin.amount + amount, innersol)]
-        spend_bundle = spend_bundle.aggregate([spend_bundle, wallet.create_trade_offer(chia_price, spendslist, sigs)])
-        print("Your trade offer is:")
-        print(bytes(spend_bundle).hex())
-
+        trade_list.append((amount, None))
+    elif choice == "2":
+        print("Enter a colour you want to spend or gain:")
+        colour = input(prompt)
+        print("Enter the relative amount - i.e '-100' '250':")
+        amount = int(input(prompt))
+        trade_list.append((amount,  wallet.cc_make_core(colour)))
     else:
-        print()
-    coins = wallet.cc_select_coins_for_colour(colour, amount)
-    if coins is None:
-        print("You do not have enough of that colour.")
         return
 
-    newinnerpuzhash = wallet.get_new_puzzlehash()
-    innersol = wallet.make_solution(primaries=[{'puzzlehash': newinnerpuzhash, 'amount': c.amount + 100}])
-    sigs = wallet.get_sigs_for_innerpuz_with_innersol(wallet.my_coloured_coins[c][0], innersol)
-    spendslist.append((c, wallet.parent_info[c.parent_coin_info], c.amount + 100, innersol))
+    complete = False
+    while complete is False:
+        print("Enter a colour you want to spend or gain:")
+        colour = input(prompt)
+        print("Enter the relative amount - i.e '-100' '250':")
+        amount = int(input(prompt))
+        trade_list.append((amount, wallet.cc_make_core(colour)))
+        print("Do you want to add another element (y/n): ")
+        choice = input(prompt)
+        if choice == "n":
+            complete = True
 
-    c = None
-    for coin in wallet.temp_utxos:
-        if coin.amount >= 100:
-            c = coin
-            break
-    coin = c
-    trade_offer = wallet.create_trade_offer(coin, coin.amount - 100, spendslist, sigs)
+    trade_offer = wallet.create_trade_offer(trade_list)
     trade_offer_hex = bytes(trade_offer).hex()
-    print(f"Your trade offer is: {trade_offer_hex}")
+    print("Enter the filename to store your offer in: ")
+    filename = input(prompt)
+    f = open(filename, "w")
+    f.write(trade_offer_hex)
+    f.close()
+    print(f"Your trade offer is written to {filename}.")
     return
 
 
 async def respond_to_offer(wallet, ledger_api):
-
+    print("Enter the filename offer is stored in: ")
+    filename = input(prompt)
+    f = open(filename, "r")
+    trade_offer_hex = f.read()
+    f.close()
+    received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
+    cc_discrepancies = wallet.get_relative_amounts_for_trade_offer(received_offer)
+    print("This offer is: ")
+    for colour in cc_discrepancies:
+        if colour is None:
+            print(f"chia: {cc_discrepancies[None]}")
+        else:
+            print(f"{colour}: {cc_discrepancies[colour]}")
+    print("Do you accept? (y/n)")
+    choice = input(prompt)
+    if choice == "y":
+        spend_bundle = wallet.parse_trade_offer(received_offer)
+        await ledger_api.push_tx(tx=spend_bundle)
     return
 
 
@@ -247,8 +247,9 @@ async def main_loop():
             set_name(wallet)
         elif selection == "6":
             print()
-            print(f" {selectable} 1: Add Core")
+            print(f" {selectable} 1: Add Colour")
             print(f" {selectable} 2: Generate New Colour")
+            print(f" {selectable} 3: Print a 0-value Coloured Coin")
             selection = input(prompt)
             if selection == "1":
                 print("Enter colour: ")
@@ -259,6 +260,8 @@ async def main_loop():
                 wallet.cc_add_core(core)
             elif selection == "2":
                 await create_new_cc_batch(wallet, ledger_api)
+            elif selection == "3":
+                await create_zero_val(wallet, ledger_api)
         elif selection == "7":
             print()
             print(f" {selectable} 1: Create Offer")

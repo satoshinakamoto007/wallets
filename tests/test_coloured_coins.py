@@ -540,3 +540,33 @@ def test_trade_multiple_colours():
     assert wallet_b.current_balance == 999998500
     assert wallet_a.cc_select_coins_for_colour(wallet_a.get_genesis_from_core(core_b), 100) is not None
     assert wallet_b.cc_select_coins_for_colour(wallet_b.get_genesis_from_core(core_a), 100) is not None
+
+
+def test_trade_with_auto_generate():
+    remote = make_client_server()
+    run = asyncio.get_event_loop().run_until_complete
+
+    wallet_a = CCWallet()
+    wallet_b = CCWallet()
+    wallets = [wallet_a, wallet_b]
+    commit_and_notify(remote, wallets, wallet_a)
+
+    # Wallet A generates a set of genesis coins to itself.
+    amounts = [100, 200, 300, 400]
+    spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amounts)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, wallet_b)
+    assert len(wallet_a.my_coloured_coins) == 4
+    assert wallet_a.current_balance == 999999000
+
+    core_a = wallet_a.my_cores.copy().pop()
+
+    trade_offer = wallet_a.create_trade_offer([(3000, None), (-500, core_a)])
+    trade_offer_hex = bytes(trade_offer).hex()
+
+    received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
+    spend_bundle = wallet_b.parse_trade_offer(received_offer)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert sum(x.amount for x in wallet_b.my_coloured_coins) == 500
+    assert wallet_a.current_balance == 1000002000
