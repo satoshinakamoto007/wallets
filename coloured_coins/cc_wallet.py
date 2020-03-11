@@ -20,6 +20,7 @@ class CCWallet(Wallet):
         self.my_coloured_coins = dict()  # {coin: (innerpuzzle as Program, core as string)}
         self.eve_coloured_coins = dict()
         self.parent_info = dict()
+        self.puzzle_cache = dict()
         return
 
     def notify(self, additions, deletions, body):
@@ -173,9 +174,14 @@ class CCWallet(Wallet):
 
     # This is for spending an existing coloured coin
     def cc_make_puzzle(self, innerpuzhash, core):
+        key = f"{innerpuzhash}{core}"
+        if key in self.puzzle_cache:
+            return self.puzzle_cache[key]
         puzstring = f"(r (c (q 0x{innerpuzhash}) ((c (q {core}) (a)))))"
         #print(f"DEBUG Puzstring: {puzstring}")
-        return Program(binutils.assemble(puzstring))
+        result = Program(binutils.assemble(puzstring))
+        self.puzzle_cache[key] = result
+        return result
 
     # Typically called only once per colour then passed around or inferred from a coin
     def cc_make_core(self, originID):
