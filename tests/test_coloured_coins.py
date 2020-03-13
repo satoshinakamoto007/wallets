@@ -10,7 +10,8 @@ from chiasim.remote.api_server import api_server
 from chiasim.remote.client import request_response_proxy
 from chiasim.clients import ledger_sim
 from chiasim.ledger import ledger_api
-from chiasim.hashable import Coin, Program, ProgramHash, SpendBundle, CoinSolution
+from chiasim.hashable import Coin, Program, ProgramHash, SpendBundle, CoinSolution, BLSSignature
+from chiasim.hashable.CoinSolution import CoinSolutionList
 from chiasim.storage import RAM_DB
 from chiasim.utils.server import start_unix_server_aiter
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
@@ -542,7 +543,7 @@ def test_trade_multiple_colours():
     assert wallet_b.cc_select_coins_for_colour(wallet_b.get_genesis_from_core(core_a), 100) is not None
 
 
-def test_trade_with_auto_generate():
+def test_steal_value():
     remote = make_client_server()
     run = asyncio.get_event_loop().run_until_complete
 
@@ -559,14 +560,61 @@ def test_trade_with_auto_generate():
     assert len(wallet_a.my_coloured_coins) == 4
     assert wallet_a.current_balance == 999999000
 
-    core_a = wallet_a.my_cores.copy().pop()
+    core = wallet_a.my_cores.copy().pop()
+    wallet_b.cc_add_core(core)
 
-    trade_offer = wallet_a.create_trade_offer([(3000, None), (-500, core_a)])
+    # Wallet A sees if it can take Wallet B's chia without also giving the colour
+    spend_bundle = wallet_b.cc_create_zero_val_for_core(core)
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+
+    trade_offer = wallet_b.create_trade_offer([(-3000, None), (500, core)])
     trade_offer_hex = bytes(trade_offer).hex()
 
     received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
-    spend_bundle = wallet_b.parse_trade_offer(received_offer)
+    newpuzhash = wallet_a.get_new_puzzlehash()
+    coin = wallet_a.temp_utxos.pop()
+    newpuzhash = wallet_a.get_new_puzzlehash()
+    primaries = [{'puzzlehash': newpuzhash, 'amount': coin.amount + 3000}]
+    solution = wallet_a.make_solution(primaries=primaries)
+    pubkey, secretkey = wallet_a.get_keys(coin.puzzle_hash)
+    puzzle = wallet_a.puzzle_for_pk(bytes(pubkey))
+    sig = wallet_a.get_sigs_for_innerpuz_with_innersol(puzzle, solution)
+    aggsig = BLSSignature.aggregate(sig)
+
+    solution_list = CoinSolutionList([CoinSolution(coin, clvm.to_sexp_f([puzzle, solution]))])
+    spend_bundle = SpendBundle.aggregate([received_offer, SpendBundle(solution_list, aggsig)])
     _ = run(remote.push_tx(tx=spend_bundle))
     commit_and_notify(remote, wallets, Wallet())
-    assert sum(x.amount for x in wallet_b.my_coloured_coins) == 500
-    assert wallet_a.current_balance == 1000002000
+    assert wallet_a.current_balance == 999999000
+
+    
+
+# def test_trade_with_auto_generate():
+#     remote = make_client_server()
+#     run = asyncio.get_event_loop().run_until_complete
+#
+#     wallet_a = CCWallet()
+#     wallet_b = CCWallet()
+#     wallets = [wallet_a, wallet_b]
+#     commit_and_notify(remote, wallets, wallet_a)
+#
+#     # Wallet A generates a set of genesis coins to itself.
+#     amounts = [100, 200, 300, 400]
+#     spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amounts)
+#     _ = run(remote.push_tx(tx=spend_bundle))
+#     commit_and_notify(remote, wallets, wallet_b)
+#     assert len(wallet_a.my_coloured_coins) == 4
+#     assert wallet_a.current_balance == 999999000
+#
+#     core_a = wallet_a.my_cores.copy().pop()
+#
+#     trade_offer = wallet_a.create_trade_offer([(3000, None), (-500, core_a)])
+#     trade_offer_hex = bytes(trade_offer).hex()
+#
+#     received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
+#     spend_bundle = wallet_b.parse_trade_offer(received_offer)
+#     _ = run(remote.push_tx(tx=spend_bundle))
+#     commit_and_notify(remote, wallets, Wallet())
+#     assert sum(x.amount for x in wallet_b.my_coloured_coins) == 500
+#     assert wallet_a.current_balance == 1000002000

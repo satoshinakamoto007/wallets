@@ -12,7 +12,7 @@ from coloured_coins.cc_wallet import CCWallet
 
 def view_funds(wallet):
     print(f"Current balance: {str(wallet.temp_balance)}")
-    print(f"UTXOs: {[x.amount for x in wallet.temp_utxos]}")
+    print(f"Chia: {[x.amount for x in wallet.temp_utxos]}")
     print(f"Coloured Coin info:")
     for x in list(wallet.my_coloured_coins.keys()):
         print("  ------------------------------------")

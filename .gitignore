@@ -8,3 +8,5 @@ wallets.egg-info
 .DS_Store
 .eggs
 *.hex
+*.prof
+*.offer
