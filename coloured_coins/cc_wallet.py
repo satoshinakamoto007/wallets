@@ -30,17 +30,17 @@ class CCWallet(Wallet):
 
     def cc_notify(self, additions, deletions, body):
         search_for_parent = False
+        
+        for i in reversed(range(self.next_address)):
+            innerpuz = puzzle_for_pk(bytes(self.extended_secret_key.public_child(i)))
+            for core in self.my_cores:
+                mypuzhash = ProgramHash(self.cc_make_puzzle(ProgramHash(innerpuz), core))
+                self.my_cc_puzhashes[mypuzhash] = (innerpuz, core)
+
         for coin in additions:
             if coin.puzzle_hash in self.my_cc_puzhashes:
                 self.my_coloured_coins[coin] = (self.my_cc_puzhashes[coin.puzzle_hash][0], self.my_cc_puzhashes[coin.puzzle_hash][1])
                 search_for_parent = True
-            else:
-                for i in reversed(range(self.next_address)):
-                    innerpuz = puzzle_for_pk(bytes(self.extended_secret_key.public_child(i)))
-                    for core in self.my_cores:
-                        if ProgramHash(self.cc_make_puzzle(ProgramHash(innerpuz), core)) == coin.puzzle_hash:
-                            self.my_coloured_coins[coin] = (innerpuz, core)
-                            search_for_parent = True
         for coin in deletions:
             if coin in self.my_coloured_coins:
                 self.my_coloured_coins.pop(coin)
