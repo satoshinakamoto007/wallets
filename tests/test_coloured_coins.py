@@ -77,12 +77,10 @@ def test_cc_single():
 
     assert len(wallet_a.my_coloured_coins) == 1
 
-    # Wallet A does Eve spend to itself
-    innersol = binutils.assemble("()")
-
     coin = list(wallet_a.my_coloured_coins.keys()).copy().pop()
     core = wallet_a.my_coloured_coins[coin][1]
     wallet_b.cc_add_core(core)
+    
     assert ProgramHash(clvm.to_sexp_f(wallet_a.cc_make_puzzle(ProgramHash(wallet_a.my_coloured_coins[coin][0]), core))) == coin.puzzle_hash
     assert len(wallet_b.my_coloured_coins) == 0
     assert len(wallet_a.my_coloured_coins) == 1

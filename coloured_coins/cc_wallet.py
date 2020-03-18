@@ -21,6 +21,7 @@ class CCWallet(Wallet):
         self.eve_coloured_coins = dict()
         self.parent_info = dict()
         self.puzzle_cache = dict()
+        self.my_cc_puzhashes = dict()
         return
 
     def notify(self, additions, deletions, body):
@@ -30,12 +31,16 @@ class CCWallet(Wallet):
     def cc_notify(self, additions, deletions, body):
         search_for_parent = False
         for coin in additions:
-            for i in reversed(range(self.next_address)):
-                innerpuz = puzzle_for_pk(bytes(self.extended_secret_key.public_child(i)))
-                for core in self.my_cores:
-                    if ProgramHash(self.cc_make_puzzle(ProgramHash(innerpuz), core)) == coin.puzzle_hash:
-                        self.my_coloured_coins[coin] = (innerpuz, core)
-                        search_for_parent = True
+            if coin.puzzle_hash in self.my_cc_puzhashes:
+                self.my_coloured_coins[coin] = (self.my_cc_puzhashes[coin.puzzle_hash][0], self.my_cc_puzhashes[coin.puzzle_hash][1])
+                search_for_parent = True
+            else:
+                for i in reversed(range(self.next_address)):
+                    innerpuz = puzzle_for_pk(bytes(self.extended_secret_key.public_child(i)))
+                    for core in self.my_cores:
+                        if ProgramHash(self.cc_make_puzzle(ProgramHash(innerpuz), core)) == coin.puzzle_hash:
+                            self.my_coloured_coins[coin] = (innerpuz, core)
+                            search_for_parent = True
         for coin in deletions:
             if coin in self.my_coloured_coins:
                 self.my_coloured_coins.pop(coin)
@@ -116,6 +121,7 @@ class CCWallet(Wallet):
             innerpuzhash = ProgramHash(innerpuz)
             newpuzzle = self.cc_make_puzzle(innerpuzhash, core)
             newpuzzlehash = ProgramHash(newpuzzle)
+            self.my_cc_puzhashes[newpuzzlehash] = (innerpuz, core)
             primaries.append({'puzzlehash': newpuzzlehash, 'amount': amount})
             evespendslist.append((Coin(genesisCoin, newpuzzlehash, amount), genesisCoin.name(), amount, binutils.assemble("((q ()) ())")))
             self.eve_coloured_coins[Coin(genesisCoin, newpuzzlehash, amount)] = (innerpuz, core)
@@ -144,6 +150,7 @@ class CCWallet(Wallet):
             return None
         innerpuz = self.get_new_puzzle()
         newpuzzle = self.cc_make_puzzle(ProgramHash(innerpuz), core)
+        self.my_cc_puzhashes[ProgramHash(newpuzzle)] = (innerpuz, core)
         coin = self.temp_utxos.pop()
         primaries = [{'puzzlehash': ProgramHash(newpuzzle), 'amount': 0}]
         changepuzzlehash = self.get_new_puzzlehash()
