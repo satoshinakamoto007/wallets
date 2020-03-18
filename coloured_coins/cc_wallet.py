@@ -575,15 +575,18 @@ class CCWallet(Wallet):
             else:
                 my_cc_spends = self.cc_select_coins_for_colour(colour, 0)
 
-            if (my_cc_spends == [] or my_cc_spends is None) and cc_discrepancy[colour] >= 0:
-                self.my_cores.add(self.cc_make_core(colour))
-                spend_bundle = self.cc_create_zero_val_for_core(self.cc_make_core(colour))
-                for coinsol in spend_bundle.coin_solutions:
-                    puzzle = coinsol.solution.first()
-                    if coinsol.coin.name() in self.parent_info:
-                        my_cc_spends = [Coin(coinsol.coin.name(), coinsol.coin.puzzle_hash, 0)]
-                        auditor_innerpuz = coinsol.solution.rest().first().rest().rest().rest().first()
-                        break
+            # Currently autogenerate a 0 val coin is disabled
+            # TODO: return and fix
+
+            # if (my_cc_spends == [] or my_cc_spends is None) and cc_discrepancy[colour] >= 0:
+            #     self.my_cores.add(self.cc_make_core(colour))
+            #     spend_bundle = self.cc_create_zero_val_for_core(self.cc_make_core(colour))
+            #     for coinsol in spend_bundle.coin_solutions:
+            #         puzzle = coinsol.solution.first()
+            #         if coinsol.coin.name() in self.parent_info:
+            #             my_cc_spends = [Coin(coinsol.coin.name(), coinsol.coin.puzzle_hash, 0)]
+            #             auditor_innerpuz = coinsol.solution.rest().first().rest().rest().rest().first()
+            #             break
 
             if my_cc_spends == [] or my_cc_spends is None:
                 return None

@@ -13,7 +13,7 @@ from chiasim.hashable import Coin
 from chiasim.storage import RAM_DB
 from chiasim.utils.server import start_unix_server_aiter
 from chiasim.wallet.deltas import additions_for_body, removals_for_body
-from chiasim.hashable import Program, ProgramHash
+from chiasim.hashable import Program, ProgramHash, CoinSolution
 from clvm_tools import binutils
 from binascii import hexlify
 
@@ -178,6 +178,39 @@ def test_spend_failure():
     assert wallet_a.temp_balance == 1000
 
 
+def test_spend_bundle_aggregation():
+    remote = make_client_server()
+    run = asyncio.get_event_loop().run_until_complete
+    wallet_a = Wallet()
+    wallet_b = Wallet()
+    wallets = [wallet_a, wallet_b]
+    commit_and_notify(remote, wallets, wallet_a)
+    amount = 5000
+    for coin in wallet_a.temp_utxos:
+        if coin.amount >= amount:
+            break
+    pubkey, secretkey = wallet_a.get_keys(coin.puzzle_hash)
+    puzzle = wallet_a.puzzle_for_pk(pubkey)
+    primaries = [{'puzzlehash': coin.puzzle_hash, 'amount': amount}]
+    solution = wallet_a.make_solution(primaries=primaries)
+    spends = [(puzzle, CoinSolution(coin, solution))]
+
+    spend_bundle = wallet_a.sign_transaction(spends)
+    coin = None
+    assert spend_bundle is not None
+    for coinsol in spend_bundle.coin_solutions:
+        coin = Coin(coinsol.coin, coinsol.coin.puzzle_hash, amount)
+    pubkey, secretkey = wallet_a.get_keys(coin.puzzle_hash)
+    puzzle = wallet_a.puzzle_for_pk(pubkey)
+    primaries = [{'puzzlehash': wallet_b.get_new_puzzlehash(), 'amount': amount}]
+    solution = wallet_a.make_solution(primaries=primaries)
+    spends = [(puzzle, CoinSolution(coin, solution))]
+    spend_bundle = spend_bundle.aggregate([spend_bundle, wallet_a.sign_transaction(spends)])
+    _ = run(remote.push_tx(tx=spend_bundle))
+    commit_and_notify(remote, wallets, Wallet())
+    assert wallet_b.current_balance == amount
+
+    
 """
 Copyright 2018 Chia Network Inc
 Licensed under the Apache License, Version 2.0 (the "License");

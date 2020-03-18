@@ -588,33 +588,16 @@ def test_steal_value():
     commit_and_notify(remote, wallets, Wallet())
     assert wallet_a.current_balance == 999999000
 
-    
 
-# def test_trade_with_auto_generate():
-#     remote = make_client_server()
-#     run = asyncio.get_event_loop().run_until_complete
-#
-#     wallet_a = CCWallet()
-#     wallet_b = CCWallet()
-#     wallets = [wallet_a, wallet_b]
-#     commit_and_notify(remote, wallets, wallet_a)
-#
-#     # Wallet A generates a set of genesis coins to itself.
-#     amounts = [100, 200, 300, 400]
-#     spend_bundle = wallet_a.cc_generate_spend_for_genesis_coins(amounts)
-#     _ = run(remote.push_tx(tx=spend_bundle))
-#     commit_and_notify(remote, wallets, wallet_b)
-#     assert len(wallet_a.my_coloured_coins) == 4
-#     assert wallet_a.current_balance == 999999000
-#
-#     core_a = wallet_a.my_cores.copy().pop()
-#
-#     trade_offer = wallet_a.create_trade_offer([(3000, None), (-500, core_a)])
-#     trade_offer_hex = bytes(trade_offer).hex()
-#
-#     received_offer = SpendBundle.from_bytes(bytes.fromhex(trade_offer_hex))
-#     spend_bundle = wallet_b.parse_trade_offer(received_offer)
-#     _ = run(remote.push_tx(tx=spend_bundle))
-#     commit_and_notify(remote, wallets, Wallet())
-#     assert sum(x.amount for x in wallet_b.my_coloured_coins) == 500
-#     assert wallet_a.current_balance == 1000002000
+    """
+    Copyright 2020 Chia Network Inc
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+       http://www.apache.org/licenses/LICENSE-2.0
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+    """
