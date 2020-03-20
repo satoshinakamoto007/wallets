@@ -212,7 +212,7 @@ class CCWallet(Wallet):
 
         # run innerpuzreveal with innersol
         create_outputs = f"((c (f (r (r (r (a))))) (f (r (r (r (r (a))))))))"
-        # Loop through output of create_outputs and adds up the amounts
+        # Loop through output of create_outputs and adds up the amounts of the create_coins
         sum_outputs = f"((c (q ((c (f (a)) (a)))) (c (q ((c (i (f (r (a))) (q ((c (i (= (f (f (f (r (a))))) (q 0x{ConditionOpcode.CREATE_COIN.hex()})) (q (+ (f (r (r (f (f (r (a))))))) ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (q ()))))))) (q (+ (q ()) ((c (f (a)) (c (f (a)) (c (r (f (r (a)))) (q ())))))))) (a)))) (q (q ()))) (a)))) (c {create_outputs} (q ())))))"
 
         # Loop through created outputs and if it's a CREATE_COIN then replace the new puzhashes with a coloured_coin puzhash which uses the generated puzhash as the innerpuzhash
@@ -562,7 +562,7 @@ class CCWallet(Wallet):
         spendslist = dict()  # used for generating auditor solution, key is colour
         aggsig = trade_offer.aggregated_signature
         cc_discrepancies = dict()
-        chia_discrepancy = 0
+        chia_discrepancy = None
         for coinsol in trade_offer.coin_solutions:
             puzzle = coinsol.solution.first()
             solution = coinsol.solution.rest().first()
@@ -597,37 +597,41 @@ class CCWallet(Wallet):
                 # else:  # Eve spend - currently don't support 0 generation as its not the recipients problem
                 #     coinsols.append(coinsol)
             else:  # standard chia coin
-                chia_discrepancy += self.get_output_discrepancy_for_puzzle_and_solution(coinsol.coin, puzzle, solution)
+                if chia_discrepancy is None:
+                    chia_discrepancy = self.get_output_discrepancy_for_puzzle_and_solution(coinsol.coin, puzzle, solution)
+                else:
+                    chia_discrepancy += self.get_output_discrepancy_for_puzzle_and_solution(coinsol.coin, puzzle, solution)
                 coinsols.append(coinsol)
 
-        # make corresponding chia spend
-        if chia_discrepancy < 0:
-            chia_spends = self.select_coins(abs(chia_discrepancy))
-        else:
-            chia_spends = set()
-            chia_spends.add(self.temp_utxos.pop())
-
-        if chia_spends is None or chia_spends == set():
-            return None
-        primary_coin = None
-        spend_value = sum(x.amount for x in chia_spends)
-        for chia_coin in chia_spends:
-            if primary_coin is None:
-                newpuzhash = self.get_new_puzzlehash()
-                primaries = [{'puzzlehash': newpuzhash, 'amount': spend_value + chia_discrepancy}]
-                if spend_value + chia_discrepancy > 0:
-                    self.temp_utxos.add(Coin(chia_coin, newpuzhash, spend_value + chia_discrepancy))
-
-                solution = self.make_solution(primaries=primaries)
-                primary_coin = chia_coin
+        if chia_discrepancy is not None:
+            # make corresponding chia spend
+            if chia_discrepancy < 0:
+                chia_spends = self.select_coins(abs(chia_discrepancy))
             else:
-                solution = self.make_solution(consumed=[primary_coin.name()])
-            pubkey, secretkey = self.get_keys(chia_coin.puzzle_hash)
-            puzzle = self.puzzle_for_pk(bytes(pubkey))
-            sig = self.get_sigs_for_innerpuz_with_innersol(puzzle, solution)
-            aggsig = BLSSignature.aggregate([BLSSignature.aggregate(sig), aggsig])
+                chia_spends = set()
+                chia_spends.add(self.temp_utxos.pop())
 
-            coinsols.append(CoinSolution(chia_coin, clvm.to_sexp_f([puzzle, solution])))
+            if chia_spends is None or chia_spends == set():
+                return None
+            primary_coin = None
+            spend_value = sum(x.amount for x in chia_spends)
+            for chia_coin in chia_spends:
+                if primary_coin is None:
+                    newpuzhash = self.get_new_puzzlehash()
+                    primaries = [{'puzzlehash': newpuzhash, 'amount': spend_value + chia_discrepancy}]
+                    if spend_value + chia_discrepancy > 0:
+                        self.temp_utxos.add(Coin(chia_coin, newpuzhash, spend_value + chia_discrepancy))
+
+                    solution = self.make_solution(primaries=primaries)
+                    primary_coin = chia_coin
+                else:
+                    solution = self.make_solution(consumed=[primary_coin.name()])
+                pubkey, secretkey = self.get_keys(chia_coin.puzzle_hash)
+                puzzle = self.puzzle_for_pk(bytes(pubkey))
+                sig = self.get_sigs_for_innerpuz_with_innersol(puzzle, solution)
+                aggsig = BLSSignature.aggregate([BLSSignature.aggregate(sig), aggsig])
+
+                coinsols.append(CoinSolution(chia_coin, clvm.to_sexp_f([puzzle, solution])))
 
         # create coloured coin
         for colour in cc_discrepancies.keys():
