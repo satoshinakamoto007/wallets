@@ -8,7 +8,7 @@ monkey_patch()
 setuptools.setup(
     name="wallets",
     description="Chis wallets that interact with ledger-sim",
-    author="Chia Network",
+    author="Chia Network", bram darras
     packages=[
         "standard_wallet",
         "utilities",
