@@ -1,5 +1,7 @@
 # Chia Wallets
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/9a8f5d121399410f85981a7c97e13274)](https://app.codacy.com/gh/bram00767/wallets?utm_source=github.com&utm_medium=referral&utm_content=bram00767/wallets&utm_campaign=Badge_Grade_Settings)
+
 The Chia Wallets are designed to show off Chia's approach to transactions, and our new language ChiaLisp.
 At the moment this project is uses a local server which simulates the full network. This allows us to test the wallet functionality in isolation.
 
